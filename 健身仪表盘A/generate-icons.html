@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Icons</title></head>
+<body>
+<canvas id="c192" width="192" height="192"></canvas>
+<canvas id="c512" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvas, size) {
+  const ctx = canvas.getContext('2d');
+  const s = size;
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, s, s);
+  grad.addColorStop(0, '#6c5ce7');
+  grad.addColorStop(1, '#00cec9');
+  ctx.fillStyle = grad;
+
+  // Rounded rectangle
+  const r = s * 0.2;
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(s - r, 0);
+  ctx.quadraticCurveTo(s, 0, s, r);
+  ctx.lineTo(s, s - r);
+  ctx.quadraticCurveTo(s, s, s - r, s);
+  ctx.lineTo(r, s);
+  ctx.quadraticCurveTo(0, s, 0, s - r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Bar chart icon
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  const barW = s * 0.1;
+  const gap = s * 0.06;
+  const startX = s * 0.25;
+  const bottomY = s * 0.78;
+
+  // Bar 1 (short)
+  const h1 = s * 0.25;
+  ctx.fillRect(startX, bottomY - h1, barW, h1);
+  // Bar 2 (medium)
+  const h2 = s * 0.38;
+  ctx.fillRect(startX + barW + gap, bottomY - h2, barW, h2);
+  // Bar 3 (tall)
+  const h3 = s * 0.48;
+  ctx.fillRect(startX + (barW + gap) * 2, bottomY - h3, barW, h3);
+  // Bar 4 (medium)
+  const h4 = s * 0.30;
+  ctx.fillRect(startX + (barW + gap) * 3, bottomY - h4, barW, h4);
+
+  // Trend line
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = s * 0.025;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(startX + barW / 2, bottomY - h1 - s * 0.04);
+  ctx.lineTo(startX + barW * 1.5 + gap, bottomY - h2 - s * 0.04);
+  ctx.lineTo(startX + barW * 2.5 + gap * 2, bottomY - h3 - s * 0.04);
+  ctx.lineTo(startX + barW * 3.5 + gap * 3, bottomY - h4 - s * 0.04);
+  ctx.stroke();
+
+  // Heart icon
+  ctx.fillStyle = 'white';
+  ctx.font = `bold ${s * 0.05}px sans-serif`;
+  ctx.textAlign = 'center';
+
+  // Small heart/star at top-right
+  const hx = s * 0.82;
+  const hy = s * 0.28;
+  const hs = s * 0.04;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  // simple star
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+    const x = hx + hs * Math.cos(angle);
+    const y = hy + hs * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  return canvas;
+}
+
+drawIcon(document.getElementById('c192'), 192);
+drawIcon(document.getElementById('c512'), 512);
+
+// Download
+document.getElementById('c192').toBlob(blob => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'icon-192.png';
+  a.click();
+});
+
+document.getElementById('c512').toBlob(blob => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'icon-512.png';
+  a.click();
+});
+
+document.body.innerHTML = '<h1>Icons generated! Check your downloads.</h1>';
+</script>
+</body>
+</html>

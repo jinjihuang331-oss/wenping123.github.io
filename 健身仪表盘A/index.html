@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Fitness Tracker Dashboard</title>
+  <meta name="description" content="Track workouts, monitor progress, and achieve your fitness goals">
+  <meta name="theme-color" content="#6c5ce7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Install Banner -->
+  <div id="install-banner" class="install-banner hidden">
+    <div class="install-banner-content">
+      <span class="install-icon">📱</span>
+      <span>Install Fitness Tracker to your home screen</span>
+      <button id="install-btn" class="btn btn-primary btn-sm">Install</button>
+      <button id="install-dismiss" class="btn-dismiss">&times;</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1 class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10M12 20V4M6 20v-6"/>
+        </svg>
+        <span>Fitness Track</span>
+      </h1>
+      <div class="header-actions">
+        <div class="pedometer-badge" id="pedometer-badge" title="Steps today">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path d="M13 4a1 1 0 1 0-2 0v6a3 3 0 0 1-3 3H6a1 1 0 1 0 0 2h2a5 5 0 0 0 5-5V4z"/>
+            <circle cx="12" cy="16" r="2"/>
+          </svg>
+          <span id="step-count">0</span>
+        </div>
+        <button class="btn-icon" id="theme-toggle" title="Toggle theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <button class="nav-item active" data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-tab="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <span>Log</span>
+    </button>
+    <button class="nav-item nav-add" data-tab="quick-add" id="fab-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="nav-item" data-tab="goals">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Goals</span>
+    </button>
+    <button class="nav-item" data-tab="progress">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Progress</span>
+    </button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Dashboard Tab -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Today's Overview</h2>
+          <p class="section-subtitle" id="greeting">Good morning, start your workout today!</p>
+        </div>
+        <button class="btn btn-primary" onclick="switchTab('log')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Log Workout
+        </button>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card stat-card-primary">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-workouts">0</span>
+            <span class="stat-label">Workouts This Week</span>
+          </div>
+        </div>
+        <div class="stat-card stat-card-success">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-duration">0<span class="stat-unit">min</span></span>
+            <span class="stat-label">Total Duration</span>
+          </div>
+        </div>
+        <div class="stat-card stat-card-warning">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-calories">0<span class="stat-unit">kcal</span></span>
+            <span class="stat-label">Calories Burned</span>
+          </div>
+        </div>
+        <div class="stat-card stat-card-info">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-streak">0<span class="stat-unit">days</span></span>
+            <span class="stat-label">Current Streak</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pedometer Section -->
+      <div class="card pedometer-card" id="pedometer-section">
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+              <path d="M13 4a1 1 0 1 0-2 0v6a3 3 0 0 1-3 3H6a1 1 0 1 0 0 2h2a5 5 0 0 0 5-5V4z"/>
+              <circle cx="12" cy="16" r="2"/>
+            </svg>
+            Steps Today
+          </h3>
+          <span class="badge" id="pedometer-status">Detecting...</span>
+        </div>
+        <div class="pedometer-display">
+          <div class="pedometer-ring">
+            <svg viewBox="0 0 120 120" class="pedometer-svg">
+              <circle cx="60" cy="60" r="54" class="pedometer-bg"/>
+              <circle cx="60" cy="60" r="54" class="pedometer-progress" id="pedometer-progress-ring"/>
+            </svg>
+            <div class="pedometer-value">
+              <span id="pedometer-steps">0</span>
+              <small>/ <span id="pedometer-goal-display">10000</span></small>
+            </div>
+          </div>
+          <div class="pedometer-details">
+            <div class="pedometer-detail">
+              <span class="pedometer-detail-value" id="pedometer-distance">0</span>
+              <span class="pedometer-detail-label">km</span>
+            </div>
+            <div class="pedometer-detail">
+              <span class="pedometer-detail-value" id="pedometer-calories">0</span>
+              <span class="pedometer-detail-label">kcal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Activity Chart -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">This Week</h3>
+          <div class="chart-toggle">
+            <button class="toggle-btn active" data-chart-type="bar">Bar</button>
+            <button class="toggle-btn" data-chart-type="line">Line</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="weekly-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Recent Workouts -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Recent Workouts</h3>
+          <button class="btn-text" onclick="switchTab('progress')">View All</button>
+        </div>
+        <div class="workout-list" id="recent-workouts">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>No workouts yet</p>
+            <p class="empty-hint">Tap "Log Workout" to start your first session!</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Log Workout Tab -->
+    <section id="tab-log" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Log Workout</h2>
+        <p class="section-subtitle">Record your training details</p>
+      </div>
+
+      <form id="workout-form" class="card form-card">
+        <div class="form-group">
+          <label class="form-label">Exercise Type *</label>
+          <div class="exercise-type-grid" id="exercise-types">
+            <button type="button" class="exercise-type-btn" data-type="running">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M7 21l3-7 2 3 4-8"/><path d="M13 17l-2 4"/></svg>
+              <span>Running</span>
+            </button>
+            <button type="button" class="exercise-type-btn" data-type="cycling">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>
+              <span>Cycling</span>
+            </button>
+            <button type="button" class="exercise-type-btn" data-type="weightlifting">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 5v14M18 5v14M2 8h4M18 8h4M2 16h4M18 16h4M6 12h12"/></svg>
+              <span>Weightlifting</span>
+            </button>
+            <button type="button" class="exercise-type-btn" data-type="swimming">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/><path d="M2 16c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/><circle cx="12" cy="8" r="3"/><path d="M12 5v-3"/></svg>
+              <span>Swimming</span>
+            </button>
+            <button type="button" class="exercise-type-btn" data-type="yoga">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="4" r="2"/><path d="M12 6v6M4 18l4-4M20 18l-4-4M12 12l-4-2M12 12l4-2"/></svg>
+              <span>Yoga</span>
+            </button>
+            <button type="button" class="exercise-type-btn" data-type="other">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <span>Other</span>
+            </button>
+          </div>
+          <input type="hidden" id="workout-type" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="workout-date">Date</label>
+            <input type="date" id="workout-date" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="workout-duration">Duration (min) *</label>
+            <input type="number" id="workout-duration" class="form-input" placeholder="e.g. 30" min="1" max="600" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" id="distance-group">
+            <label class="form-label" for="workout-distance">Distance (km)</label>
+            <input type="number" id="workout-distance" class="form-input" placeholder="e.g. 5.0" min="0" step="0.1">
+          </div>
+          <div class="form-group" id="weight-group" style="display:none">
+            <label class="form-label" for="workout-weight">Weight (kg)</label>
+            <input type="number" id="workout-weight" class="form-input" placeholder="e.g. 60" min="0" step="0.5">
+          </div>
+          <div class="form-group" id="sets-group" style="display:none">
+            <label class="form-label" for="workout-sets">Sets</label>
+            <input type="number" id="workout-sets" class="form-input" placeholder="e.g. 4" min="1" max="50">
+          </div>
+          <div class="form-group" id="reps-group" style="display:none">
+            <label class="form-label" for="workout-reps">Reps per Set</label>
+            <input type="number" id="workout-reps" class="form-input" placeholder="e.g. 12" min="1" max="100">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="workout-notes">Notes</label>
+          <textarea id="workout-notes" class="form-input form-textarea" placeholder="How did your workout feel..." rows="3"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+            Save Workout
+          </button>
+        </div>
+      </form>
+
+      <!-- Body Weight Tracker -->
+      <div class="card form-card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 3v18M3 12h18"/></svg>
+            Body Weight
+          </h3>
+        </div>
+        <form id="weight-form" class="form-row">
+          <div class="form-group">
+            <input type="number" id="body-weight" class="form-input" placeholder="Weight (kg)" step="0.1" min="20" max="300" required>
+          </div>
+          <div class="form-group">
+            <input type="date" id="weight-date" class="form-input" required>
+          </div>
+          <button type="submit" class="btn btn-secondary">Save</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Goals Tab -->
+    <section id="tab-goals" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Goals</h2>
+          <p class="section-subtitle">Set goals and track your progress</p>
+        </div>
+        <button class="btn btn-primary" id="add-goal-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Goal
+        </button>
+      </div>
+
+      <!-- Active Goals -->
+      <div id="goals-container">
+        <div class="empty-state" id="goals-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <p>No goals yet</p>
+          <p class="empty-hint">Set a goal to track your fitness progress!</p>
+        </div>
+      </div>
+
+      <!-- Add Goal Modal -->
+      <div class="modal hidden" id="goal-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Create New Goal</h3>
+            <button class="btn-close" id="close-goal-modal">&times;</button>
+          </div>
+          <form id="goal-form">
+            <div class="form-group">
+              <label class="form-label">Goal Type</label>
+              <select id="goal-type" class="form-input" required>
+                <option value="workout_count">Workout Count</option>
+                <option value="total_duration">Total Duration (min)</option>
+                <option value="total_distance">Total Distance (km)</option>
+                <option value="weight_loss">Weight Loss (kg)</option>
+                <option value="weight_gain">Weight Gain (kg)</option>
+                <option value="steps">Daily Steps</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Value</label>
+              <input type="number" id="goal-target" class="form-input" placeholder="e.g. 30" min="1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Time Period</label>
+              <select id="goal-period" class="form-input" required>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Milestones</label>
+              <div class="milestone-inputs" id="milestone-inputs">
+                <div class="form-row">
+                  <input type="number" class="form-input milestone-input" placeholder="25%" min="1">
+                  <input type="number" class="form-input milestone-input" placeholder="50%" min="1">
+                  <input type="number" class="form-input milestone-input" placeholder="75%" min="1">
+                </div>
+              </div>
+              <small class="form-hint">Leave empty to auto-set at 25%/50%/75%</small>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="cancel-goal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Create Goal</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress Tab -->
+    <section id="tab-progress" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Progress</h2>
+        <div class="period-selector">
+          <button class="period-btn" data-period="week">Week</button>
+          <button class="period-btn active" data-period="month">Month</button>
+          <button class="period-btn" data-period="3month">Quarter</button>
+          <button class="period-btn" data-period="year">Year</button>
+        </div>
+      </div>
+
+      <!-- Weight Trend -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Weight Trend</h3>
+        </div>
+        <div class="chart-container chart-tall">
+          <canvas id="weight-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Workout Volume -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Workout Volume</h3>
+          <div class="chart-toggle">
+            <button class="toggle-btn active" data-vol-chart="bar">Bar</button>
+            <button class="toggle-btn" data-vol-chart="area">Area</button>
+          </div>
+        </div>
+        <div class="chart-container chart-tall">
+          <canvas id="volume-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Exercise Distribution -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Exercise Distribution</h3>
+        </div>
+        <div class="chart-container chart-square">
+          <canvas id="distribution-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Workout History -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Workout History</h3>
+          <button class="btn-text" id="clear-history-btn">Clear</button>
+        </div>
+        <div class="workout-list" id="all-workouts">
+          <div class="empty-state">
+            <p>No workouts recorded yet</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Add Tab (FAB) -->
+    <section id="tab-quick-add" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Quick Add</h2>
+        <p class="section-subtitle">Quickly log common workouts</p>
+      </div>
+      <div class="quick-add-grid">
+        <button class="quick-add-btn" data-quick-type="running" data-quick-duration="30">
+          <div class="quick-add-icon running">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M7 21l3-7 2 3 4-8"/><path d="M13 17l-2 4"/></svg>
+          </div>
+          <span class="quick-add-label">Running 30min</span>
+        </button>
+        <button class="quick-add-btn" data-quick-type="cycling" data-quick-duration="45">
+          <div class="quick-add-icon cycling">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>
+          </div>
+          <span class="quick-add-label">Cycling 45min</span>
+        </button>
+        <button class="quick-add-btn" data-quick-type="weightlifting" data-quick-duration="60">
+          <div class="quick-add-icon weightlifting">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 5v14M18 5v14M2 8h4M18 8h4M2 16h4M18 16h4M6 12h12"/></svg>
+          </div>
+          <span class="quick-add-label">Weights 60min</span>
+        </button>
+        <button class="quick-add-btn" data-quick-type="swimming" data-quick-duration="40">
+          <div class="quick-add-icon swimming">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/><path d="M2 16c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/><circle cx="12" cy="8" r="3"/><path d="M12 5v-3"/></svg>
+          </div>
+          <span class="quick-add-label">Swimming 40min</span>
+        </button>
+        <button class="quick-add-btn" data-quick-type="yoga" data-quick-duration="30">
+          <div class="quick-add-icon yoga">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="4" r="2"/><path d="M12 6v6M4 18l4-4M20 18l-4-4M12 12l-4-2M12 12l4-2"/></svg>
+          </div>
+          <span class="quick-add-label">Yoga 30min</span>
+        </button>
+        <button class="quick-add-btn" data-quick-type="other" data-quick-duration="20">
+          <div class="quick-add-icon other">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          </div>
+          <span class="quick-add-label">Other 20min</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Share Modal -->
+  <div class="modal hidden" id="share-modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>Share Workout</h3>
+        <button class="btn-close" id="close-share-modal">&times;</button>
+      </div>
+      <div class="share-preview" id="share-preview">
+        <!-- Share card will be generated here -->
+      </div>
+      <div class="share-actions">
+        <button class="btn btn-primary" id="download-share-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Image
+        </button>
+        <button class="btn btn-secondary" id="native-share-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workout Detail Modal -->
+  <div class="modal hidden" id="workout-detail-modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Workout Details</h3>
+        <button class="btn-close" id="close-detail-modal">&times;</button>
+      </div>
+      <div id="workout-detail-content"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="delete-workout-btn" style="color:#e74c3c">Delete</button>
+        <button class="btn btn-primary" id="share-workout-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
