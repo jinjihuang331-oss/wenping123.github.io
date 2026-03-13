@@ -1,13 +1,64 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>kanban-board</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交互式通知系统</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>交互式通知系统</h1>
+  <p>点击下方按钮触发不同类型的通知</p>
+</header>
+
+<main>
+  <section class="demo-panel">
+    <h2>触发通知</h2>
+    <div class="btn-group">
+      <button onclick="notify.success('操作成功完成！所有数据已保存。')">成功通知</button>
+      <button onclick="notify.error('发生错误！请检查网络连接后重试。')">错误通知</button>
+      <button onclick="notify.info('系统更新通知：新版本 v2.5 已发布。')">信息通知</button>
+      <button onclick="notify.warning('警告：磁盘空间不足，请及时清理。')">警告通知</button>
+    </div>
+
+    <h2>优先级通知</h2>
+    <div class="btn-group">
+      <button onclick="notify.success('低优先级提示', { priority: 'low' })">低优先级</button>
+      <button onclick="notify.info('普通优先级消息', { priority: 'medium' })">中优先级</button>
+      <button onclick="notify.error('严重系统故障！', { priority: 'high' })">高优先级</button>
+      <button onclick="notify.warning('紧急：服务器即将重启！', { priority: 'critical' })">紧急通知</button>
+    </div>
+
+    <h2>批量测试</h2>
+    <div class="btn-group">
+      <button onclick="triggerBurst()">连续发送 x8</button>
+      <button onclick="notify.clearAll()">清除全部</button>
+    </div>
+  </section>
+
+  <section class="info-panel">
+    <h2>系统说明</h2>
+    <ul>
+      <li><span class="tag success">成功</span> 绿色 — 操作完成</li>
+      <li><span class="tag error">错误</span> 红色 — 操作失败</li>
+      <li><span class="tag info">信息</span> 蓝色 — 一般提示</li>
+      <li><span class="tag warning">警告</span> 橙色 — 需要注意</li>
+    </ul>
+    <ul>
+      <li><strong>低优先级</strong>：2 秒后消失</li>
+      <li><strong>中优先级</strong>：4 秒后消失</li>
+      <li><strong>高优先级</strong>：6 秒后消失</li>
+      <li><strong>紧急</strong>：8 秒后消失，带呼吸边框</li>
+    </ul>
+    <p>点击任意通知可手动关闭。</p>
+  </section>
+</main>
+
+<!-- 通知容器 -->
+<div id="notification-container"></div>
+
+<script src="notify.js"></script>
+</body>
 </html>

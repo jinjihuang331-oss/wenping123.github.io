@@ -1,0 +1,352 @@
+/* ========== 基础样式 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: #0f0f1a;
+  color: #e0e0e0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ========== 头部 ========== */
+header {
+  text-align: center;
+  padding: 48px 20px 24px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+header p {
+  margin-top: 8px;
+  color: #888;
+  font-size: 0.95rem;
+}
+
+/* ========== 主体布局 ========== */
+main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+@media (max-width: 700px) {
+  main { grid-template-columns: 1fr; }
+}
+
+/* ========== 演示面板 ========== */
+.demo-panel h2,
+.info-panel h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0);
+  transition: background 0.2s;
+}
+
+button:hover::after {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+button:nth-child(1) { background: linear-gradient(135deg, #2d6a4f, #40916c); }
+button:nth-child(2) { background: linear-gradient(135deg, #9b2226, #ca6702); }
+button:nth-child(3) { background: linear-gradient(135deg, #1d3557, #457b9d); }
+button:nth-child(4) { background: linear-gradient(135deg, #7f4f24, #bc6c25); }
+
+/* ========== 说明面板 ========== */
+.info-panel ul {
+  list-style: none;
+  margin-bottom: 20px;
+}
+
+.info-panel li {
+  padding: 6px 0;
+  font-size: 0.9rem;
+  color: #bbb;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.tag.success { background: #2d6a4f; color: #b7e4c7; }
+.tag.error   { background: #9b2226; color: #fca5a5; }
+.tag.info    { background: #1d3557; color: #a8dadc; }
+.tag.warning { background: #7f4f24; color: #fde68a; }
+
+.info-panel p {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* ========== 通知容器 ========== */
+#notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 380px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: visible;
+}
+
+/* ========== 通知卡片 ========== */
+.notification {
+  pointer-events: all;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #1e1e2f;
+  border-left: 4px solid transparent;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  min-width: 300px;
+
+  /* 入场 / 出场动画 */
+  animation: slideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+
+  transform: translateX(120%);
+  opacity: 0;
+}
+
+.notification.exiting {
+  animation: slideOut 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards !important;
+}
+
+/* ---------- 类型颜色 ---------- */
+.notification.success { border-left-color: #40916c; }
+.notification.error   { border-left-color: #e63946; }
+.notification.info    { border-left-color: #4895ef; }
+.notification.warning { border-left-color: #f59e0b; }
+
+/* ---------- 类型左侧图标区域 ---------- */
+.notification .icon-area {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.notification.success .icon-area { background: rgba(64, 145, 108, 0.2); color: #52b788; }
+.notification.error   .icon-area { background: rgba(230, 57, 70, 0.2);  color: #ef6461; }
+.notification.info    .icon-area { background: rgba(72, 149, 239, 0.2); color: #7ec8e3; }
+.notification.warning .icon-area { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+/* ---------- 内容区 ---------- */
+.notification .content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification .content .title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notification .content .title .priority-label {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+.notification.success .priority-label { background: rgba(64,145,108,0.25); color: #95d5b2; }
+.notification.error   .priority-label { background: rgba(230,57,70,0.25);  color: #fca5a5; }
+.notification.info    .priority-label { background: rgba(72,149,239,0.25); color: #a8dadc; }
+.notification.warning .priority-label { background: rgba(245,158,11,0.25); color: #fde68a; }
+
+.notification .content .message {
+  font-size: 0.82rem;
+  color: #999;
+  line-height: 1.45;
+}
+
+/* ---------- 关闭按钮 ---------- */
+.notification .close-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: #666;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.notification .close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ccc;
+}
+
+/* ---------- 进度条 ---------- */
+.notification .progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 0 0 0 12px;
+  animation: progressShrink linear forwards;
+}
+
+.notification.success .progress-bar { background: #40916c; }
+.notification.error   .progress-bar { background: #e63946; }
+.notification.info    .progress-bar { background: #4895ef; }
+.notification.warning .progress-bar { background: #f59e0b; }
+
+/* ---------- 紧急通知呼吸边框 ---------- */
+.notification.critical {
+  animation: slideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+             criticalPulse 1.5s ease-in-out 0.4s infinite;
+}
+
+.notification.critical.exiting {
+  animation: slideOut 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards !important;
+}
+
+/* ========== 动画关键帧 ========== */
+
+@keyframes slideIn {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding: 0 18px;
+  }
+  50% {
+    max-height: 200px;
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 200px;
+    margin-bottom: 0;
+    padding: 16px 18px;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+    max-height: 200px;
+    margin-bottom: 0;
+  }
+  to {
+    transform: translateX(120%) scale(0.9);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: -12px;       /* 抵消 gap，让后面的通知平滑上移 */
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+@keyframes progressShrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+@keyframes criticalPulse {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04),
+                0 0 0 0 rgba(239, 68, 68, 0);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04),
+                0 0 18px 2px rgba(239, 68, 68, 0.3);
+  }
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 500px) {
+  #notification-container {
+    width: calc(100vw - 24px);
+    right: 12px;
+    top: 12px;
+  }
+  .notification { min-width: 0; }
+}
