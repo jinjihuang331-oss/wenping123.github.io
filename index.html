@@ -1,64 +1,482 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>交互式通知系统</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a1a">
+  <meta name="description" content="健身追踪仪表盘 - 记录锻炼、追踪进展、达成目标">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="健身追踪">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+  <title>健身追踪仪表盘</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="app">
+    <!-- Status Bar Spacer -->
+    <div class="status-bar-spacer"></div>
 
-<header>
-  <h1>交互式通知系统</h1>
-  <p>点击下方按钮触发不同类型的通知</p>
-</header>
+    <!-- Header -->
+    <header id="app-header">
+      <div class="header-content">
+        <div>
+          <h1 id="page-title">仪表盘</h1>
+          <p id="header-subtitle" class="subtitle"></p>
+        </div>
+        <div class="header-actions">
+          <button id="btn-steps" class="icon-btn" title="计步器">
+            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>
+            <span class="step-badge" id="step-badge" style="display:none">0</span>
+          </button>
+        </div>
+      </div>
+    </header>
 
-<main>
-  <section class="demo-panel">
-    <h2>触发通知</h2>
-    <div class="btn-group">
-      <button onclick="notify.success('操作成功完成！所有数据已保存。')">成功通知</button>
-      <button onclick="notify.error('发生错误！请检查网络连接后重试。')">错误通知</button>
-      <button onclick="notify.info('系统更新通知：新版本 v2.5 已发布。')">信息通知</button>
-      <button onclick="notify.warning('警告：磁盘空间不足，请及时清理。')">警告通知</button>
+    <!-- Main Content -->
+    <main id="main-content">
+
+      <!-- Dashboard Page -->
+      <section id="page-dashboard" class="page active">
+        <div class="stats-grid">
+          <div class="stat-card accent-purple">
+            <div class="stat-icon">🔥</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-weekly-workouts">0</span>
+              <span class="stat-label">本周锻炼次数</span>
+            </div>
+          </div>
+          <div class="stat-card accent-teal">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-weekly-minutes">0</span>
+              <span class="stat-label">本周运动(分钟)</span>
+            </div>
+          </div>
+          <div class="stat-card accent-green">
+            <div class="stat-icon">📏</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-weekly-distance">0</span>
+              <span class="stat-label">本周距离(km)</span>
+            </div>
+          </div>
+          <div class="stat-card accent-orange">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-active-goals">0</span>
+              <span class="stat-label">进行中目标</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Summary -->
+        <div class="card">
+          <div class="card-header">
+            <h2>今日概览</h2>
+            <button class="btn-ghost" onclick="app.navigateTo('log')">+ 添加</button>
+          </div>
+          <div id="today-summary" class="today-summary">
+            <div class="empty-state-small">今天还没有锻炼记录</div>
+          </div>
+        </div>
+
+        <!-- Pedometer Card -->
+        <div class="card" id="pedometer-card" style="display:none">
+          <div class="card-header">
+            <h2>计步器</h2>
+            <button class="btn-ghost" id="btn-toggle-pedometer">开始</button>
+          </div>
+          <div class="pedometer-display">
+            <div class="step-ring" id="step-ring">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" class="ring-bg"/>
+                <circle cx="60" cy="60" r="54" class="ring-progress" id="step-ring-progress"/>
+              </svg>
+              <div class="ring-text">
+                <span class="step-count" id="step-count">0</span>
+                <span class="step-label">步</span>
+              </div>
+            </div>
+            <div class="step-info">
+              <div class="step-stat">
+                <span class="step-stat-value" id="step-calories">0</span>
+                <span class="step-stat-label">千卡</span>
+              </div>
+              <div class="step-stat">
+                <span class="step-stat-value" id="step-distance-km">0</span>
+                <span class="step-stat-label">公里</span>
+              </div>
+              <div class="step-goal-input">
+                <label>每日目标</label>
+                <input type="number" id="step-goal-input" value="10000" min="1000" step="1000" onchange="pedometer.saveGoal()">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Chart -->
+        <div class="card">
+          <div class="card-header">
+            <h2>本周活动</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-weekly"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Workouts -->
+        <div class="card">
+          <div class="card-header">
+            <h2>最近锻炼</h2>
+            <button class="btn-ghost" onclick="app.navigateTo('progress')">查看全部</button>
+          </div>
+          <div id="recent-workouts" class="workout-list">
+            <div class="empty-state-small">暂无锻炼记录</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Log Workout Page -->
+      <section id="page-log" class="page">
+        <div class="card">
+          <h2>记录锻炼</h2>
+          <form id="workout-form" onsubmit="app.saveWorkout(event)">
+            <div class="form-group">
+              <label>锻炼类型</label>
+              <div class="workout-type-grid" id="workout-types">
+                <button type="button" class="type-btn" data-type="running">
+                  <span class="type-icon">🏃</span>
+                  <span>跑步</span>
+                </button>
+                <button type="button" class="type-btn" data-type="weightlifting">
+                  <span class="type-icon">🏋️</span>
+                  <span>举重</span>
+                </button>
+                <button type="button" class="type-btn" data-type="cycling">
+                  <span class="type-icon">🚴</span>
+                  <span>骑行</span>
+                </button>
+                <button type="button" class="type-btn" data-type="swimming">
+                  <span class="type-icon">🏊</span>
+                  <span>游泳</span>
+                </button>
+                <button type="button" class="type-btn" data-type="yoga">
+                  <span class="type-icon">🧘</span>
+                  <span>瑜伽</span>
+                </button>
+                <button type="button" class="type-btn" data-type="walking">
+                  <span class="type-icon">🚶</span>
+                  <span>步行</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="workout-date">日期</label>
+              <input type="date" id="workout-date" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="workout-duration">时长 (分钟)</label>
+                <input type="number" id="workout-duration" placeholder="30" min="1" required>
+              </div>
+              <div class="form-group">
+                <label for="workout-calories">卡路里 (可选)</label>
+                <input type="number" id="workout-calories" placeholder="200" min="0">
+              </div>
+            </div>
+
+            <div class="form-row" id="distance-row">
+              <div class="form-group">
+                <label for="workout-distance">距离 (km)</label>
+                <input type="number" id="workout-distance" placeholder="5.0" min="0" step="0.1">
+              </div>
+            </div>
+
+            <div id="weightlifting-fields" style="display:none">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="workout-sets">组数</label>
+                  <input type="number" id="workout-sets" placeholder="3" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="workout-reps">每组次数</label>
+                  <input type="number" id="workout-reps" placeholder="10" min="0">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="workout-weight">重量 (kg)</label>
+                <input type="number" id="workout-weight" placeholder="50" min="0" step="0.5">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="workout-notes">备注</label>
+              <textarea id="workout-notes" placeholder="今天的锻炼感觉如何？" rows="2"></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary btn-block">保存锻炼</button>
+          </form>
+        </div>
+
+        <!-- Weight Log -->
+        <div class="card">
+          <h2>记录体重</h2>
+          <form id="weight-form" onsubmit="app.saveWeight(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="weight-date">日期</label>
+                <input type="date" id="weight-date" required>
+              </div>
+              <div class="form-group">
+                <label for="weight-value">体重 (kg)</label>
+                <input type="number" id="weight-value" placeholder="70.0" min="20" max="300" step="0.1" required>
+              </div>
+            </div>
+            <button type="submit" class="btn-secondary btn-block">保存体重</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Progress Page -->
+      <section id="page-progress" class="page">
+        <div class="period-selector">
+          <button class="period-btn active" data-period="week">周</button>
+          <button class="period-btn" data-period="month">月</button>
+          <button class="period-btn" data-period="year">年</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>运动时长</h2>
+          </div>
+          <div class="chart-container chart-bar">
+            <canvas id="chart-duration"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>体重变化</h2>
+            <button class="btn-ghost" onclick="app.navigateTo('log')">+ 记录</button>
+          </div>
+          <div class="chart-container chart-line">
+            <canvas id="chart-weight"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>锻炼类型分布</h2>
+          </div>
+          <div class="chart-container chart-doughnut">
+            <canvas id="chart-types"></canvas>
+          </div>
+        </div>
+
+        <!-- Workout History -->
+        <div class="card">
+          <div class="card-header">
+            <h2>锻炼记录</h2>
+          </div>
+          <div id="workout-history" class="workout-list">
+            <div class="empty-state-small">暂无锻炼记录</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Goals Page -->
+      <section id="page-goals" class="page">
+        <div class="card">
+          <div class="card-header">
+            <h2>我的目标</h2>
+            <button class="btn-primary btn-sm" onclick="goals.showAddModal()">+ 新目标</button>
+          </div>
+          <div id="goals-list" class="goals-list">
+            <div class="empty-state">
+              <div class="empty-icon">🎯</div>
+              <p>还没有设定目标</p>
+              <p class="empty-sub">点击上方按钮创建你的第一个健身目标</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Completed Goals -->
+        <div class="card" id="completed-goals-card" style="display:none">
+          <div class="card-header">
+            <h2>已完成</h2>
+          </div>
+          <div id="completed-goals-list" class="goals-list"></div>
+        </div>
+      </section>
+
+      <!-- Profile Page -->
+      <section id="page-profile" class="page">
+        <div class="card profile-card">
+          <div class="profile-avatar">💪</div>
+          <h2 id="profile-name">健身达人</h2>
+          <p class="subtitle" id="profile-joined"></p>
+          <div class="profile-stats">
+            <div>
+              <span class="profile-stat-value" id="profile-total-workouts">0</span>
+              <span class="profile-stat-label">总锻炼次数</span>
+            </div>
+            <div>
+              <span class="profile-stat-value" id="profile-total-minutes">0</span>
+              <span class="profile-stat-label">总运动(分钟)</span>
+            </div>
+            <div>
+              <span class="profile-stat-value" id="profile-total-distance">0</span>
+              <span class="profile-stat-label">总距离(km)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>设置</h2>
+          <div class="settings-list">
+            <div class="setting-item">
+              <span>每日步数目标</span>
+              <input type="number" id="settings-step-goal" value="10000" min="1000" step="500" class="setting-input">
+            </div>
+            <div class="setting-item">
+              <span>昵称</span>
+              <input type="text" id="settings-name" placeholder="健身达人" class="setting-input">
+            </div>
+            <div class="setting-item">
+              <span>导出数据</span>
+              <button class="btn-ghost" onclick="app.exportData()">导出 JSON</button>
+            </div>
+            <div class="setting-item">
+              <span>导入数据</span>
+              <label class="btn-ghost">
+                导入
+                <input type="file" id="import-file" accept=".json" onchange="app.importData(event)" hidden>
+              </label>
+            </div>
+            <div class="setting-item danger">
+              <span>清除所有数据</span>
+              <button class="btn-danger btn-sm" onclick="app.clearAllData()">清除</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>关于</h2>
+          <p class="text-muted">健身追踪仪表盘 v1.0</p>
+          <p class="text-muted">所有数据保存在本地，支持离线使用</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- FAB - Quick Add -->
+    <button id="fab-add" class="fab" onclick="app.navigateTo('log')" title="快速记录">
+      <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    </button>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav">
+      <button class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <span>仪表盘</span>
+      </button>
+      <button class="nav-item" data-page="log">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        <span>记录</span>
+      </button>
+      <button class="nav-item" data-page="progress">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+        <span>进展</span>
+      </button>
+      <button class="nav-item" data-page="goals">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+        <span>目标</span>
+      </button>
+      <button class="nav-item" data-page="profile">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <span>我的</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay" onclick="modal.close()">
+    <div id="modal-content" class="modal-content" onclick="event.stopPropagation()">
+      <!-- Dynamic content -->
     </div>
+  </div>
 
-    <h2>优先级通知</h2>
-    <div class="btn-group">
-      <button onclick="notify.success('低优先级提示', { priority: 'low' })">低优先级</button>
-      <button onclick="notify.info('普通优先级消息', { priority: 'medium' })">中优先级</button>
-      <button onclick="notify.error('严重系统故障！', { priority: 'high' })">高优先级</button>
-      <button onclick="notify.warning('紧急：服务器即将重启！', { priority: 'critical' })">紧急通知</button>
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Share Card Template (hidden) -->
+  <div id="share-card-template" class="share-card-template">
+    <div class="share-card" id="share-card">
+      <div class="share-card-header">
+        <span class="share-card-icon" id="share-card-icon">🏃</span>
+        <span class="share-card-title" id="share-card-title">跑步</span>
+      </div>
+      <div class="share-card-body">
+        <div class="share-card-stat">
+          <span class="share-card-value" id="share-card-duration">30</span>
+          <span class="share-card-label">分钟</span>
+        </div>
+        <div class="share-card-stat" id="share-card-distance-stat">
+          <span class="share-card-value" id="share-card-distance">5.0</span>
+          <span class="share-card-label">公里</span>
+        </div>
+        <div class="share-card-stat" id="share-card-calories-stat">
+          <span class="share-card-value" id="share-card-calories">300</span>
+          <span class="share-card-label">千卡</span>
+        </div>
+      </div>
+      <div class="share-card-footer">
+        <span id="share-card-date">2024-01-01</span>
+        <span id="share-card-app">健身追踪</span>
+      </div>
     </div>
+  </div>
 
-    <h2>批量测试</h2>
-    <div class="btn-group">
-      <button onclick="triggerBurst()">连续发送 x8</button>
-      <button onclick="notify.clearAll()">清除全部</button>
-    </div>
-  </section>
+  <!-- Goal Add Modal Template -->
+  <div id="goal-modal" style="display:none">
+    <h3>创建新目标</h3>
+    <form onsubmit="goals.saveGoal(event)">
+      <div class="form-group">
+        <label>目标类型</label>
+        <select id="goal-type" required>
+          <option value="total_workouts">总锻炼次数</option>
+          <option value="total_distance">总距离 (km)</option>
+          <option value="total_weight">总举重 (kg)</option>
+          <option value="weekly_frequency">每周锻炼次数</option>
+          <option value="weight_loss">减重 (kg)</option>
+          <option value="weight_gain">增重 (kg)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="goal-target">目标值</label>
+        <input type="number" id="goal-target" min="1" required placeholder="例: 100">
+      </div>
+      <div class="form-group">
+        <label for="goal-deadline">截止日期 (可选)</label>
+        <input type="date" id="goal-deadline">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="modal.close()">取消</button>
+        <button type="submit" class="btn-primary">创建目标</button>
+      </div>
+    </form>
+  </div>
 
-  <section class="info-panel">
-    <h2>系统说明</h2>
-    <ul>
-      <li><span class="tag success">成功</span> 绿色 — 操作完成</li>
-      <li><span class="tag error">错误</span> 红色 — 操作失败</li>
-      <li><span class="tag info">信息</span> 蓝色 — 一般提示</li>
-      <li><span class="tag warning">警告</span> 橙色 — 需要注意</li>
-    </ul>
-    <ul>
-      <li><strong>低优先级</strong>：2 秒后消失</li>
-      <li><strong>中优先级</strong>：4 秒后消失</li>
-      <li><strong>高优先级</strong>：6 秒后消失</li>
-      <li><strong>紧急</strong>：8 秒后消失，带呼吸边框</li>
-    </ul>
-    <p>点击任意通知可手动关闭。</p>
-  </section>
-</main>
-
-<!-- 通知容器 -->
-<div id="notification-container"></div>
-
-<script src="notify.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Scripts -->
+  <script src="js/db.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/goals.js"></script>
+  <script src="js/share.js"></script>
+  <script src="js/pedometer.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
