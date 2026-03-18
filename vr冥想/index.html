@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VR 自然冥想空间</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #000; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+canvas { display: block; }
+
+/* 加载画面 */
+#loading {
+  position: fixed; inset: 0; z-index: 1000;
+  background: linear-gradient(135deg, #0a1628, #1a2a4a);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #c8daf0; transition: opacity 1s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+#loading h1 { font-size: 2rem; font-weight: 300; letter-spacing: 0.3em; margin-bottom: 2rem; }
+#loading .loader {
+  width: 60px; height: 60px; border: 2px solid rgba(200,218,240,0.2);
+  border-top-color: #c8daf0; border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading p { margin-top: 1.5rem; font-size: 0.9rem; opacity: 0.6; }
+
+/* 控制面板 */
+#ui {
+  position: fixed; top: 0; right: 0; z-index: 100;
+  width: 280px; height: 100vh; padding: 20px;
+  background: linear-gradient(180deg, rgba(10,22,40,0.85), rgba(10,22,40,0.7));
+  backdrop-filter: blur(12px); color: #c8daf0;
+  transform: translateX(100%); transition: transform 0.4s ease;
+  overflow-y: auto;
+}
+#ui.open { transform: translateX(0); }
+#ui h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.2em; opacity: 0.5; margin: 20px 0 10px; }
+#ui h2:first-child { margin-top: 0; }
+
+#toggle-ui {
+  position: fixed; top: 20px; right: 20px; z-index: 101;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(10,22,40,0.6); backdrop-filter: blur(8px);
+  border: 1px solid rgba(200,218,240,0.15); color: #c8daf0;
+  font-size: 1.2rem; cursor: pointer; transition: all 0.3s;
+  display: flex; align-items: center; justify-content: center;
+}
+#toggle-ui:hover { background: rgba(10,22,40,0.8); }
+
+.btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.btn {
+  flex: 1; min-width: 70px; padding: 8px 12px;
+  background: rgba(200,218,240,0.08); border: 1px solid rgba(200,218,240,0.12);
+  border-radius: 8px; color: #c8daf0; font-size: 0.8rem;
+  cursor: pointer; transition: all 0.3s; text-align: center;
+}
+.btn:hover { background: rgba(200,218,240,0.15); }
+.btn.active { background: rgba(100,160,255,0.25); border-color: rgba(100,160,255,0.4); }
+
+.slider-group { margin-bottom: 12px; }
+.slider-group label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; opacity: 0.8; }
+.slider-group input[type="range"] {
+  width: 100%; height: 4px; -webkit-appearance: none; appearance: none;
+  background: rgba(200,218,240,0.15); border-radius: 2px; outline: none;
+}
+.slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px;
+  background: #6aa0ff; border-radius: 50%; cursor: pointer;
+}
+
+/* 呼吸引导 */
+#breath-guide {
+  position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+  z-index: 100; text-align: center; color: #c8daf0; opacity: 0;
+  transition: opacity 0.8s; pointer-events: none;
+}
+#breath-guide.active { opacity: 1; }
+#breath-circle {
+  width: 80px; height: 80px; border-radius: 50%;
+  border: 2px solid rgba(200,218,240,0.3);
+  margin: 0 auto 12px; transition: transform 4s ease-in-out;
+}
+#breath-circle.inhale { transform: scale(1.5); }
+#breath-circle.exhale { transform: scale(1); }
+#breath-text { font-size: 1rem; letter-spacing: 0.15em; font-weight: 300; }
+
+/* 准星 */
+#crosshair {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 6px; height: 6px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  z-index: 50; pointer-events: none;
+}
+
+/* 提示 */
+#hint {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 100; color: rgba(200,218,240,0.5); font-size: 0.75rem;
+  letter-spacing: 0.1em; transition: opacity 1s;
+}
+
+/* VR 按钮 */
+#vr-btn {
+  position: fixed; bottom: 20px; right: 20px; z-index: 101;
+  padding: 10px 20px; background: rgba(10,22,40,0.6);
+  backdrop-filter: blur(8px); border: 1px solid rgba(200,218,240,0.15);
+  border-radius: 8px; color: #c8daf0; font-size: 0.85rem;
+  cursor: pointer; display: none;
+}
+
+/* 时间显示 */
+#time-display {
+  position: fixed; top: 20px; left: 20px; z-index: 100;
+  color: rgba(200,218,240,0.4); font-size: 0.8rem;
+  letter-spacing: 0.1em; font-weight: 300;
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <h1>自然冥想</h1>
+  <div class="loader"></div>
+  <p>正在构建你的宁静空间...</p>
+</div>
+
+<div id="crosshair"></div>
+<div id="time-display"></div>
+<div id="hint">点击屏幕开始 · WASD 移动 · 鼠标环顾</div>
+
+<button id="toggle-ui">☰</button>
+<div id="ui">
+  <h2>天气</h2>
+  <div class="btn-group" id="weather-btns">
+    <button class="btn active" data-weather="clear">☀ 晴天</button>
+    <button class="btn" data-weather="rain">🌧 雨天</button>
+    <button class="btn" data-weather="snow">❄ 雪天</button>
+    <button class="btn" data-weather="fog">🌫 雾天</button>
+  </div>
+
+  <h2>时间</h2>
+  <div class="btn-group" id="time-btns">
+    <button class="btn" data-time="dawn">🌅 黎明</button>
+    <button class="btn active" data-time="day">☀ 白天</button>
+    <button class="btn" data-time="sunset">🌇 黄昏</button>
+    <button class="btn" data-time="night">🌙 夜晚</button>
+  </div>
+
+  <h2>场景</h2>
+  <div class="btn-group" id="scene-btns">
+    <button class="btn active" data-scene="forest">🌲 森林</button>
+    <button class="btn" data-scene="lake">🏞 湖畔</button>
+    <button class="btn" data-scene="mountain">⛰ 山谷</button>
+  </div>
+
+  <h2>音量</h2>
+  <div class="slider-group">
+    <label><span>环境音</span><span id="vol-env-val">70%</span></label>
+    <input type="range" id="vol-env" min="0" max="100" value="70">
+  </div>
+  <div class="slider-group">
+    <label><span>音乐</span><span id="vol-music-val">50%</span></label>
+    <input type="range" id="vol-music" min="0" max="100" value="50">
+  </div>
+
+  <h2>冥想</h2>
+  <div class="btn-group">
+    <button class="btn" id="breath-btn">🫁 呼吸引导</button>
+    <button class="btn" id="auto-walk-btn">🚶 自动漫游</button>
+  </div>
+
+  <h2>移动速度</h2>
+  <div class="slider-group">
+    <label><span>速度</span><span id="speed-val">1.0x</span></label>
+    <input type="range" id="speed-slider" min="1" max="30" value="10">
+  </div>
+</div>
+
+<div id="breath-guide">
+  <div id="breath-circle"></div>
+  <div id="breath-text">准备...</div>
+</div>
+
+<button id="vr-btn">进入 VR</button>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
