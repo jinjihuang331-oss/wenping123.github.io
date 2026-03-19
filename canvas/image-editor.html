@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Canvas 图片编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 15px 20px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            gap: 15px;
+            overflow: hidden;
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            background: #0f0f1e;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            touch-action: none;
+        }
+
+        #editorCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+        }
+
+        #editorCanvas.cropping {
+            cursor: crosshair;
+        }
+
+        #editorCanvas.dragging {
+            cursor: move;
+        }
+
+        .toolbar {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 45vh;
+            overflow-y: auto;
+        }
+
+        .tool-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #0f3460;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn:hover {
+            background: #1a4a7a;
+        }
+
+        .btn.active {
+            background: #e94560;
+        }
+
+        .btn-primary {
+            background: #e94560;
+        }
+
+        .btn-primary:hover {
+            background: #ff6b6b;
+        }
+
+        .btn-success {
+            background: #00d9ff;
+            color: #1a1a2e;
+        }
+
+        .btn-success:hover {
+            background: #80eeff;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        input[type="text"], input[type="number"], input[type="color"] {
+            padding: 8px 12px;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            background: #0f0f1e;
+            color: #fff;
+            font-size: 14px;
+            min-width: 80px;
+        }
+
+        input[type="range"] {
+            width: 100px;
+        }
+
+        .crop-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .crop-info.visible {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .watermark-preview {
+            font-size: 12px;
+            color: #888;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 480px) {
+            .btn {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+
+            .section-title {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 Canvas 图片编辑器</h1>
+    </div>
+
+    <div class="main-container">
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="editorCanvas"></canvas>
+            <div class="crop-info" id="cropInfo"></div>
+            <div class="empty-state" id="emptyState">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="M21 15l-5-5L5 21"/>
+                </svg>
+                <p>点击"选择图片"开始编辑</p>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <!-- 文件操作 -->
+            <div class="tool-section">
+                <span class="section-title">文件</span>
+                <input type="file" id="fileInput" accept="image/*">
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                    📁 选择图片
+                </button>
+                <button class="btn btn-success" id="exportBtn" disabled>
+                    💾 导出 PNG
+                </button>
+            </div>
+
+            <!-- 裁剪工具 -->
+            <div class="tool-section">
+                <span class="section-title">裁剪</span>
+                <button class="btn" id="cropBtn">✂️ 裁剪模式</button>
+                <button class="btn" id="applyCropBtn" disabled>✓ 应用裁剪</button>
+                <button class="btn" id="cancelCropBtn" disabled>✗ 取消</button>
+            </div>
+
+            <!-- 旋转工具 -->
+            <div class="tool-section">
+                <span class="section-title">旋转</span>
+                <button class="btn" id="rotateLeftBtn">↺ 左转90°</button>
+                <button class="btn" id="rotateRightBtn">↻ 右转90°</button>
+                <button class="btn" id="rotateCustomBtn">↻ 自定义</button>
+                <input type="number" id="rotateAngle" placeholder="角度" value="0" min="-360" max="360">
+            </div>
+
+            <!-- 水印工具 -->
+            <div class="tool-section">
+                <span class="section-title">文字水印</span>
+                <input type="text" id="watermarkText" placeholder="输入水印文字">
+                <input type="color" id="watermarkColor" value="#ffffff" title="颜色">
+                <input type="number" id="watermarkSize" placeholder="大小" value="30" min="10" max="200">
+                <input type="range" id="watermarkOpacity" min="0" max="100" value="80" title="透明度">
+                <button class="btn" id="addWatermarkBtn">➕ 添加</button>
+                <button class="btn" id="clearWatermarkBtn">🗑️ 清除</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 画布和上下文
+        const canvas = document.getElementById('editorCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const emptyState = document.getElementById('emptyState');
+        const cropInfo = document.getElementById('cropInfo');
+
+        // 状态管理
+        let state = {
+            image: null,
+            originalImage: null,
+            rotation: 0,
+            scale: 1,
+            cropMode: false,
+            cropRect: null,
+            isDragging: false,
+            dragStart: null,
+            watermarks: [],
+            canvasWidth: 0,
+            canvasHeight: 0
+        };
+
+        // 初始化
+        function init() {
+            setupEventListeners();
+            resizeCanvas();
+        }
+
+        // 设置事件监听
+        function setupEventListeners() {
+            // 文件上传
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+            // 裁剪工具
+            document.getElementById('cropBtn').addEventListener('click', toggleCropMode);
+            document.getElementById('applyCropBtn').addEventListener('click', applyCrop);
+            document.getElementById('cancelCropBtn').addEventListener('click', cancelCrop);
+
+            // 旋转工具
+            document.getElementById('rotateLeftBtn').addEventListener('click', () => rotateImage(-90));
+            document.getElementById('rotateRightBtn').addEventListener('click', () => rotateImage(90));
+            document.getElementById('rotateCustomBtn').addEventListener('click', rotateCustom);
+
+            // 水印工具
+            document.getElementById('addWatermarkBtn').addEventListener('click', addWatermark);
+            document.getElementById('clearWatermarkBtn').addEventListener('click', clearWatermarks);
+
+            // 导出
+            document.getElementById('exportBtn').addEventListener('click', exportImage);
+
+            // 画布交互（鼠标）
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+
+            // 画布交互（触摸）
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+
+            // 窗口大小改变
+            window.addEventListener('resize', () => {
+                if (state.image) render();
+            });
+        }
+
+        // 处理文件选择
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    state.originalImage = img;
+                    state.rotation = 0;
+                    state.watermarks = [];
+                    state.cropRect = null;
+
+                    emptyState.style.display = 'none';
+                    document.getElementById('exportBtn').disabled = false;
+
+                    resizeCanvas();
+                    render();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 调整画布大小
+        function resizeCanvas() {
+            if (!state.image) return;
+
+            const wrapper = canvasWrapper.getBoundingClientRect();
+            const padding = 30;
+
+            const maxWidth = wrapper.width - padding * 2;
+            const maxHeight = wrapper.height - padding * 2;
+
+            const imgRatio = state.image.width / state.image.height;
+            const wrapperRatio = maxWidth / maxHeight;
+
+            if (imgRatio > wrapperRatio) {
+                state.canvasWidth = maxWidth;
+                state.canvasHeight = maxWidth / imgRatio;
+            } else {
+                state.canvasHeight = maxHeight;
+                state.canvasWidth = maxHeight * imgRatio;
+            }
+
+            canvas.width = state.canvasWidth;
+            canvas.height = state.canvasHeight;
+            canvas.style.width = state.canvasWidth + 'px';
+            canvas.style.height = state.canvasHeight + 'px';
+        }
+
+        // 渲染画布
+        function render() {
+            if (!state.image) return;
+
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 保存状态
+            ctx.save();
+
+            // 应用旋转
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            ctx.translate(centerX, centerY);
+            ctx.rotate((state.rotation * Math.PI) / 180);
+
+            // 绘制图片
+            const drawWidth = canvas.width;
+            const drawHeight = canvas.height;
+            ctx.drawImage(
+                state.image,
+                -drawWidth / 2,
+                -drawHeight / 2,
+                drawWidth,
+                drawHeight
+            );
+
+            ctx.restore();
+
+            // 绘制水印
+            renderWatermarks();
+
+            // 绘制裁剪框
+            if (state.cropMode && state.cropRect) {
+                renderCropOverlay();
+            }
+        }
+
+        // 渲染水印
+        function renderWatermarks() {
+            state.watermarks.forEach(watermark => {
+                ctx.save();
+                ctx.font = `${watermark.size}px Arial`;
+                ctx.fillStyle = watermark.color;
+                ctx.globalAlpha = watermark.opacity;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(watermark.text, watermark.x, watermark.y);
+                ctx.restore();
+            });
+        }
+
+        // 渲染裁剪遮罩
+        function renderCropOverlay() {
+            if (!state.cropRect) return;
+
+            const { x, y, width, height } = state.cropRect;
+
+            // 半透明遮罩
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+
+            // 上
+            ctx.fillRect(0, 0, canvas.width, y);
+            // 下
+            ctx.fillRect(0, y + height, canvas.width, canvas.height - y - height);
+            // 左
+            ctx.fillRect(0, y, x, height);
+            // 右
+            ctx.fillRect(x + width, y, canvas.width - x - width, height);
+
+            // 裁剪框边框
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, width, height);
+
+            // 角点
+            const cornerSize = 10;
+            ctx.fillStyle = '#e94560';
+            // 左上角
+            ctx.fillRect(x - cornerSize/2, y - cornerSize/2, cornerSize, cornerSize);
+            // 右上角
+            ctx.fillRect(x + width - cornerSize/2, y - cornerSize/2, cornerSize, cornerSize);
+            // 左下角
+            ctx.fillRect(x - cornerSize/2, y + height - cornerSize/2, cornerSize, cornerSize);
+            // 右下角
+            ctx.fillRect(x + width - cornerSize/2, y + height - cornerSize/2, cornerSize, cornerSize);
+
+            ctx.restore();
+
+            // 更新信息
+            cropInfo.textContent = `裁剪: ${Math.abs(Math.round(width))}×${Math.abs(Math.round(height))}`;
+            cropInfo.classList.add('visible');
+        }
+
+        // 切换裁剪模式
+        function toggleCropMode() {
+            if (!state.image) return;
+
+            state.cropMode = !state.cropMode;
+            const btn = document.getElementById('cropBtn');
+
+            if (state.cropMode) {
+                btn.classList.add('active');
+                btn.textContent = '✂️ 退出裁剪';
+                document.getElementById('applyCropBtn').disabled = false;
+                document.getElementById('cancelCropBtn').disabled = false;
+                canvas.classList.add('cropping');
+
+                // 默认裁剪框为图片的80%
+                const padding = Math.min(canvas.width, canvas.height) * 0.1;
+                state.cropRect = {
+                    x: padding,
+                    y: padding,
+                    width: canvas.width - padding * 2,
+                    height: canvas.height - padding * 2
+                };
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = '✂️ 裁剪模式';
+                document.getElementById('applyCropBtn').disabled = true;
+                document.getElementById('cancelCropBtn').disabled = true;
+                canvas.classList.remove('cropping');
+                state.cropRect = null;
+                cropInfo.classList.remove('visible');
+            }
+
+            render();
+        }
+
+        // 应用裁剪
+        function applyCrop() {
+            if (!state.cropRect || !state.image) return;
+
+            const { x, y, width, height } = state.cropRect;
+
+            // 创建临时画布
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+
+            tempCanvas.width = Math.abs(width);
+            tempCanvas.height = Math.abs(height);
+
+            // 计算原始图片的缩放比例
+            const scaleX = state.image.width / canvas.width;
+            const scaleY = state.image.height / canvas.height;
+
+            // 考虑旋转，需要调整源区域
+            const sourceX = Math.max(0, x * scaleX);
+            const sourceY = Math.max(0, y * scaleY);
+            const sourceWidth = Math.min(state.image.width - sourceX, Math.abs(width) * scaleX);
+            const sourceHeight = Math.min(state.image.height - sourceY, Math.abs(height) * scaleY);
+
+            // 绘制裁剪后的图片
+            tempCtx.drawImage(
+                state.image,
+                sourceX, sourceY, sourceWidth, sourceHeight,
+                0, 0, tempCanvas.width, tempCanvas.height
+            );
+
+            // 创建新图片
+            const newImg = new Image();
+            newImg.onload = () => {
+                state.image = newImg;
+                state.rotation = 0;
+
+                resizeCanvas();
+
+                // 调整水印位置
+                state.watermarks.forEach(w => {
+                    w.x = (w.x / canvas.width) * tempCanvas.width;
+                    w.y = (w.y / canvas.height) * tempCanvas.height;
+                });
+
+                toggleCropMode();
+                render();
+            };
+            newImg.src = tempCanvas.toDataURL();
+        }
+
+        // 取消裁剪
+        function cancelCrop() {
+            state.cropRect = null;
+            render();
+        }
+
+        // 旋转图片
+        function rotateImage(degrees) {
+            if (!state.image) return;
+
+            state.rotation = (state.rotation + degrees) % 360;
+            render();
+        }
+
+        // 自定义旋转
+        function rotateCustom() {
+            if (!state.image) return;
+
+            const angle = parseInt(document.getElementById('rotateAngle').value) || 0;
+            state.rotation = angle % 360;
+            render();
+        }
+
+        // 添加水印
+        function addWatermark() {
+            if (!state.image) return;
+
+            const text = document.getElementById('watermarkText').value;
+            if (!text) {
+                alert('请输入水印文字');
+                return;
+            }
+
+            const color = document.getElementById('watermarkColor').value;
+            const size = parseInt(document.getElementById('watermarkSize').value) || 30;
+            const opacity = parseInt(document.getElementById('watermarkOpacity').value) / 100;
+
+            state.watermarks.push({
+                text,
+                color,
+                size,
+                opacity,
+                x: canvas.width / 2,
+                y: canvas.height / 2
+            });
+
+            render();
+        }
+
+        // 清除水印
+        function clearWatermarks() {
+            state.watermarks = [];
+            render();
+        }
+
+        // 导出图片
+        function exportImage() {
+            if (!state.image) return;
+
+            const link = document.createElement('a');
+            link.download = 'edited-image-' + Date.now() + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // 获取鼠标/触摸在画布上的坐标
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        // 鼠标事件处理
+        function handleMouseDown(e) {
+            handleStart(e);
+        }
+
+        function handleMouseMove(e) {
+            handleMove(e);
+        }
+
+        function handleMouseUp(e) {
+            handleEnd();
+        }
+
+        // 触摸事件处理
+        function handleTouchStart(e) {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                handleStart(e);
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                handleMove(e);
+            }
+        }
+
+        function handleTouchEnd(e) {
+            handleEnd();
+        }
+
+        // 统一的开始处理
+        function handleStart(e) {
+            const pos = getCanvasPos(e);
+
+            if (state.cropMode && state.cropRect) {
+                // 检查是否点击在裁剪框内
+                const { x, y, width, height } = state.cropRect;
+                if (pos.x >= x && pos.x <= x + width &&
+                    pos.y >= y && pos.y <= y + height) {
+                    state.isDragging = true;
+                    state.dragStart = { x: pos.x, y: pos.y };
+                    canvas.classList.add('dragging');
+                }
+            } else if (state.watermarks.length > 0) {
+                // 检查是否点击在水印上
+                state.watermarks.forEach((watermark, index) => {
+                    ctx.font = `${watermark.size}px Arial`;
+                    const metrics = ctx.measureText(watermark.text);
+                    const halfWidth = metrics.width / 2;
+                    const halfHeight = watermark.size / 2;
+
+                    if (pos.x >= watermark.x - halfWidth &&
+                        pos.x <= watermark.x + halfWidth &&
+                        pos.y >= watermark.y - halfHeight &&
+                        pos.y <= watermark.y + halfHeight) {
+                        state.isDragging = true;
+                        state.dragStart = { x: pos.x, y: pos.y, index };
+                        canvas.classList.add('dragging');
+                    }
+                });
+            }
+        }
+
+        // 统一的移动处理
+        function handleMove(e) {
+            if (!state.isDragging) return;
+
+            const pos = getCanvasPos(e);
+
+            if (state.cropMode && state.cropRect) {
+                const dx = pos.x - state.dragStart.x;
+                const dy = pos.y - state.dragStart.y;
+
+                let newX = state.cropRect.x + dx;
+                let newY = state.cropRect.y + dy;
+
+                // 限制在画布内
+                newX = Math.max(0, Math.min(newX, canvas.width - state.cropRect.width));
+                newY = Math.max(0, Math.min(newY, canvas.height - state.cropRect.height));
+
+                state.cropRect.x = newX;
+                state.cropRect.y = newY;
+                state.dragStart = { x: pos.x, y: pos.y };
+
+                render();
+            } else if (state.dragStart && state.dragStart.index !== undefined) {
+                // 移动水印
+                const watermark = state.watermarks[state.dragStart.index];
+                watermark.x = pos.x;
+                watermark.y = pos.y;
+
+                render();
+            }
+        }
+
+        // 统一的结束处理
+        function handleEnd() {
+            state.isDragging = false;
+            state.dragStart = null;
+            canvas.classList.remove('dragging');
+        }
+
+        // 启动
+        init();
+    </script>
+</body>
+</html>
