@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>音乐流媒体 - Music Stream</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 侧边栏 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-music"></i>
+                    <span>MusicStream</span>
+                </div>
+                <button class="sidebar-close" id="sidebarClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-section">
+                    <h3>发现</h3>
+                    <ul>
+                        <li class="active"><a href="#"><i class="fas fa-home"></i> 首页</a></li>
+                        <li><a href="#"><i class="fas fa-compass"></i> 浏览</a></li>
+                        <li><a href="#"><i class="fas fa-broadcast-tower"></i> 电台</a></li>
+                    </ul>
+                </div>
+                <div class="nav-section">
+                    <h3>我的音乐</h3>
+                    <ul>
+                        <li><a href="#"><i class="fas fa-heart"></i> 我喜欢的</a></li>
+                        <li><a href="#"><i class="fas fa-clock"></i> 最近播放</a></li>
+                        <li><a href="#"><i class="fas fa-download"></i> 离线音乐</a></li>
+                    </ul>
+                </div>
+                <div class="nav-section">
+                    <h3>播放列表</h3>
+                    <ul id="sidebarPlaylists">
+                        <li><a href="#"><i class="fas fa-list-music"></i> 我的收藏</a></li>
+                        <li><a href="#"><i class="fas fa-users"></i> 协作列表</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 顶部栏 -->
+            <header class="top-bar">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="search-container">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="搜索歌曲、艺术家、专辑..." autocomplete="off">
+                        <button class="search-clear" id="searchClear">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="search-suggestions" id="searchSuggestions"></div>
+                </div>
+                <div class="user-actions">
+                    <button class="btn-icon" id="collabToggle" title="协作模式">
+                        <i class="fas fa-users"></i>
+                        <span class="badge" id="collabBadge">3</span>
+                    </button>
+                    <button class="btn-icon" id="offlineMode" title="离线模式">
+                        <i class="fas fa-wifi"></i>
+                    </button>
+                    <div class="user-avatar">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User">
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区域 -->
+            <div class="content-wrapper">
+                <!-- 当前播放 -->
+                <section class="now-playing-section">
+                    <div class="now-playing-card">
+                        <div class="album-art-container">
+                            <img id="currentAlbumArt" src="" alt="Album Art" class="album-art">
+                            <div class="album-art-overlay">
+                                <button class="btn-lyrics-toggle" id="lyricsToggle">
+                                    <i class="fas fa-align-center"></i> 歌词
+                                </button>
+                            </div>
+                        </div>
+                        <div class="track-info">
+                            <h1 id="currentTitle">选择一首歌曲</h1>
+                            <p id="currentArtist">开始播放</p>
+                            <div class="track-meta">
+                                <span id="currentAlbum"></span>
+                                <span class="separator">•</span>
+                                <span id="currentYear"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 歌词区域 -->
+                <section class="lyrics-section" id="lyricsSection">
+                    <div class="lyrics-container" id="lyricsContainer">
+                        <div class="lyrics-content" id="lyricsContent">
+                            <p class="lyrics-placeholder">歌词将在这里显示...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 播放列表 -->
+                <section class="playlist-section">
+                    <div class="section-header">
+                        <h2>
+                            <i class="fas fa-list-music"></i>
+                            <span id="playlistTitle">播放列表</span>
+                        </h2>
+                        <div class="playlist-actions">
+                            <button class="btn-text" id="shuffleBtn">
+                                <i class="fas fa-random"></i> 随机
+                            </button>
+                            <button class="btn-text" id="clearPlaylist">
+                                <i class="fas fa-trash"></i> 清空
+                            </button>
+                            <button class="btn-primary" id="addSongsBtn">
+                                <i class="fas fa-plus"></i> 添加歌曲
+                            </button>
+                        </div>
+                    </div>
+                    <div class="playlist-container">
+                        <table class="playlist-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-number">#</th>
+                                    <th class="col-title">标题</th>
+                                    <th class="col-artist">艺术家</th>
+                                    <th class="col-album">专辑</th>
+                                    <th class="col-duration"><i class="fas fa-clock"></i></th>
+                                    <th class="col-actions"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="playlistBody">
+                                <!-- 动态生成 -->
+                            </tbody>
+                        </table>
+                        <div class="empty-playlist" id="emptyPlaylist">
+                            <i class="fas fa-music"></i>
+                            <p>播放列表为空</p>
+                            <button class="btn-primary" id="browseSongsBtn">浏览歌曲</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 推荐 -->
+                <section class="recommendations-section">
+                    <h2><i class="fas fa-fire"></i> 推荐歌曲</h2>
+                    <div class="songs-grid" id="recommendationsGrid">
+                        <!-- 动态生成 -->
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- 播放器控制栏 -->
+        <footer class="player-bar">
+            <div class="player-progress">
+                <div class="waveform-container" id="waveform"></div>
+                <div class="progress-overlay" id="progressOverlay">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="time-display">
+                    <span id="currentTime">0:00</span>
+                    <span id="totalTime">0:00</span>
+                </div>
+            </div>
+            <div class="player-controls">
+                <div class="control-left">
+                    <button class="btn-icon" id="queueBtn" title="播放队列">
+                        <i class="fas fa-list"></i>
+                    </button>
+                    <div class="volume-control">
+                        <button class="btn-icon" id="muteBtn">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <div class="volume-slider-container">
+                            <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                        </div>
+                    </div>
+                </div>
+                <div class="control-center">
+                    <button class="btn-icon" id="prevBtn">
+                        <i class="fas fa-step-backward"></i>
+                    </button>
+                    <button class="btn-play" id="playPauseBtn">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="btn-icon" id="nextBtn">
+                        <i class="fas fa-step-forward"></i>
+                    </button>
+                </div>
+                <div class="control-right">
+                    <button class="btn-icon" id="repeatBtn" title="循环">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                    <button class="btn-icon" id="cacheBtn" title="缓存离线">
+                        <i class="fas fa-cloud-download-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </footer>
+
+        <!-- 协作播放列表面板 -->
+        <div class="collab-panel" id="collabPanel">
+            <div class="collab-header">
+                <h3><i class="fas fa-users"></i> 协作播放列表</h3>
+                <button class="btn-icon" id="collabClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="collab-users">
+                <div class="user-badge online">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" alt="Alice">
+                    <span class="status"></span>
+                </div>
+                <div class="user-badge online">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Bob" alt="Bob">
+                    <span class="status"></span>
+                </div>
+                <div class="user-badge away">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Carol" alt="Carol">
+                    <span class="status"></span>
+                </div>
+            </div>
+            <div class="collab-activity" id="collabActivity">
+                <!-- 动态生成活动日志 -->
+            </div>
+        </div>
+
+        <!-- 队列面板 -->
+        <div class="queue-panel" id="queuePanel">
+            <div class="queue-header">
+                <h3><i class="fas fa-list"></i> 播放队列</h3>
+                <button class="btn-icon" id="queueClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="queue-list" id="queueList">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 添加歌曲模态框 -->
+        <div class="modal" id="addSongsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>添加歌曲到播放列表</h3>
+                    <button class="btn-icon" id="modalClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="songs-list" id="songsList">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 通知 -->
+        <div class="toast-container" id="toastContainer"></div>
+
+        <!-- 加载遮罩 -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
