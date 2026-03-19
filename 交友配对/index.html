@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>心动配对</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- 顶部导航 -->
+        <header class="header">
+            <div class="logo">💕 心动</div>
+            <div class="header-actions">
+                <button class="icon-btn">🔔</button>
+                <button class="icon-btn">⚙️</button>
+            </div>
+        </header>
+
+        <!-- 卡片区域 -->
+        <div class="card-container">
+            <div class="cards-wrapper" id="cardsWrapper">
+                <!-- 卡片将通过 JS 动态生成 -->
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="actions">
+                <button class="action-btn skip" id="btnSkip">
+                    <span class="action-icon">✕</span>
+                </button>
+                <button class="action-btn info" id="btnInfo">
+                    <span class="action-icon">ℹ</span>
+                </button>
+                <button class="action-btn like" id="btnLike">
+                    <span class="action-icon">♥</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 用户详情弹窗 -->
+        <div class="modal" id="detailModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="modal-close" id="modalClose">✕</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- 动态内容 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 匹配成功弹窗 -->
+        <div class="match-modal" id="matchModal">
+            <div class="match-content">
+                <div class="match-animation">
+                    <div class="match-photo match-photo-left" id="matchPhotoLeft"></div>
+                    <div class="match-heart">💕</div>
+                    <div class="match-photo match-photo-right" id="matchPhotoRight"></div>
+                </div>
+                <h2 class="match-title">配对成功！</h2>
+                <p class="match-subtitle">你们互相喜欢了对方</p>
+                <div class="match-actions">
+                    <button class="match-btn match-btn-primary" id="btnSendMessage">发送消息</button>
+                    <button class="match-btn match-btn-secondary" id="btnKeepSwiping">继续滑动</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
