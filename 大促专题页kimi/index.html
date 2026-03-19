@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🔥 年度盛典 限时秒杀 - 全场低至1折起</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 顶部固定栏 -->
+    <div class="top-bar">
+        <div class="top-bar-content">
+            <span class="hot-tag">🔥 火热进行中</span>
+            <span class="top-bar-text">全场满199减50，满399减120</span>
+        </div>
+    </div>
+
+    <!-- 主视觉区 -->
+    <header class="hero-section">
+        <div class="hero-bg">
+            <div class="light-effect"></div>
+            <div class="particles" id="particles"></div>
+        </div>
+        <div class="hero-content">
+            <div class="title-badge">年度盛典</div>
+            <h1 class="main-title">
+                <span class="title-highlight">限时秒杀</span>
+                疯狂开抢
+            </h1>
+            <p class="sub-title">全场低至 <span class="highlight-price">1</span> 折起 · 最高省 <span class="highlight-price">500</span> 元</p>
+
+            <!-- 倒计时 -->
+            <div class="countdown-wrapper">
+                <div class="countdown-label">⏰ 距离活动结束仅剩</div>
+                <div class="countdown" id="countdown">
+                    <div class="time-box">
+                        <span class="time-num" id="hours">08</span>
+                        <span class="time-text">时</span>
+                    </div>
+                    <div class="time-separator">:</div>
+                    <div class="time-box">
+                        <span class="time-num" id="minutes">35</span>
+                        <span class="time-text">分</span>
+                    </div>
+                    <div class="time-separator">:</div>
+                    <div class="time-box">
+                        <span class="time-num" id="seconds">42</span>
+                        <span class="time-text">秒</span>
+                    </div>
+                </div>
+                <div class="countdown-tip">手慢无！已有 <span class="buyer-count" id="buyerCount">12,580</span> 人参与抢购</div>
+            </div>
+        </div>
+        <div class="scroll-hint">↓ 下滑抢好货</div>
+    </header>
+
+    <!-- 优惠券区 -->
+    <section class="coupon-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <span class="title-icon">🎫</span>
+                先领券 再购物
+            </h2>
+            <p class="section-subtitle">限量发放，先到先得</p>
+        </div>
+        <div class="coupon-list">
+            <div class="coupon-item" data-amount="50">
+                <div class="coupon-left">
+                    <div class="coupon-value">¥<span class="amount">50</span></div>
+                    <div class="coupon-condition">满199可用</div>
+                </div>
+                <div class="coupon-right">
+                    <div class="coupon-type">全品类券</div>
+                    <div class="coupon-desc">仅限今日使用</div>
+                    <button class="coupon-btn" onclick="claimCoupon(this, 50)">立即领取</button>
+                </div>
+                <div class="coupon-tag">热</div>
+            </div>
+            <div class="coupon-item hot" data-amount="120">
+                <div class="coupon-left">
+                    <div class="coupon-value">¥<span class="amount">120</span></div>
+                    <div class="coupon-condition">满399可用</div>
+                </div>
+                <div class="coupon-right">
+                    <div class="coupon-type">大额神券</div>
+                    <div class="coupon-desc">全场通用</div>
+                    <button class="coupon-btn" onclick="claimCoupon(this, 120)">立即领取</button>
+                </div>
+                <div class="coupon-tag">爆</div>
+            </div>
+            <div class="coupon-item" data-amount="200">
+                <div class="coupon-left">
+                    <div class="coupon-value">¥<span class="amount">200</span></div>
+                    <div class="coupon-condition">满699可用</div>
+                </div>
+                <div class="coupon-right">
+                    <div class="coupon-type">超级券</div>
+                    <div class="coupon-desc">VIP专享</div>
+                    <button class="coupon-btn" onclick="claimCoupon(this, 200)">立即领取</button>
+                </div>
+                <div class="coupon-tag">VIP</div>
+            </div>
+        </div>
+        <div class="coupon-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="couponProgress"></div>
+            </div>
+            <p class="progress-text">优惠券已领取 <span id="couponPercent">78</span>%，剩余不多啦！</p>
+        </div>
+    </section>
+
+    <!-- 活动规则 -->
+    <section class="rules-section">
+        <div class="rules-header" onclick="toggleRules()">
+            <h3 class="rules-title">
+                <span>📋</span> 活动规则
+            </h3>
+            <span class="rules-toggle" id="rulesToggle">展开</span>
+        </div>
+        <div class="rules-content" id="rulesContent">
+            <ul class="rules-list">
+                <li><span class="rule-num">1</span>活动时间：2026年3月19日 00:00 - 23:59，限时24小时</li>
+                <li><span class="rule-num">2</span>每位用户每天最多可领取3张优惠券</li>
+                <li><span class="rule-num">3</span>秒杀商品数量有限，售完即止，不退不换</li>
+                <li><span class="rule-num">4</span>优惠券仅限活动商品使用，不可叠加</li>
+                <li><span class="rule-num">5</span>订单满99元包邮，不满需支付6元运费</li>
+                <li><span class="rule-num">6</span>如发现恶意刷单，平台有权取消订单</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- 秒杀产品区 -->
+    <section class="products-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <span class="title-icon">⚡</span>
+                爆款秒杀
+            </h2>
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="ongoing">正在疯抢</button>
+                <button class="tab-btn" data-tab="coming">即将开始</button>
+            </div>
+        </div>
+
+        <div class="tab-content active" id="ongoing">
+            <div class="product-grid">
+                <!-- 产品1 -->
+                <div class="product-card hot-sale">
+                    <div class="product-badge">销量冠军</div>
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/FF6B6B/FFFFFF?text=智能手表" alt="智能手表">
+                        <div class="sold-overlay" id="sold1">
+                            <span>已抢 89%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">【限量】智能运动手表 Pro版</h3>
+                        <div class="product-tags">
+                            <span class="tag">血氧监测</span>
+                            <span class="tag">30天续航</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">299</span>
+                            </div>
+                            <div class="price-original">¥1299</div>
+                            <div class="price-discount">2.3折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 89%"></div>
+                            </div>
+                            <span class="sale-count">已抢 890件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+
+                <!-- 产品2 -->
+                <div class="product-card">
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/4ECDC4/FFFFFF?text=蓝牙耳机" alt="蓝牙耳机">
+                        <div class="sold-overlay" id="sold2">
+                            <span>已抢 67%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">真无线降噪蓝牙耳机</h3>
+                        <div class="product-tags">
+                            <span class="tag">ANC降噪</span>
+                            <span class="tag">36h续航</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">159</span>
+                            </div>
+                            <div class="price-original">¥599</div>
+                            <div class="price-discount">2.7折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 67%"></div>
+                            </div>
+                            <span class="sale-count">已抢 670件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+
+                <!-- 产品3 -->
+                <div class="product-card">
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/95E1D3/FFFFFF?text=便携音箱" alt="便携音箱">
+                        <div class="sold-overlay" id="sold3">
+                            <span>已抢 45%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">防水便携蓝牙音箱</h3>
+                        <div class="product-tags">
+                            <span class="tag">IPX7防水</span>
+                            <span class="tag">重低音</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">99</span>
+                            </div>
+                            <div class="price-original">¥399</div>
+                            <div class="price-discount">2.5折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 45%"></div>
+                            </div>
+                            <span class="sale-count">已抢 450件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+
+                <!-- 产品4 -->
+                <div class="product-card hot-sale">
+                    <div class="product-badge">人气爆款</div>
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/F38181/FFFFFF?text=移动电源" alt="移动电源">
+                        <div class="sold-overlay" id="sold4">
+                            <span>已抢 92%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">20000mAh快充移动电源</h3>
+                        <div class="product-tags">
+                            <span class="tag">22.5W快充</span>
+                            <span class="tag">三输出</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">79</span>
+                            </div>
+                            <div class="price-original">¥199</div>
+                            <div class="price-discount">4折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 92%"></div>
+                            </div>
+                            <span class="sale-count">已抢 920件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+
+                <!-- 产品5 -->
+                <div class="product-card">
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/AA96DA/FFFFFF?text=机械键盘" alt="机械键盘">
+                        <div class="sold-overlay" id="sold5">
+                            <span>已抢 56%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">RGB背光机械键盘 青轴</h3>
+                        <div class="product-tags">
+                            <span class="tag">RGB灯效</span>
+                            <span class="tag">全键无冲</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">199</span>
+                            </div>
+                            <div class="price-original">¥499</div>
+                            <div class="price-discount">4折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 56%"></div>
+                            </div>
+                            <span class="sale-count">已抢 560件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+
+                <!-- 产品6 -->
+                <div class="product-card">
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/FCBAD3/FFFFFF?text=护眼台灯" alt="护眼台灯">
+                        <div class="sold-overlay" id="sold6">
+                            <span>已抢 34%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">国AA级护眼LED台灯</h3>
+                        <div class="product-tags">
+                            <span class="tag">无频闪</span>
+                            <span class="tag">智能调光</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">129</span>
+                            </div>
+                            <div class="price-original">¥359</div>
+                            <div class="price-discount">3.6折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 34%"></div>
+                            </div>
+                            <span class="sale-count">已抢 340件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+
+                <!-- 产品7 -->
+                <div class="product-card">
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/FFFFD2/333333?text=空气炸锅" alt="空气炸锅">
+                        <div class="sold-overlay" id="sold7">
+                            <span>已抢 71%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">4.5L大容量空气炸锅</h3>
+                        <div class="product-tags">
+                            <span class="tag">无油烹饪</span>
+                            <span class="tag">智能预约</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">189</span>
+                            </div>
+                            <div class="price-original">¥459</div>
+                            <div class="price-discount">4.1折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 71%"></div>
+                            </div>
+                            <span class="sale-count">已抢 710件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+
+                <!-- 产品8 -->
+                <div class="product-card">
+                    <div class="product-img">
+                        <img src="https://via.placeholder.com/300x300/A8D8EA/FFFFFF?text=按摩仪" alt="按摩仪">
+                        <div class="sold-overlay" id="sold8">
+                            <span>已抢 23%</span>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">颈椎按摩仪 热敷款</h3>
+                        <div class="product-tags">
+                            <span class="tag">恒温热敷</span>
+                            <span class="tag">多档模式</span>
+                        </div>
+                        <div class="price-row">
+                            <div class="price-current">
+                                <span class="price-symbol">¥</span>
+                                <span class="price-num">249</span>
+                            </div>
+                            <div class="price-original">¥699</div>
+                            <div class="price-discount">3.6折</div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="sale-progress">
+                                <div class="sale-progress-bar" style="width: 23%"></div>
+                            </div>
+                            <span class="sale-count">已抢 230件</span>
+                        </div>
+                        <button class="buy-btn" onclick="buyNow(this)">立即抢购</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="coming">
+            <div class="coming-soon">
+                <div class="coming-icon">⏰</div>
+                <h3>下一场秒杀即将开启</h3>
+                <p>14:00 准时开抢，记得设置提醒哦！</p>
+                <button class="remind-btn">开售提醒我</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 分区活动 -->
+    <section class="zone-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <span class="title-icon">🎯</span>
+                分区特惠
+            </h2>
+        </div>
+        <div class="zone-grid">
+            <div class="zone-card zone-digital">
+                <div class="zone-bg"></div>
+                <div class="zone-content">
+                    <h3>数码专区</h3>
+                    <p>爆款低至5折</p>
+                    <span class="zone-btn">去逛逛</span>
+                </div>
+            </div>
+            <div class="zone-card zone-home">
+                <div class="zone-bg"></div>
+                <div class="zone-content">
+                    <h3>家居生活</h3>
+                    <p>满299减80</p>
+                    <span class="zone-btn">去逛逛</span>
+                </div>
+            </div>
+            <div class="zone-card zone-beauty">
+                <div class="zone-bg"></div>
+                <div class="zone-content">
+                    <h3>美妆护肤</h3>
+                    <p>买2送1</p>
+                    <span class="zone-btn">去逛逛</span>
+                </div>
+            </div>
+            <div class="zone-card zone-food">
+                <div class="zone-bg"></div>
+                <div class="zone-content">
+                    <h3>食品生鲜</h3>
+                    <p>第二件半价</p>
+                    <span class="zone-btn">去逛逛</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 售后提示 -->
+    <section class="service-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <span class="title-icon">🛡️</span>
+                售后保障
+            </h2>
+        </div>
+        <div class="service-grid">
+            <div class="service-item">
+                <div class="service-icon">📦</div>
+                <h4>极速发货</h4>
+                <p>24小时内发货</p>
+            </div>
+            <div class="service-item">
+                <div class="service-icon">🔄</div>
+                <h4>7天无理由</h4>
+                <p>不满意随时退</p>
+            </div>
+            <div class="service-item">
+                <div class="service-icon">🔒</div>
+                <h4>正品保障</h4>
+                <p>假一赔十承诺</p>
+            </div>
+            <div class="service-item">
+                <div class="service-icon">💬</div>
+                <h4>专属客服</h4>
+                <p>7×24小时在线</p>
+            </div>
+        </div>
+        <div class="service-tips">
+            <h4>温馨提示：</h4>
+            <ul>
+                <li>• 秒杀商品库存有限，支付成功后视为抢购成功</li>
+                <li>• 如遇到售后问题，请联系客服热线：400-xxx-xxxx</li>
+                <li>• 活动商品暂不支持价格保护，敬请谅解</li>
+                <li>• 优惠券需在结算时手动选择使用</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- 底部悬浮栏 -->
+    <div class="bottom-bar">
+        <div class="bottom-info">
+            <span class="bottom-text">已有 <strong id="bottomCount">12,580</strong> 人购买</span>
+            <span class="bottom-timer">还剩 <span id="bottomTimer">08:35:42</span></span>
+        </div>
+        <button class="bottom-btn" onclick="scrollToProducts()">去抢购</button>
+    </div>
+
+    <!-- 提示弹窗 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
