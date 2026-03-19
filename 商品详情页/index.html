@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品详情页</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        /* 顶部导航 */
+        .nav {
+            background: #333;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .nav-cart {
+            position: relative;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
+            color: white;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* 主体内容 */
+        .product-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        /* 左侧图片轮播 */
+        .product-gallery {
+            position: relative;
+        }
+
+        .main-image-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .main-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .main-image:hover {
+            transform: scale(1.05);
+        }
+
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.9);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .carousel-btn:hover {
+            background: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .carousel-btn.prev { left: 15px; }
+        .carousel-btn.next { right: 15px; }
+
+        .thumbnail-list {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .thumbnail {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .thumbnail.active {
+            border-color: #667eea;
+        }
+
+        .thumbnail:hover {
+            opacity: 0.8;
+        }
+
+        .image-indicator {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 右侧商品信息 */
+        .product-info {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .product-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .product-rating {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stars {
+            color: #ffc107;
+        }
+
+        .rating-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .product-price-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+        }
+
+        .price-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .price-display {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .current-price {
+            font-size: 36px;
+            font-weight: bold;
+        }
+
+        .original-price {
+            font-size: 18px;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .discount-tag {
+            background: white;
+            color: #f5576c;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* 规格选择 */
+        .spec-section {
+            margin-top: 10px;
+        }
+
+        .spec-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .spec-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .spec-option {
+            padding: 10px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            background: white;
+        }
+
+        .spec-option:hover {
+            border-color: #667eea;
+        }
+
+        .spec-option.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .spec-option.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 数量选择 */
+        .quantity-section {
+            margin-top: 10px;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 12px;
+        }
+
+        .quantity-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .quantity-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .quantity-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .quantity-input {
+            width: 60px;
+            height: 40px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .stock-info {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 总价显示 */
+        .total-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .total-row.final {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        .total-price {
+            color: #f5576c;
+            font-size: 24px;
+        }
+
+        /* 操作按钮 */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add-cart {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-add-cart:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-buy-now {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-buy-now:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        /* 商品详情标签 */
+        .product-tabs {
+            padding: 0 40px 40px;
+        }
+
+        .tab-header {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .tab-item {
+            padding: 15px 30px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+        }
+
+        .tab-item.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .detail-content {
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .detail-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        /* 提示消息 */
+        .toast {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #333;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .product-detail {
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+
+            .main-image-container {
+                height: 350px;
+            }
+
+            .product-title {
+                font-size: 22px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航 -->
+        <nav class="nav">
+            <div class="nav-brand">🛍️ 优选商城</div>
+            <div class="nav-cart" onclick="showToast('购物车功能开发中...')">
+                🛒
+                <span class="cart-badge" id="cartBadge">0</span>
+            </div>
+        </nav>
+
+        <!-- 商品详情主体 -->
+        <div class="product-detail">
+            <!-- 左侧图片轮播 -->
+            <div class="product-gallery">
+                <div class="main-image-container">
+                    <img src="" alt="商品图片" class="main-image" id="mainImage">
+                    <button class="carousel-btn prev" onclick="prevImage()">‹</button>
+                    <button class="carousel-btn next" onclick="nextImage()">›</button>
+                </div>
+                <div class="thumbnail-list" id="thumbnailList">
+                    <!-- 缩略图由JS生成 -->
+                </div>
+                <div class="image-indicator">
+                    <span id="currentImageIndex">1</span> / <span id="totalImageCount">5</span>
+                </div>
+            </div>
+
+            <!-- 右侧商品信息 -->
+            <div class="product-info">
+                <h1 class="product-title" id="productName">无线降噪头戴式耳机 Pro Max</h1>
+
+                <div class="product-rating">
+                    <span class="stars">★★★★★</span>
+                    <span class="rating-text">4.9分 (2.3万+评价)</span>
+                </div>
+
+                <div class="product-price-section">
+                    <div class="price-label">活动价</div>
+                    <div class="price-display">
+                        <span class="current-price" id="currentPrice">¥1299</span>
+                        <span class="original-price" id="originalPrice">¥1999</span>
+                        <span class="discount-tag">省¥700</span>
+                    </div>
+                </div>
+
+                <!-- 颜色规格 -->
+                <div class="spec-section">
+                    <div class="spec-title">选择颜色</div>
+                    <div class="spec-options" id="colorOptions">
+                        <!-- 颜色选项由JS生成 -->
+                    </div>
+                </div>
+
+                <!-- 版本规格 -->
+                <div class="spec-section">
+                    <div class="spec-title">选择版本</div>
+                    <div class="spec-options" id="versionOptions">
+                        <!-- 版本选项由JS生成 -->
+                    </div>
+                </div>
+
+                <!-- 数量选择 -->
+                <div class="quantity-section">
+                    <div class="spec-title">购买数量</div>
+                    <div class="quantity-control">
+                        <button class="quantity-btn" onclick="decreaseQuantity()">−</button>
+                        <input type="number" class="quantity-input" id="quantityInput" value="1" min="1" max="99" onchange="updateQuantity()">
+                        <button class="quantity-btn" onclick="increaseQuantity()">+</button>
+                        <span class="stock-info">库存 <span id="stockCount">999</span> 件</span>
+                    </div>
+                </div>
+
+                <!-- 价格计算 -->
+                <div class="total-section">
+                    <div class="total-row">
+                        <span>商品单价</span>
+                        <span id="unitPrice">¥1299</span>
+                    </div>
+                    <div class="total-row">
+                        <span>购买数量</span>
+                        <span id="quantityDisplay">x 1</span>
+                    </div>
+                    <div class="total-row">
+                        <span>优惠金额</span>
+                        <span style="color: #f5576c;">-¥0</span>
+                    </div>
+                    <div class="total-row final">
+                        <span>合计金额</span>
+                        <span class="total-price" id="totalPrice">¥1299</span>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="action-buttons">
+                    <button class="btn btn-add-cart" onclick="addToCart()">加入购物车</button>
+                    <button class="btn btn-buy-now" onclick="buyNow()">立即购买</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 商品详情标签页 -->
+        <div class="product-tabs">
+            <div class="tab-header">
+                <div class="tab-item active" onclick="switchTab(this, 'detail')">商品详情</div>
+                <div class="tab-item" onclick="switchTab(this, 'params')">规格参数</div>
+                <div class="tab-item" onclick="switchTab(this, 'reviews')">用户评价</div>
+            </div>
+            <div class="tab-content active" id="detail">
+                <div class="detail-content">
+                    <h3>产品特点</h3>
+                    <p>🎵 <strong>主动降噪技术</strong> - 采用先进的ANC主动降噪技术，有效隔绝外界噪音，让您沉浸于纯净音乐世界。</p>
+                    <p>🔋 <strong>超长续航</strong> - 单次充电可支持40小时连续播放，快充10分钟即可使用5小时。</p>
+                    <p>🎧 <strong>舒适佩戴</strong> - 人体工学设计，蛋白皮耳罩，长时间佩戴不压迫。</p>
+                    <p>📡 <strong>稳定连接</strong> - 蓝牙5.3技术，连接稳定，延迟低至40ms。</p>
+                    <p>🎮 <strong>多设备连接</strong> - 支持同时连接两台设备，无缝切换。</p>
+                </div>
+            </div>
+            <div class="tab-content" id="params">
+                <div class="detail-content">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 15px; color: #999; width: 150px;">品牌</td>
+                            <td style="padding: 15px;">AudioPro</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 15px; color: #999;">型号</td>
+                            <td style="padding: 15px;">Pro Max 2024</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 15px; color: #999;">连接方式</td>
+                            <td style="padding: 15px;">蓝牙5.3 / 3.5mm音频线</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 15px; color: #999;">续航时间</td>
+                            <td style="padding: 15px;">40小时（开启降噪30小时）</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 15px; color: #999;">重量</td>
+                            <td style="padding: 15px;">250g</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 15px; color: #999;">充电接口</td>
+                            <td style="padding: 15px;">Type-C</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-content" id="reviews">
+                <div class="detail-content">
+                    <p>用户评价功能正在开发中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 商品数据
+        const productData = {
+            name: '无线降噪头戴式耳机 Pro Max',
+            basePrice: 1299,
+            originalPrice: 1999,
+            stock: 999,
+            images: [
+                'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=600&fit=crop',
+                'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=600&h=600&fit=crop',
+                'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=600&h=600&fit=crop',
+                'https://images.unsplash.com/photo-1524678606372-fa87b88052af?w=600&h=600&fit=crop',
+                'https://images.unsplash.com/photo-1585298723682-7115561c51b7?w=600&h=600&fit=crop'
+            ],
+            colors: [
+                { name: '午夜黑', value: 'black', price: 0 },
+                { name: '星光银', value: 'silver', price: 0 },
+                { name: '冰川蓝', value: 'blue', price: 50 },
+                { name: '樱花粉', value: 'pink', price: 50 }
+            ],
+            versions: [
+                { name: '标准版', value: 'standard', price: 0 },
+                { name: '套装版(+收纳包)', value: 'set', price: 99 },
+                { name: '顶配版(+支架+收纳包)', value: 'premium', price: 199 }
+            ]
+        };
+
+        // 状态管理
+        let state = {
+            currentImageIndex: 0,
+            selectedColor: 'black',
+            selectedVersion: 'standard',
+            quantity: 1,
+            cartCount: 0
+        };
+
+        // 初始化
+        function init() {
+            renderImages();
+            renderColorOptions();
+            renderVersionOptions();
+            updateDisplay();
+        }
+
+        // 渲染图片
+        function renderImages() {
+            const mainImage = document.getElementById('mainImage');
+            const thumbnailList = document.getElementById('thumbnailList');
+
+            mainImage.src = productData.images[state.currentImageIndex];
+            document.getElementById('currentImageIndex').textContent = state.currentImageIndex + 1;
+            document.getElementById('totalImageCount').textContent = productData.images.length;
+
+            thumbnailList.innerHTML = productData.images.map((img, index) => `
+                <div class="thumbnail ${index === state.currentImageIndex ? 'active' : ''}" onclick="selectImage(${index})">
+                    <img src="${img}" alt="商品图片${index + 1}">
+                </div>
+            `).join('');
+        }
+
+        // 渲染颜色选项
+        function renderColorOptions() {
+            const colorOptions = document.getElementById('colorOptions');
+            colorOptions.innerHTML = productData.colors.map(color => `
+                <button class="spec-option ${state.selectedColor === color.value ? 'active' : ''}"
+                        onclick="selectColor('${color.value}')">
+                    ${color.name}
+                    ${color.price > 0 ? `+¥${color.price}` : ''}
+                </button>
+            `).join('');
+        }
+
+        // 渲染版本选项
+        function renderVersionOptions() {
+            const versionOptions = document.getElementById('versionOptions');
+            versionOptions.innerHTML = productData.versions.map(version => `
+                <button class="spec-option ${state.selectedVersion === version.value ? 'active' : ''}"
+                        onclick="selectVersion('${version.value}')">
+                    ${version.name}
+                    ${version.price > 0 ? `+¥${version.price}` : ''}
+                </button>
+            `).join('');
+        }
+
+        // 选择图片
+        function selectImage(index) {
+            state.currentImageIndex = index;
+            renderImages();
+        }
+
+        // 上一张图片
+        function prevImage() {
+            state.currentImageIndex = (state.currentImageIndex - 1 + productData.images.length) % productData.images.length;
+            renderImages();
+        }
+
+        // 下一张图片
+        function nextImage() {
+            state.currentImageIndex = (state.currentImageIndex + 1) % productData.images.length;
+            renderImages();
+        }
+
+        // 选择颜色
+        function selectColor(colorValue) {
+            state.selectedColor = colorValue;
+            renderColorOptions();
+            updateDisplay();
+        }
+
+        // 选择版本
+        function selectVersion(versionValue) {
+            state.selectedVersion = versionValue;
+            renderVersionOptions();
+            updateDisplay();
+        }
+
+        // 获取当前价格
+        function getCurrentPrice() {
+            const color = productData.colors.find(c => c.value === state.selectedColor);
+            const version = productData.versions.find(v => v.value === state.selectedVersion);
+            return productData.basePrice + (color ? color.price : 0) + (version ? version.price : 0);
+        }
+
+        // 更新显示
+        function updateDisplay() {
+            const currentPrice = getCurrentPrice();
+            const total = currentPrice * state.quantity;
+
+            document.getElementById('currentPrice').textContent = `¥${currentPrice}`;
+            document.getElementById('unitPrice').textContent = `¥${currentPrice}`;
+            document.getElementById('quantityDisplay').textContent = `x ${state.quantity}`;
+            document.getElementById('totalPrice').textContent = `¥${total.toLocaleString()}`;
+            document.getElementById('quantityInput').value = state.quantity;
+        }
+
+        // 减少数量
+        function decreaseQuantity() {
+            if (state.quantity > 1) {
+                state.quantity--;
+                updateDisplay();
+            }
+        }
+
+        // 增加数量
+        function increaseQuantity() {
+            if (state.quantity < productData.stock) {
+                state.quantity++;
+                updateDisplay();
+            }
+        }
+
+        // 更新数量输入
+        function updateQuantity() {
+            const input = document.getElementById('quantityInput');
+            let value = parseInt(input.value);
+
+            if (isNaN(value) || value < 1) {
+                value = 1;
+            } else if (value > productData.stock) {
+                value = productData.stock;
+            }
+
+            state.quantity = value;
+            updateDisplay();
+        }
+
+        // 加入购物车
+        function addToCart() {
+            state.cartCount += state.quantity;
+            document.getElementById('cartBadge').textContent = state.cartCount;
+
+            const color = productData.colors.find(c => c.value === state.selectedColor);
+            const version = productData.versions.find(v => v.value === state.selectedVersion);
+
+            showToast(`已添加 ${state.quantity} 件商品到购物车\n${color.name} / ${version.name}`);
+        }
+
+        // 立即购买
+        function buyNow() {
+            const currentPrice = getCurrentPrice();
+            const total = currentPrice * state.quantity;
+            showToast(`正在跳转支付页面...\n合计: ¥${total.toLocaleString()}`);
+        }
+
+        // 切换标签页
+        function switchTab(element, tabName) {
+            document.querySelectorAll('.tab-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            element.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // 显示提示消息
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 键盘左右键切换图片
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') prevImage();
+            if (e.key === 'ArrowRight') nextImage();
+        });
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
