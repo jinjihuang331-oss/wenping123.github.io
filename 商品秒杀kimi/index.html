@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品秒杀</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 秒杀商品卡片 -->
+        <div class="flash-sale-card">
+            <!-- 商品图片区域 -->
+            <div class="product-image">
+                <img src="https://via.placeholder.com/400x400/ff4757/ffffff?text=iPhone+16+Pro" alt="商品图片">
+                <div class="sale-badge">限时秒杀</div>
+            </div>
+
+            <!-- 商品信息区域 -->
+            <div class="product-info">
+                <h1 class="product-title">iPhone 16 Pro 256GB 钛金属</h1>
+                <p class="product-desc">A18 Pro芯片 | 4800万像素 | 6.3英寸</p>
+
+                <!-- 价格区域 -->
+                <div class="price-section">
+                    <div class="flash-price">
+                        <span class="price-symbol">¥</span>
+                        <span class="price-value">7,999</span>
+                    </div>
+                    <div class="original-price">
+                        <span>原价 ¥8,999</span>
+                    </div>
+                    <div class="discount-badge">省¥1,000</div>
+                </div>
+
+                <!-- 倒计时区域 -->
+                <div class="countdown-section">
+                    <div class="countdown-label" id="countdownLabel">距离秒杀开始</div>
+                    <div class="countdown-timer" id="countdownTimer">
+                        <div class="time-unit">
+                            <span class="time-value" id="days">00</span>
+                            <span class="time-label">天</span>
+                        </div>
+                        <span class="time-separator">:</span>
+                        <div class="time-unit">
+                            <span class="time-value" id="hours">00</span>
+                            <span class="time-label">时</span>
+                        </div>
+                        <span class="time-separator">:</span>
+                        <div class="time-unit">
+                            <span class="time-value" id="minutes">00</span>
+                            <span class="time-label">分</span>
+                        </div>
+                        <span class="time-separator">:</span>
+                        <div class="time-unit">
+                            <span class="time-value" id="seconds">00</span>
+                            <span class="time-label">秒</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 库存进度条 -->
+                <div class="stock-section">
+                    <div class="stock-header">
+                        <span class="stock-label">已抢</span>
+                        <span class="stock-percent" id="stockPercent">78%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 78%"></div>
+                    </div>
+                    <div class="stock-info">
+                        <span class="stock-sold">已抢 <strong id="soldCount">780</strong> 件</span>
+                        <span class="stock-remain">剩余 <strong id="remainCount">220</strong> 件</span>
+                    </div>
+                </div>
+
+                <!-- 限购提示 -->
+                <div class="limit-section">
+                    <div class="limit-badge">
+                        <span class="limit-icon">⚡</span>
+                        <span>每人限购 <strong id="limitNum">2</strong> 件</span>
+                    </div>
+                    <div class="purchase-count">
+                        <span class="count-label">购买数量：</span>
+                        <div class="quantity-selector">
+                            <button class="qty-btn" id="decreaseBtn" disabled>-</button>
+                            <input type="number" class="qty-input" id="qtyInput" value="1" min="1" max="2" readonly>
+                            <button class="qty-btn" id="increaseBtn" disabled>+</button>
+                        </div>
+                    </div>
+                    <div class="limit-tip" id="limitTip">您还可购买 2 件</div>
+                </div>
+
+                <!-- 抢购按钮 -->
+                <div class="action-section">
+                    <button class="flash-btn disabled" id="flashBtn" disabled>
+                        <span class="btn-text">即将开始</span>
+                        <span class="btn-subtext">请稍后再来</span>
+                    </button>
+                </div>
+
+                <!-- 活动规则 -->
+                <div class="rules-section">
+                    <h3>活动规则</h3>
+                    <ul>
+                        <li>每个用户账号限购2件</li>
+                        <li>秒杀商品不支持退换货</li>
+                        <li>下单后请在15分钟内完成支付</li>
+                        <li>如发现恶意刷单，平台有权取消订单</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示弹窗 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content" id="modalContent">
+            <div class="modal-icon" id="modalIcon">⚠️</div>
+            <h3 class="modal-title" id="modalTitle">提示</h3>
+            <p class="modal-message" id="modalMessage">消息内容</p>
+            <button class="modal-btn" id="modalBtn">确定</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
