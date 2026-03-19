@@ -1,0 +1,313 @@
+/* 全局样式 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+}
+
+/* 视图切换 */
+.view-section {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 日历样式 */
+.calendar-cell {
+    background: white;
+    min-height: 100px;
+    padding: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.calendar-cell:hover {
+    background-color: #f3f4f6;
+}
+
+.calendar-cell.other-month {
+    color: #9ca3af;
+    background-color: #f9fafb;
+}
+
+.calendar-cell.today {
+    background-color: #eef2ff;
+}
+
+.calendar-cell.today .date-number {
+    color: #4f46e5;
+    font-weight: bold;
+}
+
+.calendar-cell.has-events {
+    position: relative;
+}
+
+.calendar-cell.has-events::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background-color: #4f46e5;
+    border-radius: 50%;
+}
+
+.date-number {
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.event-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #4f46e5;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 2px;
+}
+
+/* 座位图样式 */
+#seat-map {
+    user-select: none;
+}
+
+.seat {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.seat:hover:not(.occupied) {
+    filter: brightness(1.1);
+    transform: scale(1.1);
+}
+
+.seat.available {
+    fill: #d1d5db;
+}
+
+.seat.selected {
+    fill: #4f46e5;
+}
+
+.seat.occupied {
+    fill: #ef4444;
+    cursor: not-allowed;
+}
+
+.seat-label {
+    font-size: 10px;
+    fill: #374151;
+    pointer-events: none;
+}
+
+.stage {
+    fill: #1f2937;
+}
+
+.stage-label {
+    fill: white;
+    font-size: 14px;
+    font-weight: bold;
+    text-anchor: middle;
+}
+
+/* 活动卡片 */
+.event-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* 门票样式 */
+.ticket {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.ticket-header {
+    padding: 16px;
+    border-bottom: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+.ticket-body {
+    padding: 16px;
+}
+
+.ticket-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.ticket-label {
+    opacity: 0.8;
+    font-size: 0.75rem;
+}
+
+.ticket-value {
+    font-weight: 600;
+}
+
+/* 导航按钮激活状态 */
+.nav-btn.active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 表格样式 */
+.table-row:hover {
+    background-color: #f9fafb;
+}
+
+/* 模态框动画 */
+#ticket-modal {
+    animation: fadeIn 0.2s ease-out;
+}
+
+#ticket-modal > div {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 预订卡片 */
+.booking-card {
+    transition: all 0.2s;
+}
+
+.booking-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .calendar-cell {
+        min-height: 60px;
+        padding: 4px;
+    }
+
+    .date-number {
+        font-size: 0.75rem;
+    }
+
+    #seat-map {
+        min-width: 400px;
+    }
+
+    .seat-label {
+        font-size: 8px;
+    }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* 加载动画 */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #4f46e5;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 徽章样式 */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-concert {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-sports {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.badge-theater {
+    background-color: #fce7f3;
+    color: #9d174d;
+}
+
+.badge-exhibition {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.badge-conference {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+
+/* 进度条 */
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: #4f46e5;
+    transition: width 0.3s ease;
+}

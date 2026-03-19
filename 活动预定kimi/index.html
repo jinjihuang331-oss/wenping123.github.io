@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>活动预订系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-50">
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="bg-indigo-600 text-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-bold">活动预订系统</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="app.showCalendarView()" class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">
+                            日历视图
+                        </button>
+                        <button onclick="app.showAdminDashboard()" class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">
+                            管理员仪表盘
+                        </button>
+                        <button onclick="app.showMyBookings()" class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">
+                            我的预订
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区域 -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 日历视图 -->
+            <div id="calendar-view" class="view-section">
+                <!-- 筛选器 -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                            <input type="date" id="filter-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">场地</label>
+                            <select id="filter-venue" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">全部场地</option>
+                                <option value="北京国家体育馆">北京国家体育馆</option>
+                                <option value="上海大剧院">上海大剧院</option>
+                                <option value="广州体育馆">广州体育馆</option>
+                                <option value="深圳湾体育中心">深圳湾体育中心</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">类别</label>
+                            <select id="filter-category" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">全部类别</option>
+                                <option value="音乐会">音乐会</option>
+                                <option value="体育">体育</option>
+                                <option value="戏剧">戏剧</option>
+                                <option value="展览">展览</option>
+                                <option value="会议">会议</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="app.applyFilters()" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                                应用筛选
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 日历头部 -->
+                <div class="bg-white rounded-t-lg shadow p-4 flex justify-between items-center">
+                    <button onclick="app.previousMonth()" class="p-2 hover:bg-gray-100 rounded-full">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <h2 id="calendar-month" class="text-lg font-semibold"></h2>
+                    <button onclick="app.nextMonth()" class="p-2 hover:bg-gray-100 rounded-full">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 日历网格 -->
+                <div class="bg-white rounded-b-lg shadow overflow-hidden">
+                    <div class="grid grid-cols-7 gap-px bg-gray-200">
+                        <div class="bg-gray-50 py-2 text-center text-sm font-medium text-gray-500">日</div>
+                        <div class="bg-gray-50 py-2 text-center text-sm font-medium text-gray-500">一</div>
+                        <div class="bg-gray-50 py-2 text-center text-sm font-medium text-gray-500">二</div>
+                        <div class="bg-gray-50 py-2 text-center text-sm font-medium text-gray-500">三</div>
+                        <div class="bg-gray-50 py-2 text-center text-sm font-medium text-gray-500">四</div>
+                        <div class="bg-gray-50 py-2 text-center text-sm font-medium text-gray-500">五</div>
+                        <div class="bg-gray-50 py-2 text-center text-sm font-medium text-gray-500">六</div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-gray-200">
+                        <!-- 日历单元格将在这里生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 活动列表视图 -->
+            <div id="events-list-view" class="view-section hidden">
+                <button onclick="app.showCalendarView()" class="mb-4 text-indigo-600 hover:text-indigo-800 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    返回日历
+                </button>
+                <h2 id="events-list-date" class="text-2xl font-bold mb-4"></h2>
+                <div id="events-list" class="space-y-4">
+                    <!-- 活动列表将在这里生成 -->
+                </div>
+            </div>
+
+            <!-- 座位选择视图 -->
+            <div id="seat-selection-view" class="view-section hidden">
+                <button onclick="app.showEventsListView()" class="mb-4 text-indigo-600 hover:text-indigo-800 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    返回活动列表
+                </button>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div id="event-details" class="mb-6">
+                        <!-- 活动详情将在这里生成 -->
+                    </div>
+
+                    <div class="flex flex-col lg:flex-row gap-8">
+                        <!-- SVG 座位图 -->
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold mb-4">选择座位</h3>
+                            <div class="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+                                <svg id="seat-map" viewBox="0 0 600 400" class="w-full max-w-2xl mx-auto">
+                                    <!-- 座位图将在这里生成 -->
+                                </svg>
+                            </div>
+                            <div class="flex justify-center gap-6 mt-4 text-sm">
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-gray-300 rounded mr-2"></div>
+                                    <span>可选</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-indigo-600 rounded mr-2"></div>
+                                    <span>已选</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
+                                    <span>已售</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 预订信息 -->
+                        <div class="lg:w-80">
+                            <div class="bg-gray-50 rounded-lg p-4 sticky top-4">
+                                <h4 class="font-semibold mb-3">预订摘要</h4>
+                                <div id="booking-summary" class="space-y-2 text-sm mb-4">
+                                    <p class="text-gray-600">请选择座位</p>
+                                </div>
+                                <div class="border-t pt-3 mb-4">
+                                    <div class="flex justify-between font-semibold">
+                                        <span>总计:</span>
+                                        <span id="total-price">¥0</span>
+                                    </div>
+                                </div>
+                                <button onclick="app.confirmBooking()" id="confirm-booking-btn" class="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                                    确认预订
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 管理员仪表盘 -->
+            <div id="admin-dashboard" class="view-section hidden">
+                <h2 class="text-2xl font-bold mb-6">管理员仪表盘</h2>
+
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-500">总活动数</p>
+                                <p id="admin-total-events" class="text-2xl font-semibold">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-500">总预订数</p>
+                                <p id="admin-total-bookings" class="text-2xl font-semibold">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-500">总收入</p>
+                                <p id="admin-total-revenue" class="text-2xl font-semibold">¥0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-red-100 text-red-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-500">今日预订</p>
+                                <p id="admin-today-bookings" class="text-2xl font-semibold">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 活动统计表格 -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b">
+                        <h3 class="text-lg font-semibold">活动预订统计</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">活动名称</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">场地</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">已售/总座位</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">上座率</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">收入</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-events-table" class="bg-white divide-y divide-gray-200">
+                                <!-- 表格数据将在这里生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 我的预订 -->
+            <div id="my-bookings-view" class="view-section hidden">
+                <h2 class="text-2xl font-bold mb-6">我的预订</h2>
+                <div id="my-bookings-list" class="space-y-4">
+                    <!-- 预订列表将在这里生成 -->
+                </div>
+            </div>
+        </main>
+
+        <!-- 门票模态框 -->
+        <div id="ticket-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                <div class="text-center mb-6">
+                    <h3 class="text-xl font-bold text-gray-900">预订成功！</h3>
+                    <p class="text-sm text-gray-500 mt-1">您的电子门票已生成</p>
+                </div>
+
+                <div id="ticket-content" class="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-6">
+                    <!-- 门票内容将在这里生成 -->
+                </div>
+
+                <div id="qrcode-container" class="flex justify-center mb-6">
+                    <!-- 二维码将在这里生成 -->
+                </div>
+
+                <div class="flex gap-3">
+                    <a id="email-reminder-link" href="#" class="flex-1 bg-green-600 text-white text-center py-2 rounded-md hover:bg-green-700 transition">
+                        发送邮件提醒
+                    </a>
+                    <button onclick="app.closeTicketModal()" class="flex-1 bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 transition">
+                        完成
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
