@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品秒杀</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 16px;
+    color: #fff;
+  }
+
+  .seckill-container {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-left: 14px;
+    border-left: 4px solid #e63946;
+  }
+
+  /* ── 商品卡片 ── */
+  .product-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  }
+
+  .product-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    background: #eee;
+  }
+
+  .product-info {
+    padding: 16px 18px 12px;
+  }
+
+  .product-info h3 {
+    font-size: 16px;
+    color: #333;
+    font-weight: 600;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .seckill-price {
+    font-size: 24px;
+    font-weight: 700;
+    color: #e63946;
+  }
+  .seckill-price::before { content: "¥"; font-size: 14px; }
+
+  .original-price {
+    font-size: 13px;
+    color: #999;
+    text-decoration: line-through;
+  }
+
+  .limit-tag {
+    display: inline-block;
+    font-size: 11px;
+    color: #e63946;
+    border: 1px solid #e63946;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-top: 8px;
+  }
+
+  /* ── 库存进度条 ── */
+  .stock-bar-wrapper {
+    padding: 0 18px 14px;
+  }
+
+  .stock-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 6px;
+  }
+
+  .stock-track {
+    width: 100%;
+    height: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .stock-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ff6b6b, #e63946);
+    transition: width .6s ease;
+  }
+
+  .stock-fill.low { background: linear-gradient(90deg, #ff8c00, #e63946); }
+  .stock-fill.empty { background: #ccc; }
+
+  /* ── 倒计时 ── */
+  .countdown-section {
+    padding: 14px 18px;
+    background: linear-gradient(90deg, #e63946, #d62839);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .countdown-label {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .countdown-label::before {
+    content: "";
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .3; }
+  }
+
+  .countdown-blocks {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .cd-block {
+    background: rgba(0,0,0,.35);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 18px;
+    font-weight: 700;
+    min-width: 32px;
+    text-align: center;
+  }
+
+  .cd-sep {
+    font-size: 16px;
+    font-weight: 700;
+    opacity: .7;
+  }
+
+  .cd-ended {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  /* ── 抢购按钮 ── */
+  .action-row {
+    padding: 14px 18px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .qty-control {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .qty-control button {
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: #f5f5f5;
+    font-size: 18px;
+    color: #555;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .qty-control button:active { background: #e0e0e0; }
+  .qty-control button:disabled { color: #ccc; cursor: not-allowed; }
+
+  .qty-control .qty-num {
+    width: 40px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    height: 34px;
+    line-height: 34px;
+    background: #fff;
+  }
+
+  .btn-seckill {
+    flex: 1;
+    height: 44px;
+    border: none;
+    border-radius: 22px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all .2s;
+    letter-spacing: 2px;
+  }
+
+  .btn-seckill.waiting {
+    background: #bbb;
+    color: #eee;
+    cursor: not-allowed;
+    letter-spacing: 0;
+    font-size: 14px;
+  }
+
+  .btn-seckill.active {
+    background: linear-gradient(90deg, #ff6b6b, #e63946);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(230,57,70,.4);
+  }
+  .btn-seckill.active:active {
+    transform: scale(.97);
+    box-shadow: 0 2px 8px rgba(230,57,70,.3);
+  }
+
+  .btn-seckill.sold-out {
+    background: #ddd;
+    color: #999;
+    cursor: not-allowed;
+  }
+
+  .btn-seckill.ended {
+    background: #333;
+    color: #888;
+    cursor: not-allowed;
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+
+  /* 按钮动画波纹 */
+  .btn-seckill.active::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 0; height: 0;
+    background: rgba(255,255,255,.3);
+    border-radius: 50%;
+    transform: translate(-50%,-50%);
+    transition: width .4s, height .4s, opacity .4s;
+    opacity: 0;
+  }
+  .btn-seckill.active:active::after {
+    width: 300px; height: 300px; opacity: 1;
+    transition: 0s;
+  }
+
+  /* ── 弹窗遮罩 ── */
+  .modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn .2s;
+  }
+  .modal-mask.show { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-box {
+    width: 300px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 32px 24px 24px;
+    text-align: center;
+    animation: popIn .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn { from { transform: scale(.8); opacity: 0; } }
+
+  .modal-icon {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+  .modal-icon.success { background: #e8f5e9; color: #2e7d32; }
+  .modal-icon.fail    { background: #fce4ec; color: #c62828; }
+  .modal-icon.warn    { background: #fff8e1; color: #f57f17; }
+
+  .modal-title {
+    font-size: 17px;
+    color: #333;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .modal-desc {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .modal-btn {
+    width: 100%;
+    height: 40px;
+    border: none;
+    border-radius: 20px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(90deg, #ff6b6b, #e63946);
+    transition: opacity .15s;
+  }
+  .modal-btn:active { opacity: .85; }
+
+  /* ── 结果动画 ── */
+  .btn-loading {
+    pointer-events: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 底部提示 ── */
+  .footer-tip {
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255,255,255,.4);
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="seckill-container">
+  <div class="section-title">限时秒杀</div>
+
+  <div class="product-card">
+    <img class="product-img" src="https://img14.360buyimg.com/n1/jfs/t1/234567/12/23456/89123/67e8f1e2F12345678/abc123.jpg" alt="商品图" onerror="this.style.background='linear-gradient(135deg,#ffecd2,#fcb69f)';this.alt=''">
+
+    <div class="product-info">
+      <h3>Apple AirPods Pro (第二代) 主动降噪无线蓝牙耳机 MagSafe充电盒</h3>
+      <div class="price-row">
+        <span class="seckill-price">899</span>
+        <span class="original-price">¥1799</span>
+      </div>
+      <span class="limit-tag">限购2件/人</span>
+    </div>
+
+    <div class="stock-bar-wrapper">
+      <div class="stock-header">
+        <span>已抢 <strong id="soldCount">78</strong> 件</span>
+        <span>剩余 <strong id="remainCount">22</strong> 件</span>
+      </div>
+      <div class="stock-track">
+        <div class="stock-fill" id="stockFill" style="width:78%"></div>
+      </div>
+    </div>
+
+    <div class="countdown-section" id="countdownSection">
+      <span class="countdown-label">距开始</span>
+      <div class="countdown-blocks" id="countdownBlocks"></div>
+    </div>
+
+    <div class="action-row">
+      <div class="qty-control">
+        <button id="btnMinus" disabled>−</button>
+        <div class="qty-num" id="qtyNum">1</div>
+        <button id="btnPlus">+</button>
+      </div>
+      <button class="btn-seckill waiting" id="btnSeckill">活动未开始</button>
+    </div>
+  </div>
+
+  <div class="footer-tip">* 秒杀时间为模拟演示，实际库存与价格以官方为准</div>
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal-box">
+    <div class="modal-icon" id="modalIcon"></div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-desc" id="modalDesc"></div>
+    <button class="modal-btn" onclick="closeModal()">我知道了</button>
+  </div>
+</div>
+
+<script>
+// ── 配置 ──
+const CONFIG = {
+  totalStock: 100,      // 总库存
+  soldCount: 78,        // 已售数量
+  limitPerUser: 2,      // 限购数
+  // 秒杀开始：距当前时间 15 秒后；结束：开始后 5 分钟
+  get startTime() {
+    return Date.now() + 15 * 1000;
+  },
+  get endTime() {
+    return this.startTime + 5 * 60 * 1000;
+  }
+};
+
+// ── 状态 ──
+let state = {
+  qty: 1,
+  stock: CONFIG.totalStock - CONFIG.soldCount,
+  phase: 'waiting'   // waiting | active | ended
+};
+
+// ── DOM ──
+const $soldCount     = document.getElementById('soldCount');
+const $remainCount   = document.getElementById('remainCount');
+const $stockFill     = document.getElementById('stockFill');
+const $countdownSect = document.getElementById('countdownSection');
+const $countdownBlks = document.getElementById('countdownBlocks');
+const $btnSeckill    = document.getElementById('btnSeckill');
+const $qtyNum        = document.getElementById('qtyNum');
+const $btnMinus      = document.getElementById('btnMinus');
+const $btnPlus       = document.getElementById('btnPlus');
+
+// ── 库存 ──
+function renderStock() {
+  const sold = CONFIG.totalStock - state.stock;
+  const pct = (sold / CONFIG.totalStock) * 100;
+  $soldCount.textContent   = sold;
+  $remainCount.textContent = state.stock;
+  $stockFill.style.width   = pct + '%';
+  $stockFill.className     = 'stock-fill' + (state.stock === 0 ? ' empty' : state.stock <= 10 ? ' low' : '');
+}
+
+// ── 倒计时 ──
+function renderCountdown() {
+  if (state.phase === 'ended') {
+    $countdownSect.innerHTML = '<span class="cd-ended">本场活动已结束</span>';
+    return;
+  }
+
+  const target = state.phase === 'waiting' ? CONFIG.startTime : CONFIG.endTime;
+  const diff = target - Date.now();
+  if (diff <= 0) {
+    if (state.phase === 'waiting') {
+      state.phase = 'active';
+      $btnSeckill.className = 'btn-seckill active';
+      $btnSeckill.textContent = '立即抢购';
+      $countdownSect.querySelector('.countdown-label').textContent = '距结束';
+      renderCountdown();           // 重新计算结束倒计时
+    } else {
+      state.phase = 'ended';
+      $btnSeckill.className = 'btn-seckill ended';
+      $btnSeckill.textContent = '活动已结束';
+      $countdownSect.innerHTML = '<span class="cd-ended">本场活动已结束</span>';
+    }
+    return;
+  }
+
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+
+  const pad = n => String(n).padStart(2, '0');
+  const parts = [
+    { val: d, unit: '天' },
+    { val: pad(h), unit: '' },
+    { val: pad(m), unit: '' },
+    { val: pad(s), unit: '' }
+  ];
+
+  $countdownBlks.innerHTML = parts.map((p, i) => {
+    let html = `<span class="cd-block">${p.val}</span>`;
+    if (p.unit) html += `<span class="cd-sep">${p.unit}</span>`;
+    else if (i < parts.length - 1) html += `<span class="cd-sep">:</span>`;
+    return html;
+  }).join('');
+}
+
+setInterval(renderCountdown, 1000);
+renderCountdown();
+
+// ── 数量控制 ──
+function renderQty() {
+  $qtyNum.textContent = state.qty;
+  $btnMinus.disabled  = state.qty <= 1;
+  $btnPlus.disabled   = state.qty >= CONFIG.limitPerUser;
+}
+
+$btnMinus.addEventListener('click', () => { if (state.qty > 1) { state.qty--; renderQty(); } });
+$btnPlus.addEventListener('click',  () => { if (state.qty < CONFIG.limitPerUser) { state.qty++; renderQty(); } });
+
+// ── 弹窗 ──
+function showModal(type, title, desc) {
+  const iconMap  = { success: '✓', fail: '✕', warn: '!' };
+  const $mask    = document.getElementById('modalMask');
+  document.getElementById('modalIcon').className  = 'modal-icon ' + type;
+  document.getElementById('modalIcon').textContent = iconMap[type];
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalDesc').textContent  = desc;
+  $mask.classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalMask').classList.remove('show');
+}
+
+// 点击遮罩关闭
+document.getElementById('modalMask').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ── 抢购 ──
+$btnSeckill.addEventListener('click', () => {
+  if (state.phase !== 'active') return;
+
+  // 限购校验
+  if (state.qty > CONFIG.limitPerUser) {
+    showModal('warn', '超出限购数量', `每人最多限购 ${CONFIG.limitPerUser} 件，请调整数量后重试。`);
+    return;
+  }
+
+  // 库存不足
+  if (state.stock <= 0) {
+    showModal('fail', '手慢了', '该商品已被抢光，下次再来吧！');
+    return;
+  }
+  if (state.qty > state.stock) {
+    showModal('warn', '库存不足', `当前仅剩余 ${state.stock} 件，请调整数量。`);
+    return;
+  }
+
+  // 模拟请求：按钮 loading
+  $btnSeckill.innerHTML = '<span class="btn-loading"><span class="spinner"></span>抢购中…</span>';
+  $btnSeckill.style.pointerEvents = 'none';
+
+  setTimeout(() => {
+    const success = Math.random() < 0.65;  // 65% 成功率
+
+    if (success) {
+      state.stock = Math.max(0, state.stock - state.qty);
+      renderStock();
+      showModal('success', '抢购成功', `恭喜您！成功抢到 ${state.qty} 件商品，订单正在处理中。`);
+    } else {
+      showModal('fail', '抢购失败', '当前人数过多，请稍后再试。');
+    }
+
+    // 恢复按钮
+    if (state.stock <= 0) {
+      $btnSeckill.className    = 'btn-seckill sold-out';
+      $btnSeckill.textContent  = '已抢光';
+      $btnSeckill.style.pointerEvents = 'none';
+    } else {
+      $btnSeckill.className    = 'btn-seckill active';
+      $btnSeckill.textContent  = '立即抢购';
+      $btnSeckill.style.pointerEvents = '';
+    }
+  }, 1200 + Math.random() * 800);
+});
+
+// ── 初始化 ──
+renderStock();
+renderQty();
+</script>
+</body>
+</html>
