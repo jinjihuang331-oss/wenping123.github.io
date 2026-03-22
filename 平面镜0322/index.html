@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平面镜成像实验模拟器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    user-select: none;
+  }
+  h1 {
+    margin: 20px 0 10px;
+    font-size: 22px;
+    color: #e8e8e8;
+    letter-spacing: 4px;
+  }
+  .canvas-wrap {
+    position: relative;
+    margin: 10px;
+  }
+  canvas {
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(100, 140, 255, 0.15);
+    cursor: default;
+  }
+  .info-bar {
+    display: flex;
+    gap: 40px;
+    margin: 16px 0 24px;
+    font-size: 16px;
+  }
+  .info-bar span { color: #8ecae6; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>平面镜成像实验模拟器</h1>
+<div class="canvas-wrap">
+  <canvas id="cv" width="1000" height="560"></canvas>
+</div>
+<div class="info-bar">
+  <div>物距&ensp;<span id="objDist">—</span></div>
+  <div>像距&ensp;<span id="imgDist">—</span></div>
+  <div>像的性质：等大、正立、虚像</div>
+</div>
+
+<script>
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W   = cv.width;
+const H   = cv.height;
+
+/* ── 镜面参数 ── */
+const MIRROR_X = W / 2;
+const MIRROR_TOP = 60;
+const MIRROR_BOT = H - 60;
+
+/* ── 蜡烛参数 ── */
+const CANDLE_W   = 22;
+const CANDLE_H   = 90;
+const FLAME_H    = 32;
+const BASE_W     = 50;
+const BASE_H     = 12;
+const MIN_DIST   = 30;   // 蜡烛中心离镜面最小距离
+const GROUND_Y   = MIRROR_BOT;
+
+let candleX = MIRROR_X - 200; // 蜡烛底部中心 x
+
+/* ── 拖拽状态 ── */
+let dragging = false;
+let dragOffX = 0;
+
+/* ── 光线数据（用于画入射/反射光路的示例光线）── */
+function drawIncidentRay(ox, oy, mirX, targetY) {
+  // 入射光从物体某点出发到镜面，反射光反向延长到虚像
+}
+
+/* ─────────────────────── 绘制函数 ─────────────────────── */
+
+function drawBackground() {
+  // 渐变底色
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#1e2a3a');
+  g.addColorStop(1, '#151b28');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // 网格
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // 桌面
+  ctx.fillStyle = '#2a2a3c';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
+}
+
+function drawMirror() {
+  // 反射面（镜面）
+  const g = ctx.createLinearGradient(MIRROR_X - 3, 0, MIRROR_X + 3, 0);
+  g.addColorStop(0, '#a8d8ea');
+  g.addColorStop(0.5, '#d4eeff');
+  g.addColorStop(1, '#a8d8ea');
+  ctx.fillStyle = g;
+  ctx.fillRect(MIRROR_X - 3, MIRROR_TOP, 6, MIRROR_BOT - MIRROR_TOP);
+
+  // 镜面高光
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(MIRROR_X - 1, MIRROR_TOP, 2, MIRROR_BOT - MIRROR_TOP);
+
+  // 斜线纹理（表示镜面背面）
+  ctx.strokeStyle = 'rgba(160,180,210,0.35)';
+  ctx.lineWidth = 1;
+  const step = 14;
+  for (let y = MIRROR_TOP; y < MIRROR_BOT; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(MIRROR_X + 4, y);
+    ctx.lineTo(MIRROR_X + 16, y + step);
+    ctx.stroke();
+  }
+
+  // 标签
+  ctx.fillStyle = '#8ecae6';
+  ctx.font = '14px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('平面镜', MIRROR_X, MIRROR_TOP - 10);
+}
+
+/** 画蜡烛 / 虚像蜡烛 */
+function drawCandle(cx, isVirtual) {
+  const bottomY = GROUND_Y;
+  const left    = cx - CANDLE_W / 2;
+  const topY    = bottomY - CANDLE_H;
+
+  if (isVirtual) ctx.globalAlpha = 0.42;
+
+  // 蜡烛主体
+  const cg = ctx.createLinearGradient(left, topY, left + CANDLE_W, topY);
+  cg.addColorStop(0, isVirtual ? '#667799' : '#f5deb3');
+  cg.addColorStop(0.5, isVirtual ? '#8899aa' : '#fff8dc');
+  cg.addColorStop(1, isVirtual ? '#667799' : '#f0d090');
+  ctx.fillStyle = cg;
+  ctx.fillRect(left, topY, CANDLE_W, CANDLE_H);
+
+  // 蜡烛顶部椭圆（立体感）
+  ctx.fillStyle = isVirtual ? '#99aabb' : '#fff3c4';
+  ctx.beginPath();
+  ctx.ellipse(cx, topY, CANDLE_W / 2, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = isVirtual ? 'rgba(100,120,150,0.5)' : 'rgba(180,150,80,0.5)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 底座
+  ctx.fillStyle = isVirtual ? '#445566' : '#8b6914';
+  const bx = cx - BASE_W / 2;
+  ctx.beginPath();
+  ctx.moveTo(bx + 6, bottomY);
+  ctx.lineTo(bx + BASE_W - 6, bottomY);
+  ctx.lineTo(bx + BASE_W, bottomY - BASE_H);
+  ctx.lineTo(bx, bottomY - BASE_H);
+  ctx.closePath();
+  ctx.fill();
+
+  // 灯芯
+  ctx.strokeStyle = isVirtual ? '#888' : '#555';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, topY);
+  ctx.lineTo(cx, topY - 6);
+  ctx.stroke();
+
+  // 火焰
+  drawFlame(cx, topY - 6, isVirtual);
+
+  ctx.globalAlpha = 1;
+
+  // 标签
+  if (!isVirtual) {
+    ctx.fillStyle = '#e8c840';
+    ctx.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('物体', cx, bottomY + 22);
+  } else {
+    ctx.fillStyle = '#6aa8cc';
+    ctx.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('虚像', cx, bottomY + 22);
+  }
+}
+
+function drawFlame(x, y, isVirtual) {
+  // 外焰
+  const og = ctx.createRadialGradient(x, y - 12, 2, x, y - 6, 14);
+  og.addColorStop(0, isVirtual ? 'rgba(80,140,200,0.7)' : 'rgba(255,255,200,0.9)');
+  og.addColorStop(0.6, isVirtual ? 'rgba(60,100,180,0.5)' : 'rgba(255,160,30,0.85)');
+  og.addColorStop(1, isVirtual ? 'rgba(40,80,150,0.15)' : 'rgba(255,80,0,0.15)');
+  ctx.fillStyle = og;
+  ctx.beginPath();
+  ctx.moveTo(x, y - FLAME_H);
+  ctx.bezierCurveTo(x - 10, y - FLAME_H * 0.6, x - 9, y + 2, x, y + 2);
+  ctx.bezierCurveTo(x + 9, y + 2, x + 10, y - FLAME_H * 0.6, x, y - FLAME_H);
+  ctx.fill();
+
+  // 内焰
+  ctx.fillStyle = isVirtual ? 'rgba(120,180,255,0.5)' : 'rgba(200,220,255,0.8)';
+  ctx.beginPath();
+  ctx.moveTo(x, y - FLAME_H * 0.55);
+  ctx.bezierCurveTo(x - 4, y - FLAME_H * 0.3, x - 4, y, x, y);
+  ctx.bezierCurveTo(x + 4, y, x + 4, y - FLAME_H * 0.3, x, y - FLAME_H * 0.55);
+  ctx.fill();
+}
+
+/** 画光路（入射 + 反射光） */
+function drawLightRays(objX) {
+  const imageX = 2 * MIRROR_X - objX;
+  const botY   = GROUND_Y;
+  const midY   = botY - CANDLE_H / 2;  // 蜡烛中部
+  const topY   = botY - CANDLE_H - 6;   // 蜡烛顶部（火焰顶端附近）
+
+  const rayPoints = [topY, midY]; // 两束光线
+  const rayColors = ['#ffa033aa', '#44bbffaa'];
+
+  rayPoints.forEach((oy, idx) => {
+    const hitY = oy;
+
+    // 入射光线：从物体到镜面
+    ctx.strokeStyle = rayColors[idx];
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(objX, oy);
+    ctx.lineTo(MIRROR_X, hitY);
+    ctx.stroke();
+
+    // 箭头（入射）
+    drawArrowHead(MIRROR_X, hitY, Math.atan2(hitY - oy, MIRROR_X - objX) + Math.PI, rayColors[idx]);
+
+    // 反射光线：从镜面向右延伸
+    const refEndX = MIRROR_X + 220;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(MIRROR_X, hitY);
+    ctx.lineTo(refEndX, hitY);
+    ctx.stroke();
+    drawArrowHead(refEndX, hitY, Math.atan2(0, 1) + Math.PI, rayColors[idx]);
+
+    // 反向延长线（虚线）到虚像
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = rayColors[idx].replace('aa', '55');
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(MIRROR_X, hitY);
+    ctx.lineTo(imageX, hitY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+}
+
+/** 画箭头 */
+function drawArrowHead(x, y, angle, color) {
+  const len = 10;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + len * Math.cos(angle + 0.4), y + len * Math.sin(angle + 0.4));
+  ctx.lineTo(x + len * Math.cos(angle - 0.4), y + len * Math.sin(angle - 0.4));
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** 画距离标注 */
+function drawDistAnnotation(objX, imgX) {
+  const annY = GROUND_Y + 40;
+  const dist = MIRROR_X - objX;
+
+  ctx.font = '13px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+
+  // 左侧：物距
+  if (dist > 5) {
+    ctx.strokeStyle = '#e8c840';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    // 水平线
+    ctx.beginPath();
+    ctx.moveTo(objX, annY);
+    ctx.lineTo(MIRROR_X, annY);
+    ctx.stroke();
+    // 左端竖线
+    ctx.beginPath(); ctx.moveTo(objX, annY - 6); ctx.lineTo(objX, annY + 6); ctx.stroke();
+    // 右端竖线
+    ctx.beginPath(); ctx.moveTo(MIRROR_X, annY - 6); ctx.lineTo(MIRROR_X, annY + 6); ctx.stroke();
+    // 文字
+    ctx.fillStyle = '#e8c840';
+    ctx.fillText('u = ' + Math.round(dist) + ' px', (objX + MIRROR_X) / 2, annY + 18);
+  }
+
+  // 右侧：像距
+  const imgDist = imgX - MIRROR_X;
+  if (imgDist > 5) {
+    ctx.strokeStyle = '#6aa8cc';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(MIRROR_X, annY);
+    ctx.lineTo(imgX, annY);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(MIRROR_X, annY - 6); ctx.lineTo(MIRROR_X, annY + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(imgX, annY - 6); ctx.lineTo(imgX, annY + 6); ctx.stroke();
+    ctx.fillStyle = '#6aa8cc';
+    ctx.fillText('v = ' + Math.round(imgDist) + ' px', (MIRROR_X + imgX) / 2, annY + 18);
+  }
+
+  // 连接线：物体到虚像的等距虚线
+  if (dist > 5) {
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(objX, GROUND_Y - CANDLE_H - FLAME_H - 16);
+    ctx.lineTo(imgX, GROUND_Y - CANDLE_H - FLAME_H - 16);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 中心标记
+    ctx.fillStyle = '#ff6b6b';
+    ctx.font = '12px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('u = v  (物距 = 像距)', (objX + imgX) / 2, GROUND_Y - CANDLE_H - FLAME_H - 22);
+  }
+}
+
+/* ─────────────────────── 主绘制 ─────────────────────── */
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+  drawMirror();
+
+  const imageX = 2 * MIRROR_X - candleX;
+  const dist   = Math.round(MIRROR_X - candleX);
+
+  // 光路
+  drawLightRays(candleX);
+
+  // 蜡烛（物体）
+  drawCandle(candleX, false);
+
+  // 虚像
+  drawCandle(imageX, true);
+
+  // 距离标注
+  drawDistAnnotation(candleX, imageX);
+
+  // 更新信息栏
+  document.getElementById('objDist').textContent = dist + ' px';
+  document.getElementById('imgDist').textContent = dist + ' px';
+}
+
+/* ─────────────────────── 交互 ─────────────────────── */
+function isOnCandle(mx, my) {
+  const left  = candleX - CANDLE_W / 2 - 10;
+  const right = candleX + CANDLE_W / 2 + 10;
+  const top   = GROUND_Y - CANDLE_H - FLAME_H - 10;
+  const bot   = GROUND_Y + 10;
+  return mx >= left && mx <= right && my >= top && my <= bot;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return {
+    x: (touch.clientX - r.left) * (W / r.width),
+    y: (touch.clientY - r.top)  * (H / r.height)
+  };
+}
+
+cv.addEventListener('mousedown', e => {
+  const p = getPos(e);
+  if (isOnCandle(p.x, p.y)) {
+    dragging = true;
+    dragOffX = p.x - candleX;
+    cv.style.cursor = 'grabbing';
+  }
+});
+
+cv.addEventListener('mousemove', e => {
+  const p = getPos(e);
+  if (dragging) {
+    const maxX = MIRROR_X - MIN_DIST;
+    const minX = MIRROR_TOP + CANDLE_W / 2;
+    candleX = Math.max(minX, Math.min(maxX, p.x - dragOffX));
+    draw();
+  } else {
+    cv.style.cursor = isOnCandle(p.x, p.y) ? 'grab' : 'default';
+  }
+});
+
+cv.addEventListener('mouseup', () => { dragging = false; cv.style.cursor = 'default'; });
+cv.addEventListener('mouseleave', () => { dragging = false; cv.style.cursor = 'default'; });
+
+// 触摸
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const p = getPos(e);
+  if (isOnCandle(p.x, p.y)) { dragging = true; dragOffX = p.x - candleX; }
+}, { passive: false });
+
+cv.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!dragging) return;
+  const p = getPos(e);
+  const maxX = MIRROR_X - MIN_DIST;
+  const minX = MIRROR_TOP + CANDLE_W / 2;
+  candleX = Math.max(minX, Math.min(maxX, p.x - dragOffX));
+  draw();
+}, { passive: false });
+
+cv.addEventListener('touchend', () => { dragging = false; });
+
+// 初始绘制
+draw();
+</script>
+</body>
+</html>
