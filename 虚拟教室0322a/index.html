@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>虚拟教室平台</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #4f46e5;
+    --primary-light: #818cf8;
+    --bg-dark: #1e1e2e;
+    --bg-panel: #2a2a3d;
+    --bg-card: #353550;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #4a4a6a;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  /* ===== 顶部导航栏 ===== */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    height: 56px;
+    gap: 12px;
+    position: relative;
+    z-index: 10;
+  }
+
+  .room-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .room-info .room-name {
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .room-info .room-id {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .top-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .2s;
+    white-space: nowrap;
+    color: #fff;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+  }
+  .btn:hover { background: var(--primary); border-color: var(--primary); }
+  .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .btn-record {
+    background: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-record.recording {
+    animation: pulse-record 1s ease-in-out infinite;
+  }
+  .btn-record:not(.recording) {
+    background: var(--bg-card);
+    border-color: var(--border);
+  }
+  .btn-record:not(.recording):hover {
+    background: var(--danger);
+    border-color: var(--danger);
+  }
+
+  .btn-share {
+    background: var(--success);
+    border-color: var(--success);
+  }
+  .btn-share.active {
+    background: var(--warning);
+    border-color: var(--warning);
+  }
+
+  .btn-leave {
+    background: var(--danger);
+    border-color: var(--danger);
+  }
+
+  @keyframes pulse-record {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+  }
+
+  /* ===== 录制指示器 ===== */
+  .recording-indicator {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(239,68,68,.15);
+    border: 1px solid var(--danger);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--danger);
+  }
+  .recording-indicator.active { display: inline-flex; }
+  .recording-indicator .dot {
+    width: 10px; height: 10px;
+    background: var(--danger);
+    border-radius: 50%;
+    animation: pulse-record 1s ease-in-out infinite;
+  }
+
+  /* ===== 主布局 ===== */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 300px;
+    height: calc(100vh - 56px);
+  }
+
+  /* ===== 左侧栏 - 参与者 ===== */
+  .sidebar-left {
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    padding: 14px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .participant-count {
+    background: var(--primary);
+    color: #fff;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+
+  .participant-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .participant-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background .15s;
+  }
+  .participant-item:hover { background: var(--bg-card); }
+
+  .avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .avatar .status-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-panel);
+  }
+  .status-dot.online { background: var(--success); }
+  .status-dot.away { background: var(--warning); }
+  .status-dot.muted { background: var(--text-muted); }
+
+  .participant-info { min-width: 0; }
+  .participant-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .participant-role {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ===== 中间 - 白板区域 ===== */
+  .center-area {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .whiteboard-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .tool-btn {
+    width: 36px; height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+    font-size: 16px;
+  }
+  .tool-btn:hover { border-color: var(--primary-light); }
+  .tool-btn.active { border-color: var(--primary); background: rgba(79,70,229,.2); }
+
+  .tool-separator {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  .color-picker-wrapper {
+    position: relative;
+    width: 36px; height: 36px;
+  }
+  .color-picker-wrapper input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .color-preview {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    pointer-events: none;
+  }
+
+  .size-slider {
+    width: 80px;
+    accent-color: var(--primary);
+  }
+
+  .whiteboard-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+    cursor: crosshair;
+  }
+
+  .whiteboard-container canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  /* 屏幕共享覆盖层 */
+  .share-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,.35);
+    cursor: crosshair;
+  }
+  .share-overlay.active { display: block; }
+
+  .share-selection {
+    display: none;
+    position: fixed;
+    border: 3px dashed var(--warning);
+    background: rgba(245,158,11,.08);
+    border-radius: 4px;
+    z-index: 1001;
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.3);
+  }
+  .share-selection.active { display: block; }
+
+  .share-selection-label {
+    position: absolute;
+    top: -32px;
+    left: 0;
+    background: var(--warning);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .shared-area-highlight {
+    display: none;
+    position: fixed;
+    border: 3px solid var(--success);
+    border-radius: 6px;
+    z-index: 50;
+    pointer-events: none;
+    box-shadow: 0 0 20px rgba(34,197,94,.3);
+    animation: share-glow 2s ease-in-out infinite;
+  }
+  .shared-area-highlight.active { display: block; }
+
+  @keyframes share-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(34,197,94,.3); }
+    50% { box-shadow: 0 0 35px rgba(34,197,94,.5); }
+  }
+
+  .shared-area-label {
+    position: absolute;
+    top: -28px;
+    left: 0;
+    background: var(--success);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* ===== 右侧栏 - 聊天 ===== */
+  .sidebar-right {
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chat-message {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: msg-in .25s ease;
+  }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .chat-message .avatar {
+    width: 28px; height: 28px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .message-content {
+    min-width: 0;
+    flex: 1;
+  }
+  .message-header {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+  .message-name {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .message-time {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .message-text {
+    font-size: 13px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    background: var(--bg-card);
+    padding: 8px 12px;
+    border-radius: 0 10px 10px 10px;
+  }
+  .chat-message.self .message-text {
+    background: rgba(79,70,229,.25);
+    border-radius: 10px 0 10px 10px;
+  }
+  .chat-message.self {
+    flex-direction: row-reverse;
+  }
+  .chat-message.self .message-header {
+    flex-direction: row-reverse;
+  }
+
+  /* 聊天输入区 */
+  .chat-input-area {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .emoji-bar {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease, margin .25s;
+  }
+  .emoji-bar.open {
+    max-height: 200px;
+    margin-bottom: 10px;
+  }
+
+  .emoji-btn {
+    width: 32px; height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .emoji-btn:hover { background: var(--bg-card); }
+
+  .chat-input-row {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+  }
+
+  .chat-input-row input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .chat-input-row input:focus { border-color: var(--primary); }
+  .chat-input-row input::placeholder { color: var(--text-muted); }
+
+  .chat-input-row .send-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    padding: 0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .emoji-toggle {
+    width: 38px; height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .15s;
+  }
+  .emoji-toggle:hover { border-color: var(--primary); }
+  .emoji-toggle.active { background: var(--primary); border-color: var(--primary); }
+
+  /* ===== 移动端选项卡 ===== */
+  .mobile-tabs {
+    display: none;
+  }
+
+  /* ===== 移动端适配 ===== */
+  @media (max-width: 1024px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+    }
+    .sidebar-left { display: none; }
+    .sidebar-right { display: none; }
+    .sidebar-left.mobile-visible { display: flex; position: fixed; left: 0; top: 56px; bottom: 0; width: 280px; z-index: 100; }
+    .sidebar-right.mobile-visible { display: flex; position: fixed; right: 0; top: 56px; bottom: 48px; width: 300px; z-index: 100; }
+
+    .mobile-tabs {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      z-index: 101;
+    }
+    .mobile-tab {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      transition: color .15s;
+    }
+    .mobile-tab.active { color: var(--primary-light); }
+    .mobile-tab svg { width: 18px; height: 18px; }
+
+    .center-area { padding-bottom: 48px; }
+    .top-bar { overflow-x: auto; }
+    .btn span { display: none; }
+    .recording-indicator span { display: none; }
+  }
+
+  @media (max-width: 480px) {
+    .sidebar-left.mobile-visible,
+    .sidebar-right.mobile-visible {
+      width: 100%;
+    }
+    .size-slider { width: 50px; }
+  }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* 系统消息 */
+  .system-message {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px;
+  }
+
+  /* 白板清空确认 */
+  .clear-confirm {
+    display: none;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    z-index: 20;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,.3);
+  }
+  .clear-confirm.active { display: block; }
+  .clear-confirm p { margin-bottom: 10px; font-size: 13px; }
+  .clear-confirm .btn { margin: 0 4px; }
+  .clear-confirm .btn-danger { background: var(--danger); border-color: var(--danger); }
+  .clear-confirm .btn-cancel { background: var(--bg-card); border-color: var(--border); }
+
+  /* 文字工具输入 */
+  .text-input-overlay {
+    display: none;
+    position: absolute;
+    z-index: 15;
+  }
+  .text-input-overlay input {
+    border: 2px dashed var(--primary);
+    background: rgba(255,255,255,.9);
+    color: #000;
+    font-size: 16px;
+    padding: 4px 8px;
+    outline: none;
+    min-width: 120px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航栏 ===== -->
+<div class="top-bar">
+  <div class="room-info">
+    <div class="room-name">虚拟教室 - 计算机科学导论</div>
+    <div class="room-id" title="点击复制" id="roomId">房间: CS-2024-001</div>
+  </div>
+
+  <div class="recording-indicator" id="recordingIndicator">
+    <div class="dot"></div>
+    <span>录制中 00:00</span>
+  </div>
+
+  <div class="top-controls">
+    <button class="btn btn-record" id="btnRecord" title="录制">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+      <span>录制</span>
+    </button>
+    <button class="btn btn-share" id="btnShare" title="屏幕共享">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <span>共享</span>
+    </button>
+    <button class="btn btn-leave" id="btnLeave" title="离开教室">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>离开</span>
+    </button>
+  </div>
+</div>
+
+<!-- ===== 主布局 ===== -->
+<div class="main-layout" id="mainLayout">
+
+  <!-- 左侧 - 参与者 -->
+  <div class="sidebar-left" id="sidebarLeft">
+    <div class="panel-header">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      参与者
+      <span class="participant-count" id="participantCount">0</span>
+    </div>
+    <div class="participant-list" id="participantList"></div>
+  </div>
+
+  <!-- 中间 - 白板 -->
+  <div class="center-area" id="centerArea">
+    <div class="whiteboard-toolbar" id="whiteboardToolbar">
+      <button class="tool-btn active" data-tool="pen" title="画笔">&#9998;</button>
+      <button class="tool-btn" data-tool="eraser" title="橡皮擦">&#9744;</button>
+      <button class="tool-btn" data-tool="line" title="直线">&#9585;</button>
+      <button class="tool-btn" data-tool="rect" title="矩形">&#9633;</button>
+      <button class="tool-btn" data-tool="circle" title="圆形">&#9711;</button>
+      <button class="tool-btn" data-tool="text" title="文字">T</button>
+      <div class="tool-separator"></div>
+      <div class="color-picker-wrapper">
+        <div class="color-preview" id="colorPreview" style="background:#4f46e5"></div>
+        <input type="color" id="colorPicker" value="#4f46e5">
+      </div>
+      <input type="range" class="size-slider" id="sizeSlider" min="1" max="30" value="3" title="画笔粗细">
+      <div class="tool-separator"></div>
+      <button class="tool-btn" id="btnUndo" title="撤销">&#8617;</button>
+      <button class="tool-btn" id="btnRedo" title="重做">&#8618;</button>
+      <button class="tool-btn" id="btnClear" title="清空白板">&#128465;</button>
+    </div>
+
+    <div class="whiteboard-container" id="whiteboardContainer">
+      <canvas id="whiteboard"></canvas>
+      <div class="text-input-overlay" id="textInputOverlay">
+        <input type="text" id="textInput" placeholder="输入文字...">
+      </div>
+      <div class="clear-confirm" id="clearConfirm">
+        <p>确定要清空白板吗？</p>
+        <button class="btn btn-danger" id="confirmClear">确定清空</button>
+        <button class="btn btn-cancel" id="cancelClear">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧 - 聊天 -->
+  <div class="sidebar-right" id="sidebarRight">
+    <div class="panel-header">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      聊天
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-area">
+      <div class="emoji-bar" id="emojiBar"></div>
+      <div class="chat-input-row">
+        <button class="emoji-toggle" id="emojiToggle" title="表情">&#9786;</button>
+        <input type="text" id="chatInput" placeholder="输入消息...">
+        <button class="btn send-btn" id="sendBtn" title="发送">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 屏幕共享选择覆盖 -->
+<div class="share-overlay" id="shareOverlay"></div>
+<div class="share-selection" id="shareSelection">
+  <div class="share-selection-label">选择要共享的区域</div>
+</div>
+<div class="shared-area-highlight" id="sharedAreaHighlight">
+  <div class="shared-area-label">&#128249; 正在共享此区域</div>
+</div>
+
+<!-- 移动端底部选项卡 -->
+<div class="mobile-tabs" id="mobileTabs">
+  <button class="mobile-tab active" data-tab="whiteboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    白板
+  </button>
+  <button class="mobile-tab" data-tab="participants">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    成员
+  </button>
+  <button class="mobile-tab" data-tab="chat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    聊天
+  </button>
+</div>
+
+<script>
+// ======================= 应用状态 =======================
+const state = {
+  participants: [],
+  chatMessages: [],
+  drawings: [],
+  redoStack: [],
+  currentTool: 'pen',
+  color: '#4f46e5',
+  lineWidth: 3,
+  isDrawing: false,
+  isRecording: false,
+  recordingTime: 0,
+  recordingTimer: null,
+  isSharing: false,
+  shareRect: null,
+  shareDragging: false,
+  shareStart: null,
+  currentPath: [],
+  startPoint: null,
+  userID: 'user-self',
+  userName: '我',
+};
+
+// ======================= 模拟数据 =======================
+const avatarColors = ['#ef4444','#f59e0b','#22c55e','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+
+const mockParticipants = [
+  { id: 'user-self', name: '我 (张三)', role: '教师', color: '#4f46e5', status: 'online' },
+  { id: 'user-1', name: '李四', role: '学生', color: '#3b82f6', status: 'online' },
+  { id: 'user-2', name: '王五', role: '学生', color: '#22c55e', status: 'away' },
+  { id: 'user-3', name: '赵六', role: '学生', color: '#ec4899', status: 'online' },
+  { id: 'user-4', name: '孙七', role: '助教', color: '#f59e0b', status: 'muted' },
+  { id: 'user-5', name: '周八', role: '学生', color: '#8b5cf6', status: 'online' },
+];
+
+const mockChats = [
+  { user: 'user-1', text: '老师好！今天讲什么内容？', time: '09:01' },
+  { user: 'user-self', text: '大家好，今天我们讲数据结构基础', time: '09:02' },
+  { user: 'user-3', text: '太好了，期待好久啦 😊', time: '09:02' },
+  { user: 'user-2', text: '请问有课件吗？', time: '09:03' },
+  { user: 'user-self', text: '课件已经在白板上展示了，大家可以看', time: '09:04' },
+];
+
+const emojis = ['😀','😂','🥰','😎','🤔','👍','👎','❤️','🔥','✅','❌','⭐','🎉','👏','💯','🤣','😅','😊','😘','🤗','😇','🥳','😋','🤩','😢','😡','👍🏽','🙌','💪','🎓','📚','✏️'];
+
+// ======================= 初始化 =======================
+document.addEventListener('DOMContentLoaded', () => {
+  initParticipants();
+  initChat();
+  initWhiteboard();
+  initEmojiBar();
+  initEvents();
+  addSystemMessage('系统', '张三 加入了教室');
+  setTimeout(() => addSystemMessage('系统', '李四 加入了教室'), 500);
+  setTimeout(() => addSystemMessage('系统', '王五 加入了教室'), 1000);
+  setTimeout(() => addSystemMessage('系统', '赵六 加入了教室'), 1500);
+});
+
+// ======================= 参与者 =======================
+function initParticipants() {
+  state.participants = mockParticipants;
+  renderParticipants();
+}
+
+function renderParticipants() {
+  const list = document.getElementById('participantList');
+  const count = document.getElementById('participantCount');
+  count.textContent = state.participants.length;
+
+  list.innerHTML = state.participants.map(p => `
+    <div class="participant-item">
+      <div class="avatar" style="background:${p.color}">${p.name[0]}
+        <div class="status-dot ${p.status}"></div>
+      </div>
+      <div class="participant-info">
+        <div class="participant-name">${p.name}</div>
+        <div class="participant-role">${p.role}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ======================= 聊天 =======================
+function initChat() {
+  mockChats.forEach(msg => renderChatMessage(msg.user, msg.text, msg.time));
+  scrollChatToBottom();
+}
+
+function renderChatMessage(userID, text, time) {
+  const container = document.getElementById('chatMessages');
+  const user = state.participants.find(p => p.id === userID) || { name: userID, color: '#888' };
+  const isSelf = userID === 'user-self';
+
+  const div = document.createElement('div');
+  div.className = `chat-message${isSelf ? ' self' : ''}`;
+  div.innerHTML = `
+    <div class="avatar" style="background:${user.color}">${user.name[0]}</div>
+    <div class="message-content">
+      <div class="message-header">
+        <span class="message-name">${user.name}</span>
+        <span class="message-time">${time || getCurrentTime()}</span>
+      </div>
+      <div class="message-text">${escapeHtml(text)}</div>
+    </div>
+  `;
+  container.appendChild(div);
+  scrollChatToBottom();
+}
+
+function addSystemMessage(prefix, text) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'system-message';
+  div.textContent = `${prefix}: ${text}`;
+  container.appendChild(div);
+  scrollChatToBottom();
+}
+
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  renderChatMessage('user-self', text);
+  state.chatMessages.push({ user: 'user-self', text, time: getCurrentTime() });
+  input.value = '';
+  simulateReply(text);
+}
+
+function simulateReply(userMsg) {
+  const replies = [
+    { user: 'user-1', texts: ['好的老师！','明白了 👍','有问题我再问'] },
+    { user: 'user-3', texts: ['收到！','这个很有趣','学到了 🎉'] },
+    { user: 'user-2', texts: ['记下了','谢谢老师','了解'] },
+  ];
+  const r = replies[Math.floor(Math.random() * replies.length)];
+  const t = r.texts[Math.floor(Math.random() * r.texts.length)];
+  setTimeout(() => {
+    renderChatMessage(r.user, t);
+    state.chatMessages.push({ user: r.user, text: t, time: getCurrentTime() });
+  }, 1500 + Math.random() * 2000);
+}
+
+function scrollChatToBottom() {
+  const c = document.getElementById('chatMessages');
+  requestAnimationFrame(() => c.scrollTop = c.scrollHeight);
+}
+
+function getCurrentTime() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ======================= 白板 =======================
+function initWhiteboard() {
+  const canvas = document.getElementById('whiteboard');
+  const container = document.getElementById('whiteboardContainer');
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redrawAll();
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  // 鼠标事件
+  canvas.addEventListener('mousedown', onPointerDown);
+  canvas.addEventListener('mousemove', onPointerMove);
+  canvas.addEventListener('mouseup', onPointerUp);
+  canvas.addEventListener('mouseleave', onPointerUp);
+
+  // 触摸事件
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onPointerDown(touchToMouse(e)); }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onPointerMove(touchToMouse(e)); }, { passive: false });
+  canvas.addEventListener('touchend', (e) => { e.preventDefault(); onPointerUp(); }, { passive: false });
+}
+
+function touchToMouse(e) {
+  const touch = e.touches[0] || e.changedTouches[0];
+  return { clientX: touch.clientX, clientY: touch.clientY };
+}
+
+function getCanvasPos(e) {
+  const canvas = document.getElementById('whiteboard');
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function onPointerDown(e) {
+  const pos = getCanvasPos(e);
+  state.isDrawing = true;
+
+  if (state.currentTool === 'text') {
+    showTextInput(pos);
+    return;
+  }
+
+  state.currentPath = [pos];
+  state.startPoint = pos;
+
+  if (state.currentTool === 'pen' || state.currentTool === 'eraser') {
+    const ctx = document.getElementById('whiteboard').getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+}
+
+function onPointerMove(e) {
+  if (!state.isDrawing) return;
+  const pos = getCanvasPos(e);
+  const ctx = document.getElementById('whiteboard').getContext('2d');
+  const tool = state.currentTool;
+
+  if (tool === 'pen') {
+    ctx.strokeStyle = state.color;
+    ctx.lineWidth = state.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    state.currentPath.push(pos);
+  } else if (tool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth = state.lineWidth * 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    state.currentPath.push(pos);
+  } else if (tool === 'line' || tool === 'rect' || tool === 'circle') {
+    redrawAll();
+    ctx.strokeStyle = state.color;
+    ctx.lineWidth = state.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'source-over';
+
+    const sp = state.startPoint;
+    if (tool === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(sp.x, sp.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (tool === 'rect') {
+      ctx.beginPath();
+      ctx.strokeRect(sp.x, sp.y, pos.x - sp.x, pos.y - sp.y);
+    } else if (tool === 'circle') {
+      const rx = (pos.x - sp.x) / 2;
+      const ry = (pos.y - sp.y) / 2;
+      const cx = sp.x + rx;
+      const cy = sp.y + ry;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+}
+
+function onPointerUp() {
+  if (!state.isDrawing) return;
+  state.isDrawing = false;
+  const ctx = document.getElementById('whiteboard').getContext('2d');
+  ctx.globalCompositeOperation = 'source-over';
+
+  if (state.currentPath.length > 0 || state.startPoint) {
+    state.drawings.push({
+      tool: state.currentTool,
+      color: state.color,
+      lineWidth: state.lineWidth,
+      path: [...state.currentPath],
+      start: state.startPoint ? { ...state.startPoint } : null,
+      end: state.currentPath.length ? { ...state.currentPath[state.currentPath.length - 1] } : null,
+    });
+    state.redoStack = [];
+  }
+  state.currentPath = [];
+  state.startPoint = null;
+}
+
+function showTextInput(pos) {
+  const overlay = document.getElementById('textInputOverlay');
+  const input = document.getElementById('textInput');
+  overlay.style.display = 'block';
+  overlay.style.left = pos.x + 'px';
+  overlay.style.top = pos.y + 'px';
+  input.value = '';
+  input.focus();
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      const text = input.value.trim();
+      if (text) {
+        const ctx = document.getElementById('whiteboard').getContext('2d');
+        ctx.font = `${Math.max(16, state.lineWidth * 5)}px sans-serif`;
+        ctx.fillStyle = state.color;
+        ctx.fillText(text, pos.x, pos.y);
+        state.drawings.push({
+          tool: 'text',
+          color: state.color,
+          lineWidth: state.lineWidth,
+          text,
+          x: pos.x,
+          y: pos.y,
+        });
+        state.redoStack = [];
+      }
+      overlay.style.display = 'none';
+      state.isDrawing = false;
+    } else if (e.key === 'Escape') {
+      overlay.style.display = 'none';
+      state.isDrawing = false;
+    }
+  };
+}
+
+function redrawAll() {
+  const canvas = document.getElementById('whiteboard');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+  state.drawings.forEach(d => {
+    ctx.strokeStyle = d.color;
+    ctx.fillStyle = d.color;
+    ctx.lineWidth = d.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = d.tool === 'eraser' ? 'destination-out' : 'source-over';
+
+    if (d.tool === 'pen' || d.tool === 'eraser') {
+      if (d.path.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(d.path[0].x, d.path[0].y);
+      for (let i = 1; i < d.path.length; i++) {
+        ctx.lineTo(d.path[i].x, d.path[i].y);
+      }
+      ctx.stroke();
+      if (d.tool === 'eraser') ctx.lineWidth = d.lineWidth * 4;
+    } else if (d.tool === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(d.start.x, d.start.y);
+      ctx.lineTo(d.end.x, d.end.y);
+      ctx.stroke();
+    } else if (d.tool === 'rect') {
+      ctx.beginPath();
+      ctx.strokeRect(d.start.x, d.start.y, d.end.x - d.start.x, d.end.y - d.start.y);
+    } else if (d.tool === 'circle') {
+      const rx = (d.end.x - d.start.x) / 2;
+      const ry = (d.end.y - d.start.y) / 2;
+      ctx.beginPath();
+      ctx.ellipse(d.start.x + rx, d.start.y + ry, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (d.tool === 'text') {
+      ctx.font = `${Math.max(16, d.lineWidth * 5)}px sans-serif`;
+      ctx.fillText(d.text, d.x, d.y);
+    }
+  });
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// ======================= 表情栏 =======================
+function initEmojiBar() {
+  const bar = document.getElementById('emojiBar');
+  bar.innerHTML = emojis.map(e => `<button class="emoji-btn" data-emoji="${e}">${e}</button>`).join('');
+}
+
+// ======================= 事件绑定 =======================
+function initEvents() {
+  // 工具选择
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.currentTool = btn.dataset.tool;
+      const container = document.getElementById('whiteboardContainer');
+      container.style.cursor = btn.dataset.tool === 'eraser' ? 'cell' : 'crosshair';
+    });
+  });
+
+  // 颜色选择
+  document.getElementById('colorPicker').addEventListener('input', (e) => {
+    state.color = e.target.value;
+    document.getElementById('colorPreview').style.background = e.target.value;
+  });
+
+  // 画笔粗细
+  document.getElementById('sizeSlider').addEventListener('input', (e) => {
+    state.lineWidth = parseInt(e.target.value);
+  });
+
+  // 撤销
+  document.getElementById('btnUndo').addEventListener('click', () => {
+    if (state.drawings.length === 0) return;
+    state.redoStack.push(state.drawings.pop());
+    redrawAll();
+  });
+
+  // 重做
+  document.getElementById('btnRedo').addEventListener('click', () => {
+    if (state.redoStack.length === 0) return;
+    state.drawings.push(state.redoStack.pop());
+    redrawAll();
+  });
+
+  // 清空白板
+  document.getElementById('btnClear').addEventListener('click', () => {
+    document.getElementById('clearConfirm').classList.add('active');
+  });
+  document.getElementById('confirmClear').addEventListener('click', () => {
+    state.drawings = [];
+    state.redoStack = [];
+    redrawAll();
+    document.getElementById('clearConfirm').classList.remove('active');
+  });
+  document.getElementById('cancelClear').addEventListener('click', () => {
+    document.getElementById('clearConfirm').classList.remove('active');
+  });
+
+  // 发送消息
+  document.getElementById('sendBtn').addEventListener('click', sendMessage);
+  document.getElementById('chatInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  // 表情栏
+  document.getElementById('emojiToggle').addEventListener('click', () => {
+    document.getElementById('emojiBar').classList.toggle('open');
+    document.getElementById('emojiToggle').classList.toggle('active');
+  });
+  document.getElementById('emojiBar').addEventListener('click', (e) => {
+    if (e.target.classList.contains('emoji-btn')) {
+      const input = document.getElementById('chatInput');
+      input.value += e.target.dataset.emoji;
+      input.focus();
+    }
+  });
+
+  // 录制
+  document.getElementById('btnRecord').addEventListener('click', toggleRecording);
+
+  // 屏幕共享
+  document.getElementById('btnShare').addEventListener('click', startShareSelection);
+
+  // 屏幕共享选择拖拽
+  document.getElementById('shareOverlay').addEventListener('mousedown', shareDragStart);
+  document.addEventListener('mousemove', shareDragMove);
+  document.addEventListener('mouseup', shareDragEnd);
+  document.getElementById('shareOverlay').addEventListener('touchstart', (e) => { e.preventDefault(); shareDragStart(touchToMouse(e)); }, { passive: false });
+  document.addEventListener('touchmove', (e) => { shareDragMove(touchToMouse(e)); }, { passive: false });
+  document.addEventListener('touchend', (e) => { shareDragEnd(); });
+
+  // 复制房间号
+  document.getElementById('roomId').addEventListener('click', () => {
+    navigator.clipboard?.writeText('CS-2024-001');
+    const el = document.getElementById('roomId');
+    el.textContent = '已复制!';
+    setTimeout(() => el.textContent = '房间: CS-2024-001', 1500);
+  });
+
+  // 移动端选项卡
+  document.querySelectorAll('.mobile-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      switchMobileTab(tab.dataset.tab);
+    });
+  });
+
+  // 离开
+  document.getElementById('btnLeave').addEventListener('click', () => {
+    if (confirm('确定要离开教室吗？')) {
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#94a3b8;font-size:20px;font-family:sans-serif;">您已离开教室</div>';
+    }
+  });
+
+  // 键盘快捷键
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      e.preventDefault();
+      document.getElementById('btnUndo').click();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+      e.preventDefault();
+      document.getElementById('btnRedo').click();
+    }
+  });
+}
+
+// ======================= 录制 =======================
+function toggleRecording() {
+  state.isRecording = !state.isRecording;
+  const btn = document.getElementById('btnRecord');
+  const indicator = document.getElementById('recordingIndicator');
+
+  if (state.isRecording) {
+    btn.classList.add('recording');
+    indicator.classList.add('active');
+    state.recordingTime = 0;
+    state.recordingTimer = setInterval(() => {
+      state.recordingTime++;
+      const m = String(Math.floor(state.recordingTime / 60)).padStart(2, '0');
+      const s = String(state.recordingTime % 60).padStart(2, '0');
+      indicator.querySelector('span').textContent = `录制中 ${m}:${s}`;
+    }, 1000);
+    addSystemMessage('系统', '录制已开始');
+  } else {
+    btn.classList.remove('recording');
+    indicator.classList.remove('active');
+    clearInterval(state.recordingTimer);
+    indicator.querySelector('span').textContent = '录制中 00:00';
+    addSystemMessage('系统', `录制已停止，时长 ${formatTime(state.recordingTime)}`);
+  }
+}
+
+function formatTime(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, '0');
+  const s = String(sec % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// ======================= 屏幕共享 =======================
+function startShareSelection() {
+  if (state.isSharing) {
+    stopSharing();
+    return;
+  }
+  const overlay = document.getElementById('shareOverlay');
+  const selection = document.getElementById('shareSelection');
+  overlay.classList.add('active');
+  selection.classList.add('active');
+  selection.style.left = '0px';
+  selection.style.top = '0px';
+  selection.style.width = '0px';
+  selection.style.height = '0px';
+  state.shareDragging = false;
+  document.getElementById('btnShare').classList.remove('active');
+  document.getElementById('btnShare').querySelector('span').textContent = '取消';
+}
+
+function stopSharing() {
+  state.isSharing = false;
+  state.shareRect = null;
+  document.getElementById('sharedAreaHighlight').classList.remove('active');
+  document.getElementById('btnShare').classList.remove('active');
+  document.getElementById('btnShare').querySelector('span').textContent = '共享';
+  addSystemMessage('系统', '屏幕共享已停止');
+}
+
+function shareDragStart(e) {
+  state.shareDragging = true;
+  state.shareStart = { x: e.clientX, y: e.clientY };
+}
+
+function shareDragMove(e) {
+  if (!state.shareDragging) return;
+  const sel = document.getElementById('shareSelection');
+  const sx = Math.min(state.shareStart.x, e.clientX);
+  const sy = Math.min(state.shareStart.y, e.clientY);
+  const sw = Math.abs(e.clientX - state.shareStart.x);
+  const sh = Math.abs(e.clientY - state.shareStart.y);
+  sel.style.left = sx + 'px';
+  sel.style.top = sy + 'px';
+  sel.style.width = sw + 'px';
+  sel.style.height = sh + 'px';
+}
+
+function shareDragEnd() {
+  if (!state.shareDragging) return;
+  state.shareDragging = false;
+
+  const sel = document.getElementById('shareSelection');
+  const rect = {
+    left: parseInt(sel.style.left),
+    top: parseInt(sel.style.top),
+    width: parseInt(sel.style.width),
+    height: parseInt(sel.style.height),
+  };
+
+  document.getElementById('shareOverlay').classList.remove('active');
+  sel.classList.remove('active');
+
+  if (rect.width > 20 && rect.height > 20) {
+    state.isSharing = true;
+    state.shareRect = rect;
+
+    const highlight = document.getElementById('sharedAreaHighlight');
+    highlight.classList.add('active');
+    highlight.style.left = rect.left + 'px';
+    highlight.style.top = rect.top + 'px';
+    highlight.style.width = rect.width + 'px';
+    highlight.style.height = rect.height + 'px';
+
+    document.getElementById('btnShare').classList.add('active');
+    document.getElementById('btnShare').querySelector('span').textContent = '停止';
+    addSystemMessage('系统', '屏幕共享已开始');
+  } else {
+    document.getElementById('btnShare').querySelector('span').textContent = '共享';
+  }
+}
+
+// ======================= 移动端切换 =======================
+function switchMobileTab(tab) {
+  document.getElementById('sidebarLeft').classList.remove('mobile-visible');
+  document.getElementById('sidebarRight').classList.remove('mobile-visible');
+  if (tab === 'participants') {
+    document.getElementById('sidebarLeft').classList.add('mobile-visible');
+  } else if (tab === 'chat') {
+    document.getElementById('sidebarRight').classList.add('mobile-visible');
+  }
+}
+</script>
+</body>
+</html>
