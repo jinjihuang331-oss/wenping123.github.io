@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>虚拟教室</title>
+<style>
+/* ========== CSS Variables & Reset ========== */
+:root {
+  --primary: #4f46e5;
+  --primary-light: #6366f1;
+  --primary-dark: #3730a3;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --bg-input: #334155;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --radius: 10px;
+  --shadow: 0 4px 24px rgba(0,0,0,.35);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ========== Header ========== */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 54px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 20;
+}
+.header-left { display:flex; align-items:center; gap:10px; }
+.header-title { font-size:17px; font-weight:700; letter-spacing:.3px; }
+.header-title span { color:var(--primary-light); }
+.live-badge {
+  font-size:11px; padding:2px 8px; border-radius:20px;
+  background:rgba(239,68,68,.15); color:#f87171; font-weight:600;
+  animation: pulse-badge 2s infinite;
+}
+@keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:.55} }
+.header-right { display:flex; gap:8px; }
+
+/* Icon button */
+.icon-btn {
+  width:36px; height:36px; border-radius:50%; border:none;
+  background:var(--bg-input); color:var(--text-muted); font-size:16px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition: background .2s, color .2s, transform .15s;
+}
+.icon-btn:hover { background:var(--border); color:var(--text); transform:scale(1.08); }
+
+/* ========== Main Layout ========== */
+.main {
+  display: flex;
+  height: calc(100vh - 54px);
+  overflow: hidden;
+}
+
+/* ========== Sidebar (Participants) ========== */
+.sidebar {
+  width: 230px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform .3s ease, width .3s;
+}
+.sidebar-header {
+  padding: 14px 14px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.participant-count {
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 12px;
+}
+.participant-list { flex:1; overflow-y:auto; padding:0 8px 8px; }
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .15s;
+}
+.participant:hover { background:rgba(255,255,255,.05); }
+.avatar {
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:14px; color:#fff; flex-shrink:0;
+}
+.participant-info { flex:1; min-width:0; }
+.participant-name { font-size:13.5px; font-weight:500; }
+.participant-role { font-size:11px; color:var(--text-muted); }
+.owner-badge {
+  font-size:9px; padding:1px 5px; border-radius:4px;
+  background:rgba(234,179,8,.15); color:#fbbf24; font-weight:600;
+}
+
+/* ========== Center Area ========== */
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.tool-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.tool-sep { width:1px; height:24px; background:var(--border); margin:0 4px; }
+.tool-btn {
+  height:32px; padding: 0 10px; border-radius:6px; border:1px solid transparent;
+  background:var(--bg-input); color:var(--text-muted); font-size:13px;
+  cursor:pointer; display:flex; align-items:center; gap:5px;
+  transition: all .15s; white-space:nowrap;
+}
+.tool-btn:hover { background:var(--border); color:var(--text); }
+.tool-btn.active { background:var(--primary); color:#fff; border-color:var(--primary-light); }
+
+.color-input {
+  width:28px; height:28px; border:2px solid var(--border);
+  border-radius:6px; cursor:pointer; padding:0; background:none;
+}
+.size-slider {
+  width:80px; accent-color: var(--primary); cursor:pointer;
+}
+
+/* Canvas container */
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #fefefe;
+}
+#board {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* Screen share overlay */
+.share-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: none;
+  z-index: 10;
+}
+.share-overlay.active { display:block; }
+.share-hint {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  color: rgba(0,0,0,.35);
+  font-size: 18px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+  text-align: center;
+}
+.share-hint.hidden { display:none; }
+.share-rect {
+  position: absolute;
+  border: 3px dashed var(--primary);
+  background: rgba(79,70,229,.08);
+  border-radius: 4px;
+  display: none;
+  z-index: 11;
+}
+.share-rect.dragging { display:block; }
+.share-rect.confirmed {
+  border-style: solid;
+  border-color: var(--success);
+  background: rgba(34,197,94,.08);
+  animation: glow-green 2s infinite;
+}
+@keyframes glow-green {
+  0%,100%{ box-shadow: 0 0 8px rgba(34,197,94,.3); }
+  50%{ box-shadow: 0 0 20px rgba(34,197,94,.5); }
+}
+.share-actions {
+  position:absolute; z-index:12;
+  display:flex; gap:6px;
+}
+.share-actions button {
+  padding:5px 14px; border-radius:6px; border:none;
+  font-size:12px; font-weight:600; cursor:pointer;
+  transition: transform .15s;
+}
+.share-actions button:hover { transform:scale(1.05); }
+.btn-confirm-share { background:var(--success); color:#fff; }
+.btn-cancel-share { background:var(--bg-input); color:var(--text); }
+.btn-stop-share { background:var(--danger); color:#fff; }
+
+/* Recording indicator */
+.rec-indicator {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(239,68,68,.9);
+  border-radius: 20px;
+  z-index: 15;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+.rec-indicator.active { display:flex; }
+.rec-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:#fff;
+  animation: blink 1s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ========== Chat Panel ========== */
+.chat-panel {
+  width: 290px;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform .3s ease, width .3s;
+}
+.chat-header {
+  padding: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.msg {
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  animation: fade-in .25s ease;
+  word-break: break-word;
+}
+@keyframes fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.msg.self {
+  align-self: flex-end;
+  background: var(--primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.msg.other {
+  align-self: flex-start;
+  background: var(--bg-input);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.msg-sender { font-size:11px; font-weight:600; margin-bottom:2px; opacity:.7; }
+.msg.self .msg-sender { text-align:right; }
+
+/* Emoji bar */
+.emoji-bar {
+  display: none;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  gap: 4px;
+  flex-wrap: wrap;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.emoji-bar.open { display:flex; }
+.emoji-bar button {
+  width:34px; height:34px; border:none; background:none;
+  font-size:20px; cursor:pointer; border-radius:6px;
+  transition: background .15s, transform .15s;
+}
+.emoji-bar button:hover { background:var(--bg-input); transform:scale(1.15); }
+
+/* Chat input */
+.chat-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+.chat-input {
+  flex: 1;
+  height: 36px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  padding: 0 14px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .2s;
+}
+.chat-input:focus { border-color: var(--primary); }
+.chat-send {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s, transform .15s;
+}
+.chat-send:hover { background:var(--primary-light); transform:scale(1.08); }
+
+/* ========== Bottom Bar (Mobile) ========== */
+.bottom-bar {
+  display: none;
+  height: 56px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+.bottom-bar .icon-btn { width:42px; height:42px; font-size:18px; }
+.bottom-bar .icon-btn.rec-active { background:var(--danger); color:#fff; animation:blink 1s infinite; }
+
+/* ========== Mobile Panel Overlay ========== */
+.panel-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+.panel-overlay.active { display:flex; }
+.panel-overlay .panel-bg {
+  flex-shrink: 0;
+}
+.panel-overlay .panel-content {
+  flex:1;
+  background: var(--bg-card);
+  display:flex;
+  flex-direction:column;
+  animation: slide-in .3s ease;
+}
+@keyframes slide-in { from{transform:translateX(100%)} to{transform:translateX(0)} }
+
+/* ========== Mobile Responsive ========== */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: 54px; left: 0; bottom: 0;
+    z-index: 25;
+    transform: translateX(-100%);
+    width: 260px;
+  }
+  .sidebar.open { transform:translateX(0); }
+  .chat-panel {
+    position: fixed;
+    top: 54px; right: 0; bottom: 56px;
+    z-index: 25;
+    transform: translateX(100%);
+    width: 300px;
+  }
+  .chat-panel.open { transform:translateX(0); }
+  .bottom-bar { display:flex; }
+  .main { height: calc(100vh - 54px - 56px); }
+  .toolbar { padding: 6px 8px; gap:4px; }
+  .size-slider { width:60px; }
+  .tool-btn { padding: 0 7px; font-size:12px; }
+}
+@media (max-width: 480px) {
+  .header-title { font-size:15px; }
+  .toolbar { gap:3px; }
+  .tool-sep { margin:0 2px; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<div class="header">
+  <div class="header-left">
+    <button class="icon-btn" id="toggleSidebar" title="参与者">&#128101;</button>
+    <div class="header-title"><span>虚拟</span>教室</div>
+    <div class="live-badge">LIVE</div>
+  </div>
+  <div class="header-right">
+    <div class="rec-indicator" id="recIndicator">
+      <div class="rec-dot"></div> REC
+    </div>
+    <button class="icon-btn" id="toggleChatMobile" title="聊天">&#128172;</button>
+  </div>
+</div>
+
+<!-- ===== Main ===== -->
+<div class="main">
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      参与者 <span class="participant-count" id="pCount">0</span>
+    </div>
+    <div class="participant-list" id="pList"></div>
+  </div>
+
+  <!-- Center -->
+  <div class="center">
+    <div class="toolbar" id="toolbar">
+      <div class="tool-group">
+        <button class="tool-btn active" data-tool="pen">&#9998; 画笔</button>
+        <button class="tool-btn" data-tool="eraser">&#9003; 橡皮</button>
+        <button class="tool-btn" data-tool="line">&#9135; 直线</button>
+        <button class="tool-btn" data-tool="rect">&#9633; 矩形</button>
+        <button class="tool-btn" data-tool="circle">&#9711; 圆形</button>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-group">
+        <input type="color" class="color-input" id="colorPicker" value="#1e293b" title="颜色">
+        <input type="range" class="size-slider" id="sizeSlider" min="1" max="20" value="3" title="粗细">
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-group">
+        <button class="tool-btn" id="undoBtn">&#8630; 撤销</button>
+        <button class="tool-btn" id="clearBtn">&#128465; 清除</button>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-group">
+        <button class="tool-btn" id="shareBtn">&#128241; 共享屏幕</button>
+        <button class="tool-btn" id="recBtn">&#9679; 录制</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="board"></canvas>
+      <div class="share-overlay" id="shareOverlay">
+        <div class="share-hint" id="shareHint">点击并拖拽选择要共享的区域</div>
+        <div class="share-rect" id="shareRect"></div>
+        <div class="share-actions" id="shareActions">
+          <button class="btn-confirm-share" id="confirmShare">确认共享</button>
+          <button class="btn-cancel-share" id="cancelShare">取消</button>
+        </div>
+      </div>
+      <div class="rec-indicator active" id="recIndicatorCanvas" style="display:none;top:12px;left:12px;">
+        <div class="rec-dot"></div> REC
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-header">聊天 <span style="font-size:11px;text-transform:none;letter-spacing:0;">&#128172;</span></div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="emoji-bar" id="emojiBar"></div>
+    <div class="chat-input-bar">
+      <button class="icon-btn" id="emojiToggle" style="width:32px;height:32px;font-size:16px;" title="表情">&#128512;</button>
+      <input class="chat-input" id="chatInput" placeholder="输入消息..." maxlength="500">
+      <button class="chat-send" id="chatSend" title="发送">&#10148;</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Bar (Mobile) -->
+<div class="bottom-bar" id="bottomBar">
+  <button class="icon-btn" id="mSidebar" title="参与者">&#128101;</button>
+  <button class="icon-btn" id="mChat" title="聊天">&#128172;</button>
+  <button class="icon-btn" id="mShare" title="共享屏幕">&#128241;</button>
+  <button class="icon-btn" id="mRec" title="录制">&#9679;</button>
+</div>
+
+<script>
+// ========================================
+// State
+// ========================================
+const COLORS = ['#3b82f6','#8b5cf6','#ec4899','#f97316','#22c55e','#eab308','#ef4444','#64748b'];
+const EMOJIS = [
+  '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😉','😊','😇','🥰','😍','🤩','😘',
+  '😋','😛','😜','🤪','😎','🤗','🤔','🫡','🤐','😶','😏','😒','🙄','😬','😮','😯',
+  '😲','😳','🥺','😢','😭','😤','😡','🤬','😈','👻','💀','🤖','👽','💩','👋','👍',
+  '👏','🙌','🤝','💪','✌️','🤞','🫶','👆','👇','👉','📌','✏️','📝','📖','💡','✅',
+  '❌','⚛️','🔬','🧮','📊','🎓','🏫','🧑‍🏫','💡'
+];
+
+const state = {
+  tool: 'pen',
+  color: '#1e293b',
+  size: 3,
+  drawing: false,
+  isRecording: false,
+  isSharing: false,
+  shareDrag: false,
+  shareStart: null,
+  shareEnd: null,
+  shareConfirmed: false,
+  history: [],      // array of ImageData
+  currentPath: [],   // points for current freehand stroke
+  shapeStart: null,
+  messages: [],
+  emojiBarOpen: false,
+};
+
+const currentUser = { name: '我', color: '#6366f1' };
+
+const participants = [
+  { name: '我',        color: '#6366f1', role: 'owner', status: 'online' },
+  { name: '张老师',    color: '#3b82f6', role: 'teacher', status: 'online' },
+  { name: '李同学',    color: '#22c55e', role: 'student', status: 'online' },
+  { name: '王同学',    color: '#f97316', role: 'student', status: 'online' },
+  { name: '赵同学',    color: '#ec4899', role: 'student', status: 'away' },
+  { name: '孙同学',    color: '#8b5cf6', role: 'student', status: 'online' },
+  { name: '周同学',    color: '#eab308', role: 'student', status: 'offline' },
+];
+
+// ========================================
+// DOM refs
+// ========================================
+const $ = id => document.getElementById(id);
+const canvas   = $('board');
+const ctx      = canvas.getContext('2d');
+const canvasWrap = $('canvasWrap');
+
+// ========================================
+// Init Canvas
+// ========================================
+function resizeCanvas() {
+  const r = canvasWrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  // save current image
+  let img = null;
+  if (canvas.width > 0 && canvas.height > 0) {
+    img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+  canvas.width = r.width * dpr;
+  canvas.height = r.height * dpr;
+  canvas.style.width = r.width + 'px';
+  canvas.style.height = r.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#fefefe';
+  ctx.fillRect(0, 0, r.width, r.height);
+  if (img) {
+    ctx.putImageData(img, 0, 0);
+  }
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+saveState(); // initial blank
+
+function saveState() {
+  state.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  if (state.history.length > 50) state.history.shift();
+}
+
+// ========================================
+// Whiteboard Drawing
+// ========================================
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+
+function isShapeTool() {
+  return state.tool === 'line' || state.tool === 'rect' || state.tool === 'circle';
+}
+
+function startDraw(e) {
+  if (state.shareDrag || state.shareConfirmed) return;
+  state.drawing = true;
+  const p = getPos(e);
+  if (isShapeTool()) {
+    state.shapeStart = p;
+  } else {
+    state.currentPath = [p];
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }
+}
+
+function moveDraw(e) {
+  if (!state.drawing) return;
+  const p = getPos(e);
+  if (isShapeTool()) {
+    // restore last saved state and draw preview
+    const prev = state.history[state.history.length - 1];
+    if (prev) ctx.putImageData(prev, 0, 0);
+    drawShape(state.shapeStart, p);
+  } else {
+    ctx.lineWidth = state.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (state.tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = state.color;
+    }
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    state.currentPath.push(p);
+  }
+}
+
+function drawShape(a, b) {
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = state.color;
+  ctx.lineWidth = state.size;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (state.tool === 'line') {
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+  } else if (state.tool === 'rect') {
+    ctx.rect(a.x, a.y, b.x - a.x, b.y - a.y);
+  } else if (state.tool === 'circle') {
+    const rx = Math.abs(b.x - a.x) / 2;
+    const ry = Math.abs(b.y - a.y) / 2;
+    const cx = a.x + (b.x - a.x) / 2;
+    const cy = a.y + (b.y - a.y) / 2;
+    ctx.ellipse(cx, cy, Math.max(1,rx), Math.max(1,ry), 0, 0, Math.PI*2);
+  }
+  ctx.stroke();
+}
+
+function endDraw(e) {
+  if (!state.drawing) return;
+  state.drawing = false;
+  if (isShapeTool() && state.shapeStart) {
+    const p = getPos(e.changedTouches ? e.changedTouches[0] ? e : e : e);
+    const prev = state.history[state.history.length - 1];
+    if (prev) ctx.putImageData(prev, 0, 0);
+    drawShape(state.shapeStart, getPos(e));
+    state.shapeStart = null;
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  saveState();
+}
+
+// Mouse events
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', moveDraw);
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+// Touch events
+canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(e); }, { passive:false });
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); moveDraw(e); }, { passive:false });
+canvas.addEventListener('touchend',   e => { e.preventDefault(); endDraw(e); }, { passive:false });
+
+// ========================================
+// Toolbar
+// ========================================
+document.querySelectorAll('[data-tool]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.tool = btn.dataset.tool;
+    canvas.style.cursor = state.tool === 'eraser' ? 'cell' : 'crosshair';
+  });
+});
+
+$('colorPicker').addEventListener('input', e => { state.color = e.target.value; });
+$('sizeSlider').addEventListener('input', e => { state.size = +e.target.value; });
+
+$('undoBtn').addEventListener('click', () => {
+  if (state.history.length > 1) {
+    state.history.pop();
+    ctx.putImageData(state.history[state.history.length - 1], 0, 0);
+  }
+});
+
+$('clearBtn').addEventListener('click', () => {
+  const dpr = window.devicePixelRatio || 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#fefefe';
+  const r = canvasWrap.getBoundingClientRect();
+  ctx.fillRect(0, 0, r.width, r.height);
+  saveState();
+});
+
+// ========================================
+// Screen Share Simulation
+// ========================================
+const shareOverlay = $('shareOverlay');
+const shareRect = $('shareRect');
+const shareHint  = $('shareHint');
+const shareActions = $('shareActions');
+
+function openShareMode() {
+  if (state.isSharing) return;
+  state.isSharing = true;
+  shareOverlay.classList.add('active');
+  shareHint.classList.remove('hidden');
+  shareActions.style.display = 'none';
+  $('shareBtn').classList.add('active');
+  $('mShare').classList.add('active');
+}
+
+function closeShareMode() {
+  state.isSharing = false;
+  state.shareConfirmed = false;
+  state.shareDrag = false;
+  shareOverlay.classList.remove('active');
+  shareRect.className = 'share-rect';
+  shareRect.style.display = 'none';
+  shareActions.style.display = 'none';
+  shareHint.classList.remove('hidden');
+  $('shareBtn').classList.remove('active');
+  $('mShare').classList.remove('active');
+}
+
+$('shareBtn').addEventListener('click', () => { state.isSharing ? closeShareMode() : openShareMode(); });
+$('mShare').addEventListener('click', () => { state.isSharing ? closeShareMode() : openShareMode(); });
+
+// Share selection dragging
+shareOverlay.addEventListener('mousedown', shareStart);
+shareOverlay.addEventListener('mousemove', shareMove);
+shareOverlay.addEventListener('mouseup', shareEnd);
+shareOverlay.addEventListener('touchstart', e => { e.preventDefault(); shareStart(e); }, { passive:false });
+shareOverlay.addEventListener('touchmove',  e => { e.preventDefault(); shareMove(e); }, { passive:false });
+shareOverlay.addEventListener('touchend',   e => { e.preventDefault(); shareEnd(e); }, { passive:false });
+
+function sharePos(e) {
+  const r = canvasWrap.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  const te = e.changedTouches ? e.changedTouches[0] : t;
+  const src = te || t;
+  return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+function shareStart(e) {
+  if (state.shareConfirmed) return;
+  state.shareDrag = true;
+  state.shareStart = sharePos(e);
+  shareHint.classList.add('hidden');
+}
+
+function shareMove(e) {
+  if (!state.shareDrag) return;
+  state.shareEnd = sharePos(e);
+  const s = state.shareStart, end = state.shareEnd;
+  const x = Math.min(s.x, end.x), y = Math.min(s.y, end.y);
+  const w = Math.abs(end.x - s.x), h = Math.abs(end.y - s.y);
+  shareRect.style.display = 'block';
+  shareRect.className = 'share-rect dragging';
+  shareRect.style.left = x + 'px';
+  shareRect.style.top = y + 'px';
+  shareRect.style.width = w + 'px';
+  shareRect.style.height = h + 'px';
+}
+
+function shareEnd(e) {
+  if (!state.shareDrag) return;
+  state.shareDrag = false;
+  const s = state.shareStart, end = state.shareEnd;
+  if (Math.abs(end.x - s.x) < 10 || Math.abs(end.y - s.y) < 10) {
+    shareRect.style.display = 'none';
+    shareHint.classList.remove('hidden');
+    return;
+  }
+  // show confirm/cancel
+  const x = Math.min(s.x, end.x), y = Math.min(s.y, end.y);
+  shareActions.style.display = 'flex';
+  shareActions.style.left = x + 'px';
+  shareActions.style.top = (y - 40) + 'px';
+}
+
+$('confirmShare').addEventListener('click', e => {
+  e.stopPropagation();
+  state.shareConfirmed = true;
+  shareRect.className = 'share-rect confirmed';
+  // change to stop button
+  shareActions.innerHTML = '<button class="btn-stop-share" id="stopShare">停止共享</button>';
+  $('stopShare').addEventListener('click', () => closeShareMode());
+  shareActions.style.display = 'flex';
+});
+$('cancelShare').addEventListener('click', e => {
+  e.stopPropagation();
+  shareRect.style.display = 'none';
+  shareActions.style.display = 'none';
+  shareHint.classList.remove('hidden');
+});
+
+// ========================================
+// Recording
+// ========================================
+function toggleRecord() {
+  state.isRecording = !state.isRecording;
+  const ind = $('recIndicator');
+  const ind2 = $('recIndicatorCanvas');
+  const recBtn = $('recBtn');
+  const mRec = $('mRec');
+  if (state.isRecording) {
+    ind.classList.add('active');
+    ind2.style.display = 'flex';
+    recBtn.classList.add('active');
+    recBtn.innerHTML = '&#9632; 停止录制';
+    mRec.classList.add('rec-active');
+    addSystemMsg('录制已开始');
+  } else {
+    ind.classList.remove('active');
+    ind2.style.display = 'none';
+    recBtn.classList.remove('active');
+    recBtn.innerHTML = '&#9679; 录制';
+    mRec.classList.remove('rec-active');
+    addSystemMsg('录制已停止');
+  }
+}
+$('recBtn').addEventListener('click', toggleRecord);
+$('mRec').addEventListener('click', toggleRecord);
+
+// ========================================
+// Participants
+// ========================================
+function renderParticipants() {
+  const list = $('pList');
+  list.innerHTML = '';
+  $('pCount').textContent = participants.length;
+  participants.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'participant';
+    const initial = p.name.charAt(0);
+    const status = p.status === 'online' ? '🟢' : p.status === 'away' ? '🟡' : '⚫';
+    d.innerHTML = `
+      <div class="avatar" style="background:${p.color}">${initial}</div>
+      <div class="participant-info">
+        <div class="participant-name">${status} ${p.name}</div>
+        <div class="participant-role">
+          ${p.role === 'owner' ? '<span class="owner-badge">房主</span>' : p.role === 'teacher' ? '教师' : '学生'}
+        </div>
+      </div>`;
+    list.appendChild(d);
+  });
+}
+renderParticipants();
+
+// ========================================
+// Chat
+// ========================================
+function renderEmojiBar() {
+  const bar = $('emojiBar');
+  bar.innerHTML = '';
+  EMOJIS.forEach(em => {
+    const b = document.createElement('button');
+    b.textContent = em;
+    b.addEventListener('click', () => {
+      $('chatInput').value += em;
+      $('chatInput').focus();
+    });
+    bar.appendChild(b);
+  });
+}
+renderEmojiBar();
+
+$('emojiToggle').addEventListener('click', () => {
+  state.emojiBarOpen = !state.emojiBarOpen;
+  $('emojiBar').classList.toggle('open', state.emojiBarOpen);
+});
+
+function addSystemMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg other';
+  el.style.cssText = 'align-self:center;background:transparent;color:var(--text-muted);font-size:12px;max-width:100%;text-align:center;';
+  el.textContent = text;
+  $('chatMessages').appendChild(el);
+  scrollChat();
+}
+
+function renderMsg(msg) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + (msg.self ? 'self' : 'other');
+  el.innerHTML = `<div class="msg-sender">${msg.sender}</div>${escapeHtml(msg.text)}`;
+  $('chatMessages').appendChild(el);
+  scrollChat();
+}
+
+function scrollChat() {
+  const c = $('chatMessages');
+  setTimeout(() => { c.scrollTop = c.scrollHeight; }, 30);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function sendMsg() {
+  const inp = $('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  state.messages.push({ sender: currentUser.name, text, self: true });
+  renderMsg({ sender: currentUser.name, text, self: true });
+  inp.value = '';
+  // simulate reply
+  if (Math.random() > 0.4) {
+    setTimeout(() => {
+      const others = participants.filter(p => p.role !== 'owner' && p.status === 'online');
+      const r = others[Math.floor(Math.random() * others.length)];
+      const replies = ['收到！','好的，明白了！','👍','这个想法不错！','请问可以再解释一下吗？','我同意！','非常有意思','👌 有道理','讲得很好','谢谢老师'];
+      const reply = replies[Math.floor(Math.random() * replies.length)];
+      state.messages.push({ sender: r.name, text: reply, self: false });
+      renderMsg({ sender: r.name, text: reply, self: false });
+    }, 800 + Math.random() * 2000);
+  }
+}
+
+$('chatSend').addEventListener('click', sendMsg);
+$('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
+
+// initial system message
+addSystemMsg('欢迎来到虚拟教室！');
+
+// ========================================
+// Mobile toggles
+// ========================================
+function closeSidebar() { $('sidebar').classList.remove('open'); }
+function closeChat()    { $('chatPanel').classList.remove('open'); }
+
+$('toggleSidebar').addEventListener('click', () => {
+  if (window.innerWidth <= 900) {
+    $('sidebar').classList.toggle('open');
+    closeChat();
+  }
+});
+$('mSidebar').addEventListener('click', () => {
+  $('sidebar').classList.toggle('open');
+  closeChat();
+});
+$('toggleChatMobile').addEventListener('click', () => {
+  if (window.innerWidth <= 900) {
+    $('chatPanel').classList.toggle('open');
+    closeSidebar();
+  }
+});
+$('mChat').addEventListener('click', () => {
+  $('chatPanel').classList.toggle('open');
+  closeSidebar();
+});
+
+// close panels when clicking on center area
+canvasWrap.addEventListener('click', () => {
+  if (window.innerWidth <= 900) {
+    closeSidebar();
+    closeChat();
+  }
+});
+
+// ========================================
+// Simulate a few initial messages
+// ========================================
+setTimeout(() => {
+  renderMsg({ sender: '张老师', text: '大家好，欢迎来到今天的课程！', self: false });
+}, 500);
+setTimeout(() => {
+  renderMsg({ sender: '张老师', text: '我们今天要学习 Canvas 绘图的基础知识 🎨', self: false });
+}, 1800);
+setTimeout(() => {
+  renderMsg({ sender: '李同学', text: '老师好！😊', self: false });
+}, 3200);
+</script>
+</body>
+</html>
