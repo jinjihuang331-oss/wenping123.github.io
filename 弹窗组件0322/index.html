@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modal 弹窗组件演示</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 20px;
+    }
+
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    p.sub { color: #888; font-size: 14px; margin-bottom: 40px; }
+
+    .btn-group { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 22px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #1677ff; color: #fff; }
+    .btn-primary:hover { background: #4096ff; }
+    .btn-default { background: #fff; color: #333; border: 1px solid #d9d9d9; }
+    .btn-default:hover { border-color: #1677ff; color: #1677ff; }
+
+    /* 弹窗内表单样式 */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #555; }
+    .form-group input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Modal 弹窗组件</h1>
+    <p class="sub">基于 Vue 3 Composition API / Teleport / Transition</p>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" @click="showBasic = true">基础弹窗</button>
+      <button class="btn btn-primary" @click="showCustom = true">自定义宽度</button>
+      <button class="btn btn-primary" @click="showForm = true">表单弹窗</button>
+      <button class="btn btn-primary" @click="showNoMask = true">禁止遮罩关闭</button>
+      <button class="btn btn-primary" @click="showNoClose = true">无关闭按钮</button>
+    </div>
+
+    <!-- 基础弹窗 -->
+    <modal v-model="showBasic" title="提示" @close="onClose('basic')">
+      <p>这是一个基础的弹窗组件，点击遮罩层或右上角按钮即可关闭。</p>
+      <template #footer>
+        <button class="btn btn-default" @click="showBasic = false">取消</button>
+        <button class="btn btn-primary" @click="showBasic = false">确定</button>
+      </template>
+    </modal>
+
+    <!-- 自定义宽度 -->
+    <modal v-model="showCustom" title="自定义宽度" width="560px">
+      <p>这个弹窗的宽度被设置为 560px，可以根据需要自由调整。</p>
+      <p style="margin-top: 12px;">弹窗会自动限制最大宽度不超过视口宽度，保证移动端也能正常显示。</p>
+    </modal>
+
+    <!-- 表单弹窗 -->
+    <modal v-model="showForm" title="新建用户" @close="onClose('form')">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" placeholder="请输入用户名" />
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" placeholder="请输入邮箱地址" />
+      </div>
+      <div class="form-group">
+        <label>角色</label>
+        <input type="text" placeholder="请输入角色名称" />
+      </div>
+      <template #footer>
+        <button class="btn btn-default" @click="showForm = false">取消</button>
+        <button class="btn btn-primary" @click="showForm = false">提交</button>
+      </template>
+    </modal>
+
+    <!-- 禁止遮罩关闭 -->
+    <modal v-model="showNoMask" title="重要提示" :mask-closable="false">
+      <p>当前弹窗已禁止通过点击遮罩层关闭，只能通过右上角关闭按钮或底部操作来关闭。</p>
+      <template #footer>
+        <button class="btn btn-primary" @click="showNoMask = false">我知道了</button>
+      </template>
+    </modal>
+
+    <!-- 无关闭按钮 -->
+    <modal v-model="showNoClose" :show-close-btn="false" title="确认操作">
+      <p>此弹窗没有关闭按钮，用户必须通过底部的按钮来做出选择。</p>
+      <template #footer>
+        <button class="btn btn-default" @click="showNoClose = false">取消</button>
+        <button class="btn btn-primary" @click="showNoClose = false">确认</button>
+      </template>
+    </modal>
+  </div>
+
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp, ref, defineComponent, Teleport, Transition } = Vue
+
+    /* ========== Modal 组件（从 Modal.vue 提取的逻辑） ========== */
+    const Modal = defineComponent({
+      name: 'Modal',
+      props: {
+        modelValue:      { type: Boolean, default: false },
+        title:           { type: String,  default: '' },
+        width:           { type: String,  default: '420px' },
+        maskClosable:    { type: Boolean, default: true },
+        showCloseBtn:    { type: Boolean, default: true },
+      },
+      emits: ['update:modelValue', 'close'],
+      template: `
+        <Teleport to="body">
+          <Transition name="modal-fade">
+            <div v-if="modelValue" class="modal-overlay" @click.self="handleMaskClose">
+              <Transition name="modal-scale" appear>
+                <div v-if="modelValue" class="modal-container" :style="{ width }">
+                  <div class="modal-header">
+                    <span class="modal-title">{{ title }}</span>
+                    <button v-if="showCloseBtn" class="modal-close" @click="close" aria-label="关闭">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="modal-body"><slot /></div>
+                  <div v-if="$slots.footer" class="modal-footer"><slot name="footer" /></div>
+                </div>
+              </Transition>
+            </div>
+          </Transition>
+        </Teleport>
+      `,
+      methods: {
+        close() {
+          this.$emit('update:modelValue', false)
+          this.$emit('close')
+        },
+        handleMaskClose() {
+          if (this.maskClosable) this.close()
+        },
+      },
+    })
+
+    /* ========== 全局注册 Modal 样式 ========== */
+    const modalStyle = document.createElement('style')
+    modalStyle.textContent = `
+      .modal-overlay {
+        position: fixed; inset: 0; z-index: 999;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.45); padding: 16px;
+      }
+      .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.25s ease; }
+      .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+
+      .modal-container {
+        position: relative; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px);
+        overflow: hidden; display: flex; flex-direction: column;
+        background: #fff; border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+      }
+      .modal-scale-enter-active { transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+      .modal-scale-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+      .modal-scale-enter-from { opacity: 0; transform: scale(0.85); }
+      .modal-scale-leave-to { opacity: 0; transform: scale(0.9); }
+
+      .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 12px; flex-shrink: 0; }
+      .modal-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+      .modal-close {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; margin-right: -8px;
+        border: none; border-radius: 8px; background: transparent; color: #888;
+        cursor: pointer; transition: background 0.2s, color 0.2s;
+      }
+      .modal-close:hover { background: #f5f5f5; color: #333; }
+
+      .modal-body { padding: 0 24px; overflow-y: auto; flex: 1; font-size: 15px; color: #444; line-height: 1.6; }
+      .modal-body:has(+ .modal-footer) { padding-bottom: 12px; }
+
+      .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 24px 20px; flex-shrink: 0; }
+
+      @media (max-width: 480px) {
+        .modal-container { width: 100% !important; max-height: 85vh; border-radius: 16px 16px 0 0; align-self: flex-end; }
+        .modal-overlay { align-items: flex-end; padding: 0; }
+        .modal-header { padding: 18px 20px 10px; }
+        .modal-body { padding: 0 20px; }
+        .modal-footer { padding: 14px 20px; }
+      }
+    `
+    document.head.appendChild(modalStyle)
+
+    /* ========== 创建应用 ========== */
+    const app = createApp({
+      setup() {
+        const showBasic   = ref(false)
+        const showCustom  = ref(false)
+        const showForm    = ref(false)
+        const showNoMask  = ref(false)
+        const showNoClose = ref(false)
+
+        function onClose(name) {
+          console.log(`[${name}] 弹窗已关闭`)
+        }
+
+        return { showBasic, showCustom, showForm, showNoMask, showNoClose, onClose }
+      },
+    })
+
+    app.component('Modal', Modal)
+    app.mount('#app')
+  </script>
+</body>
+</html>
