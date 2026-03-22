@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品秒杀</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    background: #f0f0f5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .seckill-container {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  }
+
+  /* ---- banner ---- */
+  .seckill-banner {
+    background: linear-gradient(135deg, #ff4d4f, #ff7875);
+    padding: 20px 24px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .seckill-banner::after {
+    content: "秒杀";
+    position: absolute;
+    right: -10px;
+    top: -10px;
+    font-size: 72px;
+    font-weight: 900;
+    opacity: 0.1;
+  }
+  .seckill-banner h2 { font-size: 22px; font-weight: 700; }
+  .seckill-banner p { font-size: 13px; margin-top: 4px; opacity: 0.9; }
+
+  /* ---- countdown ---- */
+  .countdown-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #f0f0f5;
+  }
+  .countdown-label { font-size: 14px; color: #8c8c8c; }
+  .countdown-group { display: flex; gap: 6px; }
+  .cd-block {
+    background: #1a1a2e;
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 0;
+    width: 44px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .cd-unit { font-size: 12px; color: #8c8c8c; display: flex; align-items: flex-end; padding-bottom: 4px; }
+
+  /* ---- product ---- */
+  .product-area { padding: 20px 24px 0; display: flex; gap: 16px; }
+  .product-img {
+    width: 120px;
+    height: 120px;
+    border-radius: 10px;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    flex-shrink: 0;
+    border: 1px solid #f0f0f0;
+  }
+  .product-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .product-name { font-size: 16px; font-weight: 600; color: #1a1a1a; line-height: 1.5; }
+  .product-desc { font-size: 12px; color: #8c8c8c; margin-top: 4px; }
+  .price-row { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
+  .price-now { font-size: 24px; font-weight: 800; color: #ff4d4f; }
+  .price-now .yen { font-size: 14px; }
+  .price-orig { font-size: 13px; color: #bfbfbf; text-decoration: line-through; }
+  .limit-badge {
+    display: inline-block;
+    margin-top: 8px;
+    background: #fff1f0;
+    color: #ff4d4f;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    border: 1px solid #ffccc7;
+  }
+
+  /* ---- stock ---- */
+  .stock-section { padding: 18px 24px 0; }
+  .stock-header { display: flex; justify-content: space-between; font-size: 13px; color: #8c8c8c; margin-bottom: 8px; }
+  .stock-header span:last-child { color: #ff4d4f; font-weight: 600; }
+  .progress-track {
+    height: 10px;
+    background: #f5f5f5;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #ff4d4f, #ff7875);
+    transition: width 0.6s ease;
+  }
+
+  /* ---- quantity ---- */
+  .quantity-section { padding: 18px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+  .quantity-label { font-size: 14px; color: #595959; }
+  .quantity-control { display: flex; align-items: center; gap: 0; }
+  .qty-btn {
+    width: 34px;
+    height: 34px;
+    border: 1px solid #d9d9d9;
+    background: #fafafa;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #595959;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .qty-btn:hover:not(:disabled) { border-color: #ff4d4f; color: #ff4d4f; }
+  .qty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .qty-btn:first-child { border-radius: 6px 0 0 6px; }
+  .qty-btn:last-child  { border-radius: 0 6px 6px 0; }
+  .qty-input {
+    width: 48px;
+    height: 34px;
+    border: 1px solid #d9d9d9;
+    border-left: none;
+    border-right: none;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a1a;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  /* ---- buy button ---- */
+  .action-section { padding: 22px 24px 24px; }
+  .buy-btn {
+    width: 100%;
+    height: 50px;
+    border: none;
+    border-radius: 10px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+    letter-spacing: 2px;
+  }
+  .buy-btn.disabled {
+    background: #d9d9d9;
+    color: #fff;
+    cursor: not-allowed;
+  }
+  .buy-btn.active {
+    background: linear-gradient(135deg, #ff4d4f, #ff7875);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(255,77,79,0.35);
+  }
+  .buy-btn.active:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,77,79,0.45); }
+  .buy-btn.active:active { transform: scale(0.98); }
+
+  /* ---- toast ---- */
+  .toast-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .toast-mask.show { opacity: 1; pointer-events: auto; }
+  .toast-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 32px 28px 24px;
+    width: 300px;
+    text-align: center;
+    transform: scale(0.85);
+    transition: transform 0.3s;
+  }
+  .toast-mask.show .toast-box { transform: scale(1); }
+  .toast-icon { font-size: 48px; margin-bottom: 12px; }
+  .toast-title { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+  .toast-msg { font-size: 14px; color: #8c8c8c; margin-top: 8px; line-height: 1.6; }
+  .toast-btn {
+    margin-top: 20px;
+    padding: 10px 0;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ff4d4f, #ff7875);
+    color: #fff;
+    transition: opacity 0.2s;
+  }
+  .toast-btn:hover { opacity: 0.85; }
+  .toast-btn.secondary { background: #f5f5f5; color: #595959; }
+</style>
+</head>
+<body>
+
+<div class="seckill-container">
+  <!-- 顶部 banner -->
+  <div class="seckill-banner">
+    <h2>限时秒杀</h2>
+    <p>超值爆款，手慢无</p>
+  </div>
+
+  <!-- 倒计时 -->
+  <div class="countdown-bar">
+    <span class="countdown-label" id="cdLabel">距开始</span>
+    <div class="countdown-group">
+      <div class="cd-block" id="cdDays">00</div>
+      <span class="cd-unit">天</span>
+      <div class="cd-block" id="cdHours">00</div>
+      <span class="cd-unit">时</span>
+      <div class="cd-block" id="cdMins">00</div>
+      <span class="cd-unit">分</span>
+      <div class="cd-block" id="cdSecs">00</div>
+      <span class="cd-unit">秒</span>
+    </div>
+  </div>
+
+  <!-- 商品信息 -->
+  <div class="product-area">
+    <div class="product-img">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="6" width="20" height="14" rx="2" fill="#ffccc7"/>
+        <rect x="7" y="2" width="10" height="6" rx="1" fill="#ff7875" stroke="#ff4d4f" stroke-width="0.5"/>
+        <rect x="5" y="10" width="14" height="2" rx="1" fill="#ff4d4f" opacity="0.4"/>
+        <rect x="8" y="14" width="8" height="2" rx="1" fill="#ff4d4f" opacity="0.4"/>
+      </svg>
+    </div>
+    <div class="product-info">
+      <div>
+        <div class="product-name">Apple AirPods Pro 2 无线耳机</div>
+        <div class="product-desc">主动降噪 | 自适应通透模式 | USB‑C</div>
+      </div>
+      <div>
+        <div class="price-row">
+          <span class="price-now"><span class="yen">&yen;</span>899</span>
+          <span class="price-orig">&yen;1899</span>
+        </div>
+        <span class="limit-badge">每人限购 3 件</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 库存进度条 -->
+  <div class="stock-section">
+    <div class="stock-header">
+      <span>已抢</span>
+      <span id="stockText">78%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="stockBar" style="width:78%"></div>
+    </div>
+  </div>
+
+  <!-- 购买数量 -->
+  <div class="quantity-section">
+    <span class="quantity-label">购买数量</span>
+    <div class="quantity-control">
+      <button class="qty-btn" id="btnDec" disabled>&minus;</button>
+      <input class="qty-input" id="qtyInput" value="1" readonly />
+      <button class="qty-btn" id="btnInc">+</button>
+    </div>
+  </div>
+
+  <!-- 抢购按钮 -->
+  <div class="action-section">
+    <button class="buy-btn disabled" id="buyBtn" disabled>活动未开始</button>
+  </div>
+</div>
+
+<!-- toast 弹窗 -->
+<div class="toast-mask" id="toastMask">
+  <div class="toast-box">
+    <div class="toast-icon" id="toastIcon"></div>
+    <div class="toast-title" id="toastTitle"></div>
+    <div class="toast-msg" id="toastMsg"></div>
+    <button class="toast-btn" id="toastBtn">知道了</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  /* ========== 配置 ========== */
+  // 秒杀开始时间：设置为当前时间往后 15 秒（方便演示）
+  const START_TIME = new Date(Date.now() + 15 * 1000);
+  const TOTAL_STOCK = 500;       // 总库存
+  const INIT_SOLD  = 390;        // 初始已售
+  const LIMIT      = 3;          // 限购数量
+  const SUCCESS_RATE = 0.65;     // 抢购成功率
+
+  /* ========== DOM ========== */
+  const cdLabel = document.getElementById('cdLabel');
+  const cdDays  = document.getElementById('cdDays');
+  const cdHours = document.getElementById('cdHours');
+  const cdMins  = document.getElementById('cdMins');
+  const cdSecs  = document.getElementById('cdSecs');
+  const stockText = document.getElementById('stockText');
+  const stockBar  = document.getElementById('stockBar');
+  const qtyInput  = document.getElementById('qtyInput');
+  const btnDec    = document.getElementById('btnDec');
+  const btnInc    = document.getElementById('btnInc');
+  const buyBtn    = document.getElementById('buyBtn');
+  const toastMask = document.getElementById('toastMask');
+  const toastIcon = document.getElementById('toastIcon');
+  const toastTitle= document.getElementById('toastTitle');
+  const toastMsg  = document.getElementById('toastMsg');
+  const toastBtn  = document.getElementById('toastBtn');
+
+  let sold = INIT_SOLD;
+  let remaining = TOTAL_STOCK - INIT_SOLD;
+  let started = false;
+
+  /* ========== 倒计时 ========== */
+  function updateCountdown() {
+    const now = Date.now();
+    let diff = START_TIME.getTime() - now;
+
+    if (diff <= 0) {
+      // 秒杀已开始
+      diff = 0;
+      if (!started) {
+        started = true;
+        cdLabel.textContent = '距结束';
+        buyBtn.disabled = false;
+        buyBtn.textContent = '立即抢购';
+        buyBtn.className = 'buy-btn active';
+      }
+    }
+
+    const totalSec = Math.floor(diff / 1000);
+    const d = Math.floor(totalSec / 86400);
+    const h = Math.floor((totalSec % 86400) / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+
+    cdDays.textContent  = String(d).padStart(2, '0');
+    cdHours.textContent = String(h).padStart(2, '0');
+    cdMins.textContent  = String(m).padStart(2, '0');
+    cdSecs.textContent  = String(s).padStart(2, '0');
+  }
+
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
+  /* ========== 进度条 ========== */
+  function updateStock() {
+    const pct = Math.min(100, Math.round((sold / TOTAL_STOCK) * 100));
+    stockText.textContent = pct + '%';
+    stockBar.style.width  = pct + '%';
+  }
+
+  /* ========== 数量控制 ========== */
+  let qty = 1;
+  function refreshQtyBtns() {
+    btnDec.disabled = qty <= 1;
+    btnInc.disabled = qty >= LIMIT;
+    qtyInput.value  = qty;
+  }
+
+  btnDec.addEventListener('click', function () {
+    if (qty > 1) { qty--; refreshQtyBtns(); }
+  });
+
+  btnInc.addEventListener('click', function () {
+    if (qty < LIMIT) {
+      qty++;
+      refreshQtyBtns();
+    } else {
+      showToast('hint', '限购提示', '每人限购 ' + LIMIT + ' 件，无法继续增加', '好的');
+    }
+  });
+
+  refreshQtyBtns();
+
+  /* ========== 抢购 ========== */
+  buyBtn.addEventListener('click', function () {
+    if (buyBtn.disabled) return;
+
+    // 再次检查限购
+    if (qty > LIMIT) {
+      showToast('hint', '限购提示', '每人限购 ' + LIMIT + ' 件，无法购买更多', '好的');
+      return;
+    }
+
+    // 模拟抢购
+    buyBtn.textContent = '抢购中…';
+    buyBtn.disabled = true;
+
+    setTimeout(function () {
+      // 扣减库存
+      if (qty > remaining) {
+        showToast('fail', '抢购失败', '抱歉，库存不足，手慢了！', '知道了', function () {
+          buyBtn.disabled = false;
+          buyBtn.textContent = '立即抢购';
+        });
+        return;
+      }
+
+      const success = Math.random() < SUCCESS_RATE;
+
+      if (success) {
+        sold += qty;
+        remaining -= qty;
+        updateStock();
+        showToast('success', '抢购成功', '恭喜！您已成功抢购 ' + qty + ' 件商品', '太好了', function () {
+          qty = 1;
+          refreshQtyBtns();
+          buyBtn.disabled = false;
+          buyBtn.textContent = '立即抢购';
+        });
+      } else {
+        showToast('fail', '抢购失败', '当前抢购人数过多，请稍后重试', '再试试', function () {
+          buyBtn.disabled = false;
+          buyBtn.textContent = '立即抢购';
+        });
+      }
+    }, 800 + Math.random() * 600);
+  });
+
+  /* ========== Toast 弹窗 ========== */
+  function showToast(type, title, msg, btnText, onClose) {
+    var icons = { success: '\u2705', fail: '\u274C', hint: '\u26A0\uFE0F' };
+    toastIcon.textContent  = icons[type] || '';
+    toastTitle.textContent = title;
+    toastMsg.textContent   = msg;
+    toastBtn.textContent   = btnText || '知道了';
+    toastBtn.className     = type === 'fail' ? 'toast-btn secondary' : 'toast-btn';
+
+    toastMask.classList.add('show');
+
+    function close() {
+      toastMask.classList.remove('show');
+      toastBtn.removeEventListener('click', close);
+      if (onClose) onClose();
+    }
+    toastBtn.addEventListener('click', close);
+  }
+})();
+</script>
+</body>
+</html>
