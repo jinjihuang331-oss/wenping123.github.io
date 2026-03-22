@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vue 3 弹窗组件 Demo</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    .demo-page { max-width: 640px; margin: 0 auto; padding: 60px 20px; }
+    .demo-page h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .demo-page p { color: #666; margin-bottom: 32px; }
+
+    .demo-buttons { display: flex; flex-direction: column; gap: 12px; }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #4f6ef7; color: #fff; }
+    .btn-primary:hover { background: #3b5de7; box-shadow: 0 4px 12px rgba(79,110,247,0.4); }
+    .btn-success { background: #52c41a; color: #fff; }
+    .btn-success:hover { background: #45a816; }
+    .btn-danger { background: #ff4d4f; color: #fff; }
+    .btn-danger:hover { background: #e63e40; }
+
+    /* ---- 弹窗样式（与 Modal.vue 的 scoped 样式一致，此处用全局方式复现） ---- */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.45); padding: 16px;
+    }
+    .modal-container {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 12px; flex-shrink: 0;
+    }
+    .modal-title { margin:0; font-size:18px; font-weight:600; color:#1a1a1a; line-height:1.4; }
+    .modal-close {
+      display:flex; align-items:center; justify-content:center;
+      width:32px; height:32px; border:none; background:transparent;
+      border-radius:8px; color:#999; cursor:pointer; transition:all 0.2s; flex-shrink:0;
+    }
+    .modal-close:hover { background:#f5f5f5; color:#333; }
+    .modal-body { padding:12px 24px 20px; overflow-y:auto; flex:1; color:#333; font-size:14px; line-height:1.6; }
+    .modal-footer {
+      display:flex; align-items:center; justify-content:flex-end; gap:12px;
+      padding:16px 24px; border-top:1px solid #f0f0f0; flex-shrink:0;
+    }
+
+    /* 动画 */
+    .modal-enter-active, .modal-leave-active { transition: opacity 0.3s ease; }
+    .modal-enter-active .modal-container, .modal-leave-active .modal-container {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .modal-enter-from, .modal-leave-to { opacity:0; }
+    .modal-enter-from .modal-container { transform:scale(0.92) translateY(12px); opacity:0; }
+    .modal-leave-to .modal-container { transform:scale(0.92) translateY(-8px); opacity:0; }
+
+    /* 移动端 */
+    @media (max-width: 480px) {
+      .modal-overlay { padding:0; align-items:flex-end; }
+      .modal-container { width:100%!important; max-width:100%!important; max-height:90vh; border-radius:16px 16px 0 0; }
+      .modal-header { padding:16px 20px 10px; }
+      .modal-body { padding:10px 20px 16px; }
+      .modal-footer { padding:12px 20px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+      .modal-enter-from .modal-container { transform:translateY(100%); opacity:1; }
+      .modal-leave-to .modal-container { transform:translateY(100%); opacity:1; }
+      .modal-enter-active .modal-container, .modal-leave-active .modal-container {
+        transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="demo-page">
+      <h1>Vue 3 弹窗组件</h1>
+      <p>支持显示/隐藏、遮罩关闭、关闭按钮、淡入淡出动画、移动端底部弹出适配</p>
+
+      <div class="demo-buttons">
+        <button class="btn btn-primary" @click="basic.open()">基础弹窗</button>
+        <button class="btn btn-success" @click="confirm.open()">确认弹窗</button>
+        <button class="btn btn-danger" @click="custom.open()">自定义底部</button>
+      </div>
+    </div>
+
+    <!-- 基础弹窗 -->
+    <teleport to="body">
+      <transition name="modal">
+        <div v-if="basic.visible.value" class="modal-overlay" @click.self="basic.close()">
+          <div class="modal-container" style="width:520px;max-width:90vw" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h3 class="modal-title">基础弹窗</h3>
+              <button class="modal-close" aria-label="关闭" @click="basic.close()">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>这是一个基础弹窗组件的演示。点击遮罩层或右上角关闭按钮即可关闭。</p>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
+    <!-- 确认弹窗 -->
+    <teleport to="body">
+      <transition name="modal">
+        <div v-if="confirm.visible.value" class="modal-overlay" @click.self="confirm.close()">
+          <div class="modal-container" style="width:420px;max-width:90vw" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h3 class="modal-title">确认操作</h3>
+              <button class="modal-close" aria-label="关闭" @click="confirm.close()">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>你确定要执行此操作吗？此操作不可撤销。</p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn" style="background:#f5f5f5;color:#333" @click="confirm.close()">取消</button>
+              <button class="btn btn-primary" @click="handleConfirm">确定</button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
+    <!-- 自定义底部弹窗 -->
+    <teleport to="body">
+      <transition name="modal">
+        <div v-if="custom.visible.value" class="modal-overlay" @click.self="custom.close()">
+          <div class="modal-container" style="width:480px;max-width:90vw" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h3 class="modal-title">用户信息</h3>
+              <button class="modal-close" aria-label="关闭" @click="custom.close()">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div style="display:flex;gap:12px;flex-direction:column">
+                <label style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:13px;color:#666">姓名</span>
+                  <input v-model="form.name" placeholder="请输入姓名"
+                    style="padding:10px 12px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;outline:none;transition:border-color 0.2s"
+                    onfocus="this.style.borderColor='#4f6ef7'" onblur="this.style.borderColor='#d9d9d9'" />
+                </label>
+                <label style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:13px;color:#666">邮箱</span>
+                  <input v-model="form.email" placeholder="请输入邮箱"
+                    style="padding:10px 12px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;outline:none;transition:border-color 0.2s"
+                    onfocus="this.style.borderColor='#4f6ef7'" onblur="this.style.borderColor='#d9d9d9'" />
+                </label>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn" style="background:#f5f5f5;color:#333" @click="custom.close()">取消</button>
+              <button class="btn btn-success" @click="handleSubmit">提交</button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+  </div>
+
+  <script>
+    const { createApp, ref, reactive } = Vue
+
+    function useModal() {
+      const visible = ref(false)
+      const open = () => { visible.value = true }
+      const close = () => { visible.value = false }
+      return { visible, open, close }
+    }
+
+    const app = createApp({
+      setup() {
+        const basic = useModal()
+        const confirm = useModal()
+        const custom = useModal()
+
+        const form = reactive({ name: '', email: '' })
+
+        function handleConfirm() {
+          alert('已确认！')
+          confirm.close()
+        }
+
+        function handleSubmit() {
+          alert(`提交成功！姓名：${form.name}，邮箱：${form.email}`)
+          form.name = ''
+          form.email = ''
+          custom.close()
+        }
+
+        return { basic, confirm, custom, form, handleConfirm, handleSubmit }
+      }
+    })
+
+    app.mount('#app')
+  </script>
+</body>
+</html>
