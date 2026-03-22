@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberNexus | N3xus 0f Cyb3r</title>
+    <style>
+        /* ═══════════════════════════════════════════════════════
+           CSS RESET & BASE
+           ═══════════════════════════════════════════════════════ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #00ff9d;
+            --primary-dim: #00cc7a;
+            --secondary: #00d4ff;
+            --accent: #ff0066;
+            --bg-dark: #0a0a0f;
+            --bg-darker: #050508;
+            --bg-card: rgba(10, 20, 18, 0.75);
+            --text: #c0ffd8;
+            --text-bright: #e0fff0;
+            --text-dim: #4a7a5e;
+            --glow-primary: 0 0 20px rgba(0, 255, 157, 0.3);
+            --glow-secondary: 0 0 20px rgba(0, 212, 255, 0.3);
+            --glow-accent: 0 0 20px rgba(255, 0, 102, 0.3);
+            --border-glow: 1px solid rgba(0, 255, 157, 0.15);
+            --font-mono: 'Courier New', 'Lucida Console', monospace;
+            --font-display: 'Courier New', 'Lucida Console', monospace;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--bg-dark);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection {
+            background: rgba(0, 255, 157, 0.3);
+            color: var(--text-bright);
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-darker); }
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-dim);
+            border-radius: 3px;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           MATRIX CANVAS
+           ═══════════════════════════════════════════════════════ */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           SCANLINE OVERLAY
+           ═══════════════════════════════════════════════════════ */
+        .scanline-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           GLITCH EFFECT
+           ═══════════════════════════════════════════════════════ */
+        @keyframes glitch1 {
+            0%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); }
+            20% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 2px); }
+            40% { clip-path: inset(50% 0 20% 0); transform: translate(3px, -1px); }
+            60% { clip-path: inset(10% 0 70% 0); transform: translate(-2px, 1px); }
+            80% { clip-path: inset(40% 0 30% 0); transform: translate(2px, -2px); }
+        }
+        @keyframes glitch2 {
+            0%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(3px, -1px); }
+            40% { clip-path: inset(10% 0 60% 0); transform: translate(-3px, 2px); }
+            60% { clip-path: inset(70% 0 10% 0); transform: translate(1px, -2px); }
+            80% { clip-path: inset(30% 0 30% 0); transform: translate(-1px, 1px); }
+        }
+
+        .glitch {
+            position: relative;
+            display: inline-block;
+        }
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+        .glitch::before {
+            color: var(--secondary);
+            animation: glitch1 3s infinite linear alternate-reverse;
+            z-index: -1;
+        }
+        .glitch::after {
+            color: var(--accent);
+            animation: glitch2 2.5s infinite linear alternate-reverse;
+            z-index: -1;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           NAVIGATION
+           ═══════════════════════════════════════════════════════ */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(5, 5, 8, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: var(--border-glow);
+            transition: all 0.3s ease;
+        }
+        nav.scrolled {
+            padding: 0.6rem 2rem;
+            background: rgba(5, 5, 8, 0.95);
+            box-shadow: 0 2px 30px rgba(0, 255, 157, 0.08);
+        }
+
+        .nav-logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .nav-logo .leet { color: var(--secondary); }
+        .nav-logo:hover { text-shadow: var(--glow-primary); }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.85rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; left: 0;
+            width: 0; height: 1px;
+            background: var(--primary);
+            transition: width 0.3s ease;
+            box-shadow: var(--glow-primary);
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+            text-shadow: var(--glow-primary);
+        }
+        .nav-links a:hover::after { width: 100%; }
+
+        .nav-cta {
+            padding: 0.5rem 1.2rem;
+            border: 1px solid var(--primary);
+            color: var(--primary) !important;
+            border-radius: 2px;
+            transition: all 0.3s ease !important;
+        }
+        .nav-cta:hover {
+            background: var(--primary) !important;
+            color: var(--bg-dark) !important;
+            box-shadow: var(--glow-primary);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           HERO SECTION
+           ═══════════════════════════════════════════════════════ */
+        #hero {
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+        }
+        .hero-content { max-width: 800px; }
+
+        .hero-terminal {
+            font-size: 0.85rem;
+            color: var(--primary-dim);
+            margin-bottom: 1.5rem;
+            letter-spacing: 1px;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease forwards 0.3s;
+        }
+        .hero-terminal .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.1em;
+            background: var(--primary);
+            margin-left: 4px;
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .hero-title {
+            font-size: clamp(2.5rem, 7vw, 5rem);
+            font-weight: 900;
+            color: var(--text-bright);
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+            line-height: 1.1;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease forwards 0.6s;
+        }
+
+        .hero-sub {
+            font-size: clamp(1rem, 2.5vw, 1.3rem);
+            color: var(--text-dim);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease forwards 0.9s;
+        }
+        .hero-sub .leet-num { color: var(--secondary); font-weight: bold; }
+
+        .hero-desc {
+            font-size: 1rem;
+            color: var(--text);
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.8;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease forwards 1.2s;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1.2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease forwards 1.5s;
+        }
+
+        .btn-primary, .btn-secondary {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.85rem 2rem;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: var(--bg-dark);
+            border: none;
+            font-weight: bold;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.5), 0 0 60px rgba(0, 255, 157, 0.2);
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+        }
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            box-shadow: var(--glow-primary);
+            transform: translateY(-2px);
+        }
+
+        .hero-scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            animation: fadeInUp 0.8s ease forwards 2s;
+        }
+        .hero-scroll-indicator .arrow {
+            width: 20px; height: 20px;
+            border-right: 2px solid var(--primary-dim);
+            border-bottom: 2px solid var(--primary-dim);
+            transform: rotate(45deg);
+            animation: scrollBounce 2s infinite;
+        }
+        @keyframes scrollBounce {
+            0%, 20%, 50%, 80%, 100% { transform: rotate(45deg) translateY(0); }
+            40% { transform: rotate(45deg) translateY(8px); }
+            60% { transform: rotate(45deg) translateY(4px); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           SECTIONS COMMON
+           ═══════════════════════════════════════════════════════ */
+        section {
+            position: relative;
+            z-index: 2;
+            padding: 6rem 2rem;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        .section-tag {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+        .section-title {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            color: var(--text-bright);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .section-line {
+            width: 60px; height: 1px;
+            background: var(--primary);
+            margin: 0 auto;
+            box-shadow: var(--glow-primary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Scroll reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           ABOUT / TERMINAL SECTION
+           ═══════════════════════════════════════════════════════ */
+        #about {
+            background: linear-gradient(180deg, transparent, rgba(0, 20, 12, 0.3), transparent);
+        }
+
+        .terminal-window {
+            max-width: 750px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: var(--border-glow);
+            border-radius: 6px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 255, 157, 0.05);
+            border-bottom: 1px solid rgba(0, 255, 157, 0.1);
+        }
+        .terminal-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+        }
+        .terminal-dot.r { background: #ff5f57; }
+        .terminal-dot.y { background: #febc2e; }
+        .terminal-dot.g { background: #28c840; }
+        .terminal-title {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-left: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .terminal-body {
+            padding: 1.5rem;
+        }
+        .terminal-line {
+            margin-bottom: 0.3rem;
+            font-size: 0.88rem;
+            line-height: 1.8;
+        }
+        .terminal-line .prompt {
+            color: var(--primary);
+            font-weight: bold;
+        }
+        .terminal-line .cmd { color: var(--text-bright); }
+        .terminal-line .output { color: var(--text-dim); padding-left: 1rem; }
+        .terminal-line .accent { color: var(--secondary); }
+        .terminal-line .leet { color: var(--accent); }
+        .terminal-line .success { color: var(--primary); }
+
+        /* ═══════════════════════════════════════════════════════
+           FEATURES SECTION
+           ═══════════════════════════════════════════════════════ */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: var(--border-glow);
+            border-radius: 6px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .feature-card:hover::before { opacity: 1; }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 255, 157, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 255, 157, 0.08);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        .feature-title {
+            font-size: 1.1rem;
+            color: var(--text-bright);
+            letter-spacing: 2px;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+        }
+        .feature-title .leet-num { color: var(--secondary); }
+        .feature-desc {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           STATS SECTION
+           ═══════════════════════════════════════════════════════ */
+        #stats {
+            background: linear-gradient(180deg, transparent, rgba(0, 15, 25, 0.3), transparent);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-item { padding: 1.5rem; }
+        .stat-number {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: bold;
+            color: var(--primary);
+            letter-spacing: 2px;
+            text-shadow: var(--glow-primary);
+            margin-bottom: 0.3rem;
+        }
+        .stat-number .leet-num { color: var(--secondary); text-shadow: var(--glow-secondary); }
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           NETWORK / COMMUNITY SECTION
+           ═══════════════════════════════════════════════════════ */
+        .network-visual {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .network-canvas-wrap {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1;
+        }
+        #network-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .community-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .comm-card {
+            background: var(--bg-card);
+            border: var(--border-glow);
+            border-radius: 4px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .comm-card:hover {
+            border-color: rgba(0, 212, 255, 0.3);
+            box-shadow: var(--glow-secondary);
+        }
+
+        .comm-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+        .comm-card-icon {
+            font-size: 1.5rem;
+        }
+        .comm-card-title {
+            font-size: 0.95rem;
+            color: var(--text-bright);
+            letter-spacing: 1px;
+        }
+        .comm-card-title .leet-num { color: var(--secondary); }
+        .comm-card p {
+            font-size: 0.82rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           CTA SECTION
+           ═══════════════════════════════════════════════════════ */
+        #cta {
+            text-align: center;
+            background: linear-gradient(180deg, transparent, rgba(0, 20, 12, 0.4), transparent);
+        }
+
+        .cta-box {
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-radius: 8px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+        }
+        .cta-title {
+            font-size: clamp(1.5rem, 3.5vw, 2rem);
+            color: var(--text-bright);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .cta-title .leet-num { color: var(--accent); text-shadow: var(--glow-accent); }
+        .cta-desc {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .cta-input-group {
+            display: flex;
+            gap: 0;
+            max-width: 450px;
+            margin: 0 auto 1rem;
+        }
+        .cta-input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-right: none;
+            border-radius: 3px 0 0 3px;
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .cta-input::placeholder { color: var(--text-dim); }
+        .cta-input:focus { border-color: var(--primary); }
+
+        .cta-submit {
+            padding: 0.8rem 1.5rem;
+            background: var(--primary);
+            color: var(--bg-dark);
+            border: 1px solid var(--primary);
+            border-radius: 0 3px 3px 0;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        .cta-submit:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
+        }
+
+        .cta-note {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            opacity: 0.6;
+        }
+        .cta-note .leet { color: var(--accent); }
+
+        /* ═══════════════════════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════════════════════ */
+        footer {
+            position: relative;
+            z-index: 2;
+            padding: 2rem;
+            text-align: center;
+            border-top: 1px solid rgba(0, 255, 157, 0.08);
+            background: var(--bg-darker);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover { color: var(--primary); }
+
+        .footer-copy {
+            font-size: 0.7rem;
+            color: rgba(74, 122, 94, 0.5);
+            letter-spacing: 1px;
+        }
+        .footer-copy .leet { color: rgba(255, 0, 102, 0.4); }
+
+        /* ═══════════════════════════════════════════════════════
+           FLOATING ELEMENTS
+           ═══════════════════════════════════════════════════════ */
+        .float-hex {
+            position: fixed;
+            font-size: 0.65rem;
+            color: rgba(0, 255, 157, 0.06);
+            font-family: var(--font-mono);
+            pointer-events: none;
+            z-index: 1;
+            letter-spacing: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            nav { padding: 0.8rem 1rem; }
+            .nav-links { gap: 1rem; }
+            .nav-links a { font-size: 0.7rem; letter-spacing: 1px; }
+
+            section { padding: 4rem 1rem; }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-input-group {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .cta-input {
+                border-right: 1px solid rgba(0, 255, 157, 0.2);
+                border-radius: 3px;
+            }
+            .cta-submit {
+                border-radius: 3px;
+            }
+
+            .terminal-body { padding: 1rem; }
+            .terminal-line { font-size: 0.78rem; }
+        }
+
+        @media (max-width: 480px) {
+            .nav-links { gap: 0.6rem; }
+            .hero-title { letter-spacing: 4px; }
+            .hero-buttons { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Matrix Rain Canvas -->
+<canvas id="matrix-canvas"></canvas>
+
+<!-- Scanline Overlay -->
+<div class="scanline-overlay"></div>
+
+<!-- Navigation -->
+<nav id="main-nav">
+    <a href="#hero" class="nav-logo">
+        <span class="leet">C</span>y<span class="leet">3r</span>N<span class="leet">3</span>xus
+    </a>
+    <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#features">F34tures</a></li>
+        <li><a href="#stats">N3tw0rk</a></li>
+        <li><a href="#community">C0mmunity</a></li>
+        <li><a href="#cta" class="nav-cta">J01n Us</a></li>
+    </ul>
+</nav>
+
+<!-- Hero Section -->
+<section id="hero">
+    <div class="hero-content">
+        <div class="hero-terminal">
+            <span class="prompt">root@nexus:~$</span>
+            <span class="cmd"> ./initialize --protocol=7ransp4r3nt --mode=0p3n</span>
+            <span class="cursor"></span>
+        </div>
+
+        <h1 class="hero-title">
+            <span class="glitch" data-text="CYBERNEXUS">CYBERNEXUS</span>
+        </h1>
+
+        <p class="hero-sub">
+            Th3 <span class="leet-num">N3xu5</span> 0f D3c3ntr4l1z3d Cyb3r
+        </p>
+
+        <p class="hero-desc">
+            An open-source collective building next-generation security tools
+            for the decentralized web. Where elite hackers unite to forge
+            transparent, privacy-first infrastructure for the digital frontier.
+        </p>
+
+        <div class="hero-buttons">
+            <a href="#cta" class="btn-primary">Init1al1ze Access</a>
+            <a href="#about" class="btn-secondary">L34rn M0r3 &rarr;</a>
+        </div>
+    </div>
+
+    <div class="hero-scroll-indicator">
+        <div class="arrow"></div>
+    </div>
+</section>
+
+<!-- About / Terminal Section -->
+<section id="about">
+    <div class="container">
+        <div class="section-header reveal">
+            <p class="section-tag">// SYS_INFO</p>
+            <h2 class="section-title">Wh4t 1s CyberNexus?</h2>
+            <div class="section-line"></div>
+        </div>
+
+        <div class="terminal-window reveal">
+            <div class="terminal-header">
+                <div class="terminal-dot r"></div>
+                <div class="terminal-dot y"></div>
+                <div class="terminal-dot g"></div>
+                <span class="terminal-title">nexus_shell v4.2.0</span>
+            </div>
+            <div class="terminal-body">
+                <div class="terminal-line">
+                    <span class="prompt">root@nexus:~$</span>
+                    <span class="cmd"> whoami</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="output success">CyberNexus &mdash; Open Security Collective [Est. 20XX]</span>
+                </div>
+                <div class="terminal-line">&nbsp;</div>
+                <div class="terminal-line">
+                    <span class="prompt">root@nexus:~$</span>
+                    <span class="cmd"> cat /etc/manifesto.txt</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="output">We believe in <span class="accent">radical transparency</span>,</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="output">open-source security tools, and the right to</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="output">digital sovereignty. Our network spans <span class="leet">3,000+</span></span>
+                </div>
+                <div class="terminal-line">
+                    <span class="output">security researchers across <span class="accent">47</span> countries.</span>
+                </div>
+                <div class="terminal-line">&nbsp;</div>
+                <div class="terminal-line">
+                    <span class="prompt">root@nexus:~$</span>
+                    <span class="cmd"> ls /protocols/</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="output accent">zero_trust/</span>
+                    <span class="output">&nbsp;&nbsp;</span>
+                    <span class="output success">e2e_encrypt/</span>
+                    <span class="output">&nbsp;&nbsp;</span>
+                    <span class="output leet">dark_mesh/</span>
+                </div>
+                <div class="terminal-line">&nbsp;</div>
+                <div class="terminal-line">
+                    <span class="prompt">root@nexus:~$</span>
+                    <span class="cmd"> echo $STATUS</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="output success">&gt; ALL SYSTEMS OPERATIONAL&nbsp;&nbsp;</span>
+                    <span class="cursor" style="background:var(--primary);"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features">
+    <div class="container">
+        <div class="section-header reveal">
+            <p class="section-tag">// CAPABILITIES</p>
+            <h2 class="section-title">C0r3 M0dules</h2>
+            <div class="section-line"></div>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card reveal">
+                <span class="feature-icon">&#x2726;</span>
+                <h3 class="feature-title">Nexus<span class="leet-num">Scan</span></h3>
+                <p class="feature-desc">
+                    AI-powered threat intelligence that maps your attack surface
+                    in real-time. Continuous monitoring across all vectors
+                    with zero-day detection.
+                </p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-icon">&#x26A1;</span>
+                <h3 class="feature-title">Crypt<span class="leet-num">0</span>Mesh</h3>
+                <p class="feature-desc">
+                    Decentralized encrypted communications layer built on
+                    zero-knowledge proofs. Your data stays yours &mdash;
+                    mathematically proven.
+                </p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-icon">&#x2603;</span>
+                <h3 class="feature-title">Phant<span class="leet-num">0m</span>Net</h3>
+                <p class="feature-desc">
+                    Next-gen anonymization network with multi-hop relay
+                    architecture. Browse, build, and operate with
+                    complete digital sovereignty.
+                </p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-icon">&#x29C9;</span>
+                <h3 class="feature-title">Hive<span class="leet-num">M1nd</span></h3>
+                <p class="feature-desc">
+                    Collaborative security platform where researchers share
+                    vulnerabilities and build defenses together.
+                    Crowdsourced threat intelligence at scale.
+                </p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-icon">&sect;</span>
+                <h3 class="feature-title">V<span class="leet-num">0</span>id<span class="leet-num">L0</span>g</h3>
+                <p class="feature-desc">
+                    Immutable audit logging with blockchain-secured provenance.
+                    Every action traced, every change verified.
+                    Tamper-proof by design.
+                </p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-icon">&#x2724;</span>
+                <h3 class="feature-title">Spectre<span class="leet-num">OS</span></h3>
+                <p class="feature-desc">
+                    Hardened operating environment for security professionals.
+                    Pre-configured toolchains, sandboxed execution,
+                    and air-gapped deployment options.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section id="stats">
+    <div class="container">
+        <div class="section-header reveal">
+            <p class="section-tag">// NETWORK_STATUS</p>
+            <h2 class="section-title">By Th3 Numb3rs</h2>
+            <div class="section-line"></div>
+        </div>
+
+        <div class="stats-grid reveal">
+            <div class="stat-item">
+                <div class="stat-number" data-target="3472">0</div>
+                <div class="stat-label">4ctive 0p3rat0rs</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-target="47">0</div>
+                <div class="stat-label">Countr13s</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-target="12">0</div>
+                <div class="stat-label">P3tabyt3s S3cur3d</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-target="9999">0</div>
+                <div class="stat-label">Vu1ns Patch3d</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Community Section -->
+<section id="community">
+    <div class="container">
+        <div class="section-header reveal">
+            <p class="section-tag">// NODE_MAP</p>
+            <h2 class="section-title">Th3 C0mmunity</h2>
+            <div class="section-line"></div>
+        </div>
+
+        <div class="network-visual reveal">
+            <div class="network-canvas-wrap">
+                <canvas id="network-canvas"></canvas>
+            </div>
+        </div>
+
+        <div class="community-features reveal">
+            <div class="comm-card">
+                <div class="comm-card-header">
+                    <span class="comm-card-icon">&#x273F;</span>
+                    <h3 class="comm-card-title">Op3n S0urce F1rst</h3>
+                </div>
+                <p>
+                    Every tool we build is open source. No backdoors,
+                    no exceptions. Peer-reviewed by thousands
+                    of security professionals worldwide.
+                </p>
+            </div>
+
+            <div class="comm-card">
+                <div class="comm-card-header">
+                    <span class="comm-card-icon">&#x2602;</span>
+                    <h3 class="comm-card-title">R3s3arch N0des</h3>
+                </div>
+                <p>
+                    Regional collectives that meet monthly to share
+                    findings, run workshops, and push the boundaries
+                    of what's possible in cybersecurity.
+                </p>
+            </div>
+
+            <div class="comm-card">
+                <div class="comm-card-header">
+                    <span class="comm-card-icon">&#x2694;</span>
+                    <h3 class="comm-card-title">CTF T3ams</h3>
+                </div>
+                <p>
+                    Compete in capture-the-flag tournaments under
+                    the Nexus banner. Sharpen your skills, earn
+                    reputation, and climb the global leaderboard.
+                </p>
+            </div>
+
+            <div class="comm-card">
+                <div class="comm-card-header">
+                    <span class="comm-card-icon">&#x2609;</span>
+                    <h3 class="comm-card-title">M3ntorsh1p</h3>
+                </div>
+                <p>
+                    New to security? Our mentorship program connects
+                    you with experienced operators who guide your
+                    journey from script kiddie to elite hacker.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section id="cta">
+    <div class="container">
+        <div class="section-header reveal">
+            <p class="section-tag">// ACCESS_REQUEST</p>
+            <h2 class="section-title">J01n th3 N3xus</h2>
+            <div class="section-line"></div>
+        </div>
+
+        <div class="cta-box reveal">
+            <h3 class="cta-title">
+                R3ady 70 <span class="leet-num">3n73r</span>?
+            </h3>
+            <p class="cta-desc">
+                Request your access key and join thousands of security
+                researchers building the future of digital defense.
+                No gatekeeping. No corporate BS. Just code.
+            </p>
+
+            <div class="cta-input-group">
+                <input type="email" class="cta-input" placeholder="h4ck3r@pr0t0nmail.com" />
+                <button class="cta-submit">R3qu3st K3y</button>
+            </div>
+            <p class="cta-note">
+                &#x2726; 256-bit encrypted &bull; No logs &bull; Z3ro-kn0wl3dg3 auth
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-links">
+        <a href="#">D0cs</a>
+        <a href="#">G1thub</a>
+        <a href="#">D1sc0rd</a>
+        <a href="#">M4tr1x</a>
+        <a href="#">Bl0g</a>
+        <a href="#">C0nt4ct</a>
+    </div>
+    <p class="footer-copy">
+        &copy; 20XX CyberNexus Collective &bull; All Rights R3s3rv3d &bull;
+        <span class="leet">&gt;_</span> Built with &#x2665; and too much caffeine
+    </p>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+(() => {
+    'use strict';
+
+    // ─── Matrix Rain ──────────────────────────────────────
+    const matrixCanvas = document.getElementById('matrix-canvas');
+    const mCtx = matrixCanvas.getContext('2d');
+
+    const matrixChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()_+-=[]{}|;:<>?/ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ';
+    const fontSize = 14;
+    let columns, drops;
+
+    function initMatrix() {
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+        columns = Math.floor(matrixCanvas.width / fontSize);
+        drops = Array.from({ length: columns }, () => Math.random() * -100);
+    }
+
+    function drawMatrix() {
+        mCtx.fillStyle = 'rgba(10, 10, 15, 0.06)';
+        mCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+        for (let i = 0; i < columns; i++) {
+            const char = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+            const x = i * fontSize;
+            const y = drops[i] * fontSize;
+
+            // Gradient color based on position
+            const brightness = Math.random();
+            if (brightness > 0.95) {
+                mCtx.fillStyle = '#ffffff';
+                mCtx.shadowBlur = 15;
+                mCtx.shadowColor = '#00ff9d';
+            } else if (brightness > 0.8) {
+                mCtx.fillStyle = 'rgba(0, 255, 157, 0.9)';
+                mCtx.shadowBlur = 8;
+                mCtx.shadowColor = '#00ff9d';
+            } else {
+                mCtx.fillStyle = `rgba(0, 255, 157, ${0.1 + Math.random() * 0.3})`;
+                mCtx.shadowBlur = 0;
+            }
+
+            mCtx.font = `${fontSize}px monospace`;
+            mCtx.fillText(char, x, y);
+            mCtx.shadowBlur = 0;
+
+            if (y > matrixCanvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+        requestAnimationFrame(drawMatrix);
+    }
+
+    initMatrix();
+    drawMatrix();
+    window.addEventListener('resize', initMatrix);
+
+    // ─── Network Visualization ────────────────────────────
+    const netCanvas = document.getElementById('network-canvas');
+    const nCtx = netCanvas.getContext('2d');
+    let netNodes = [];
+    let netAnimId;
+
+    function initNetwork() {
+        const wrap = netCanvas.parentElement;
+        const size = Math.min(wrap.offsetWidth, 500);
+        netCanvas.width = size * window.devicePixelRatio;
+        netCanvas.height = size * window.devicePixelRatio;
+        netCanvas.style.width = size + 'px';
+        netCanvas.style.height = size + 'px';
+        nCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+        netNodes = [];
+        const count = 25;
+        for (let i = 0; i < count; i++) {
+            netNodes.push({
+                x: Math.random() * size,
+                y: Math.random() * size,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() - 0.5) * 0.5,
+                r: 2 + Math.random() * 3,
+                size: size
+            });
+        }
+    }
+
+    function drawNetwork() {
+        const size = netCanvas.width / window.devicePixelRatio;
+        nCtx.clearRect(0, 0, size, size);
+
+        // Update positions
+        netNodes.forEach(n => {
+            n.x += n.vx;
+            n.y += n.vy;
+            if (n.x < 0 || n.x > size) n.vx *= -1;
+            if (n.y < 0 || n.y > size) n.vy *= -1;
+        });
+
+        // Draw connections
+        for (let i = 0; i < netNodes.length; i++) {
+            for (let j = i + 1; j < netNodes.length; j++) {
+                const dx = netNodes[i].x - netNodes[j].x;
+                const dy = netNodes[i].y - netNodes[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 120) {
+                    const alpha = (1 - dist / 120) * 0.3;
+                    nCtx.beginPath();
+                    nCtx.moveTo(netNodes[i].x, netNodes[i].y);
+                    nCtx.lineTo(netNodes[j].x, netNodes[j].y);
+                    nCtx.strokeStyle = `rgba(0, 212, 255, ${alpha})`;
+                    nCtx.lineWidth = 0.5;
+                    nCtx.stroke();
+                }
+            }
+        }
+
+        // Draw nodes
+        netNodes.forEach(n => {
+            nCtx.beginPath();
+            nCtx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+            nCtx.fillStyle = 'rgba(0, 255, 157, 0.6)';
+            nCtx.fill();
+            nCtx.beginPath();
+            nCtx.arc(n.x, n.y, n.r + 4, 0, Math.PI * 2);
+            nCtx.fillStyle = 'rgba(0, 255, 157, 0.08)';
+            nCtx.fill();
+        });
+
+        netAnimId = requestAnimationFrame(drawNetwork);
+    }
+
+    initNetwork();
+    drawNetwork();
+    window.addEventListener('resize', () => {
+        cancelAnimationFrame(netAnimId);
+        initNetwork();
+        drawNetwork();
+    });
+
+    // ─── Nav Scroll Effect ─────────────────────────────────
+    const nav = document.getElementById('main-nav');
+    window.addEventListener('scroll', () => {
+        nav.classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    // ─── Scroll Reveal ──────────────────────────────────────
+    const reveals = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry, i) => {
+            if (entry.isIntersecting) {
+                setTimeout(() => {
+                    entry.target.classList.add('visible');
+                }, i * 100);
+                revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.15 });
+    reveals.forEach(el => revealObserver.observe(el));
+
+    // ─── Counter Animation ──────────────────────────────────
+    const statNumbers = document.querySelectorAll('.stat-number[data-target]');
+    const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateCounter(entry.target);
+                counterObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+    statNumbers.forEach(el => counterObserver.observe(el));
+
+    function animateCounter(el) {
+        const target = parseInt(el.getAttribute('data-target'));
+        const duration = 2000;
+        const start = performance.now();
+
+        function update(now) {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            // Ease out cubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = Math.floor(eased * target);
+            el.textContent = current.toLocaleString();
+            if (progress < 1) requestAnimationFrame(update);
+            else el.textContent = target.toLocaleString();
+        }
+        requestAnimationFrame(update);
+    }
+
+    // ─── Floating Hex Strings ───────────────────────────────
+    const hexStrings = [
+        '0xDEADBEEF', '0xCAFEBABE', '0xBAADF00D',
+        '0x8BADF00D', '0xDEADC0DE', '0xFEEDFACE',
+        '0x45505053', '0x736563', '0x6861636B'
+    ];
+
+    function spawnHexElement() {
+        const el = document.createElement('div');
+        el.className = 'float-hex';
+        el.textContent = hexStrings[Math.floor(Math.random() * hexStrings.length)];
+        el.style.top = Math.random() * 100 + 'vh';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.transform = `rotate(${Math.random() * 30 - 15}deg)`;
+        document.body.appendChild(el);
+
+        setTimeout(() => el.remove(), 15000);
+    }
+
+    // Spawn a few initially, then periodically
+    for (let i = 0; i < 5; i++) spawnHexElement();
+    setInterval(spawnHexElement, 4000);
+
+    // ─── CTA Submit Feedback ────────────────────────────────
+    const ctaBtn = document.querySelector('.cta-submit');
+    const ctaInput = document.querySelector('.cta-input');
+    ctaBtn.addEventListener('click', () => {
+        const email = ctaInput.value.trim();
+        if (!email || !email.includes('@')) {
+            ctaInput.style.borderColor = '#ff0066';
+            ctaInput.setAttribute('placeholder', '1nv4l1d_3m41l&colon; try 4g41n');
+            setTimeout(() => {
+                ctaInput.style.borderColor = 'rgba(0, 255, 157, 0.2)';
+                ctaInput.setAttribute('placeholder', 'h4ck3r@pr0t0nmail.com');
+            }, 2000);
+            return;
+        }
+
+        const origText = ctaBtn.textContent;
+        ctaBtn.textContent = 'Tr4nsm1tt1ng...';
+        ctaBtn.style.pointerEvents = 'none';
+
+        setTimeout(() => {
+            ctaBtn.textContent = 'K3y G3n3r4t3d!';
+            ctaBtn.style.background = '#00d4ff';
+            ctaInput.value = '';
+        }, 1500);
+
+        setTimeout(() => {
+            ctaBtn.textContent = origText;
+            ctaBtn.style.background = '';
+            ctaBtn.style.pointerEvents = '';
+        }, 3500);
+    });
+
+    ctaInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') ctaBtn.click();
+    });
+
+})();
+</script>
+
+</body>
+</html>
