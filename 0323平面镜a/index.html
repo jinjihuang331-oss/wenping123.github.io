@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>平面镜成像实验模拟器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    color: #e0e0e0;
+    overflow: hidden;
+  }
+  h1 {
+    margin: 16px 0 8px;
+    font-size: 24px;
+    color: #f0f0f0;
+    letter-spacing: 2px;
+  }
+  .info-bar {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 8px;
+    font-size: 16px;
+  }
+  .info-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .info-item .label { color: #aaa; }
+  .info-item .value {
+    font-weight: bold;
+    font-size: 18px;
+    font-family: 'Courier New', monospace;
+    min-width: 60px;
+  }
+  .object-val { color: #ff9f43; }
+  .image-val { color: #5dade2; }
+  canvas {
+    border: 2px solid #333;
+    border-radius: 8px;
+    cursor: default;
+    background: #0f0f23;
+  }
+  .hint {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #666;
+  }
+  .legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-line {
+    width: 24px;
+    height: 3px;
+  }
+  .legend-real { background: #ff9f43; }
+  .legend-virtual { border-top: 2px dashed #5dade2; height: 0; background: none; }
+  .legend-extend { border-top: 2px dashed #00d26a; height: 0; background: none; }
+</style>
+</head>
+<body>
+  <h1>平面镜成像实验模拟器</h1>
+  <div class="info-bar">
+    <div class="info-item">
+      <span class="label">物距 (u) = </span>
+      <span class="value object-val" id="objectDist">—</span>
+      <span class="label">cm</span>
+    </div>
+    <div class="info-item">
+      <span class="label">像距 (v) = </span>
+      <span class="value image-val" id="imageDist">—</span>
+      <span class="label">cm</span>
+    </div>
+    <div class="info-item">
+      <span class="label">u = v</span>
+      <span id="equalMark" style="color:#00d26a;font-weight:bold;">✓</span>
+    </div>
+  </div>
+  <canvas id="canvas" width="900" height="550"></canvas>
+  <div class="hint">拖动蜡烛观察成像变化</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-line legend-real"></div>入射光线</div>
+    <div class="legend-item"><div class="legend-line legend-virtual"></div>反射光线</div>
+    <div class="legend-item"><div class="legend-line legend-extend"></div>反向延长线（虚像）</div>
+  </div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// —— 配置 ——
+const MIRROR_X = W / 2;           // 镜面 x 坐标
+const MIRROR_TOP = 60;            // 镜面上端 y
+const MIRROR_BOTTOM = H - 80;     // 镜面下端 y
+const CANDLE_HEIGHT = 120;        // 蜡烛总高
+const SCALE = 0.5;                // px → cm 转换：2 px = 1 cm
+const CANDLE_COLOR = '#ff9f43';
+const IMAGE_COLOR = 'rgba(93,173,226,0.45)';
+const IMAGE_GLOW = 'rgba(93,173,226,0.15)';
+const RAY_COLOR = '#ff9f43';
+const REFLECT_COLOR = '#5dade2';
+const EXTEND_COLOR = '#00d26a';
+
+let candleX = MIRROR_X - 160;     // 蜡烛底部中心 x
+let candleY = H - 100;            // 蜡烛底部 y
+let dragging = false;
+let dragOffsetX = 0;
+
+// ── 工具函数 ──
+function px2cm(px) { return Math.abs(px) * SCALE; }
+function cm2px(cm) { return cm / SCALE; }
+
+// ── 绘制镜面 ──
+function drawMirror() {
+  // 镜面背板（浅灰矩形）
+  ctx.fillStyle = '#3a3a5e';
+  ctx.fillRect(MIRROR_X - 8, MIRROR_TOP, 16, MIRROR_BOTTOM - MIRROR_TOP);
+  // 镜面正面（亮色线）
+  ctx.strokeStyle = '#8892b0';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(MIRROR_X, MIRROR_TOP);
+  ctx.lineTo(MIRROR_X, MIRROR_BOTTOM);
+  ctx.stroke();
+  // 斜线表示不透明背面
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1.5;
+  const step = 12;
+  for (let y = MIRROR_TOP + step; y < MIRROR_BOTTOM; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(MIRROR_X + 6, y - step / 2);
+    ctx.lineTo(MIRROR_X + 6, y);
+    ctx.stroke();
+  }
+  // 标注文字
+  ctx.fillStyle = '#8892b0';
+  ctx.font = '14px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('平面镜', MIRROR_X, MIRROR_TOP - 10);
+}
+
+// ── 绘制蜡烛 ──
+function drawCandle(x, y, color, alpha, isVirtual) {
+  const ch = CANDLE_HEIGHT;
+  const w = 14;
+  const flameH = 22;
+  const bodyH = ch - flameH - 4;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // 烛台
+  ctx.fillStyle = '#b8860b';
+  ctx.beginPath();
+  ctx.moveTo(x - 14, y);
+  ctx.lineTo(x + 14, y);
+  ctx.lineTo(x + 10, y - 8);
+  ctx.lineTo(x - 10, y - 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // 蜡烛体
+  ctx.fillStyle = color;
+  ctx.fillRect(x - w / 2, y - bodyH - 8, w, bodyH);
+
+  // 蜡烛纹理线
+  ctx.strokeStyle = isVirtual ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const ly = y - bodyH - 8 + (bodyH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, ly);
+    ctx.lineTo(x + w / 2, ly);
+    ctx.stroke();
+  }
+
+  // 烛芯
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x - 1, y - ch + flameH, 2, 6);
+
+  // 火焰
+  const flameY = y - ch;
+  ctx.beginPath();
+  ctx.moveTo(x, flameY - flameH);
+  ctx.bezierCurveTo(
+    x + 10, flameY - flameH * 0.5,
+    x + 6,  flameY + 2,
+    x,      flameY + 2
+  );
+  ctx.bezierCurveTo(
+    x - 6,  flameY + 2,
+    x - 10, flameY - flameH * 0.5,
+    x,      flameY - flameH
+  );
+  const grad = ctx.createRadialGradient(x, flameY - flameH * 0.4, 2, x, flameY - flameH * 0.4, flameH * 0.8);
+  grad.addColorStop(0, '#fff7e0');
+  grad.addColorStop(0.3, '#ffcc00');
+  grad.addColorStop(0.7, '#ff6600');
+  grad.addColorStop(1, 'rgba(255,60,0,0.3)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 标签
+  ctx.fillStyle = isVirtual ? 'rgba(255,255,255,0.5)' : '#e0e0e0';
+  ctx.font = isVirtual ? 'italic 13px "Microsoft YaHei"' : '13px "Microsoft YaHei"';
+  ctx.textAlign = 'center';
+  ctx.fillText(isVirtual ? '虚像 (等大等距)' : '蜡烛', x, y + 22);
+
+  ctx.restore();
+}
+
+// ── 绘制光线 ──
+function drawRays(objX, imgX) {
+  const flameX = objX;
+  const flameY = candleY - CANDLE_HEIGHT;
+  const imgFlameX = imgX;
+
+  // 选择镜面上两个入射点
+  const p1y = MIRROR_TOP + (MIRROR_BOTTOM - MIRROR_TOP) * 0.3;
+  const p2y = MIRROR_TOP + (MIRROR_BOTTOM - MIRROR_TOP) * 0.65;
+
+  const pts = [p1y, p2y];
+
+  pts.forEach((py, i) => {
+    // 入射光线：蜡烛火焰 → 镜面
+    ctx.beginPath();
+    ctx.moveTo(flameX, flameY);
+    ctx.lineTo(MIRROR_X, py);
+    ctx.strokeStyle = RAY_COLOR;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 箭头
+    const midX = (flameX + MIRROR_X) / 2;
+    const midY = (flameY + py) / 2;
+    const angle = Math.atan2(py - flameY, MIRROR_X - flameX);
+    drawArrow(midX, midY, angle, RAY_COLOR);
+
+    // 反射光线：镜面 → 眼睛（向右延伸）
+    const reflectEndX = MIRROR_X + 200;
+    const reflectAngle = Math.atan2(py - flameY, MIRROR_X - imgFlameX);
+    const reflectEndY = py + Math.tan(reflectAngle) * (reflectEndX - MIRROR_X);
+
+    ctx.beginPath();
+    ctx.moveTo(MIRROR_X, py);
+    ctx.lineTo(reflectEndX, reflectEndY);
+    ctx.strokeStyle = REFLECT_COLOR;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 反射光线箭头
+    const rMidX = (MIRROR_X + reflectEndX) / 2;
+    const rMidY = (py + reflectEndY) / 2;
+    drawArrow(rMidX, rMidY, reflectAngle, REFLECT_COLOR);
+
+    // 反向延长线（虚线）：从镜面反向延长到虚像
+    ctx.beginPath();
+    ctx.moveTo(MIRROR_X, py);
+    ctx.lineTo(imgFlameX, flameY);
+    ctx.strokeStyle = EXTEND_COLOR;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 入射点标记
+    ctx.beginPath();
+    ctx.arc(MIRROR_X, py, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // 眼睛图标（观察位置）
+  const eyeX = MIRROR_X + 180;
+  const eyeY = candleY - 30;
+  drawEye(eyeX, eyeY);
+  ctx.fillStyle = '#888';
+  ctx.font = '12px "Microsoft YaHei"';
+  ctx.textAlign = 'center';
+  ctx.fillText('观察点', eyeX, eyeY + 22);
+}
+
+function drawArrow(x, y, angle, color) {
+  const size = 7;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(size, 0);
+  ctx.lineTo(-size * 0.6, -size * 0.5);
+  ctx.lineTo(-size * 0.6, size * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawEye(x, y) {
+  ctx.save();
+  // 眼白
+  ctx.beginPath();
+  ctx.ellipse(x, y, 12, 8, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // 瞳孔
+  ctx.beginPath();
+  ctx.arc(x - 2, y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#3a3a5e';
+  ctx.fill();
+  ctx.restore();
+}
+
+// ── 绘制距离标注 ──
+function drawDistanceLabels(objX, imgX) {
+  const groundY = candleY + 5;
+  const objDistPx = Math.abs(objX - MIRROR_X);
+  const imgDistPx = Math.abs(imgX - MIRROR_X);
+  const objDistCm = px2cm(objDistPx);
+  const imgDistCm = px2cm(imgDistPx);
+
+  // 物距标注线
+  const objLabelY = groundY + 30;
+  ctx.strokeStyle = '#ff9f43';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  // 垂线
+  ctx.beginPath();
+  ctx.moveTo(objX, groundY);
+  ctx.lineTo(objX, objLabelY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(MIRROR_X, groundY);
+  ctx.lineTo(MIRROR_X, objLabelY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // 水平线
+  ctx.beginPath();
+  ctx.moveTo(objX, objLabelY);
+  ctx.lineTo(MIRROR_X, objLabelY);
+  ctx.stroke();
+  // 箭头
+  drawArrow((objX + MIRROR_X) / 2 - 15, objLabelY, 0, '#ff9f43');
+  // 文字
+  ctx.fillStyle = '#ff9f43';
+  ctx.font = 'bold 14px "Microsoft YaHei", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`u = ${objDistCm.toFixed(1)} cm`, (objX + MIRROR_X) / 2, objLabelY + 16);
+
+  // 像距标注线
+  const imgLabelY = groundY + 30;
+  ctx.strokeStyle = '#5dade2';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(imgX, groundY);
+  ctx.lineTo(imgX, imgLabelY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(MIRROR_X, groundY);
+  ctx.lineTo(MIRROR_X, imgLabelY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // 水平线
+  ctx.beginPath();
+  ctx.moveTo(MIRROR_X, imgLabelY);
+  ctx.lineTo(imgX, imgLabelY);
+  ctx.stroke();
+  // 箭头
+  drawArrow((MIRROR_X + imgX) / 2 + 15, imgLabelY, Math.PI, '#5dade2');
+  // 文字
+  ctx.fillStyle = '#5dade2';
+  ctx.font = 'bold 14px "Microsoft YaHei", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`v = ${imgDistCm.toFixed(1)} cm`, (MIRROR_X + imgX) / 2, imgLabelY + 16);
+
+  // 连接线（物像等距关系）
+  ctx.setLineDash([2, 4]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(objX, candleY - CANDLE_HEIGHT);
+  ctx.lineTo(imgX, candleY - CANDLE_HEIGHT);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 更新顶部信息栏
+  document.getElementById('objectDist').textContent = objDistCm.toFixed(1);
+  document.getElementById('imageDist').textContent = imgDistCm.toFixed(1);
+}
+
+// ── 主绘制 ──
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // 网格背景
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  const grid = 50;
+  for (let x = 0; x <= W; x += grid) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= H; y += grid) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  // 地面线
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, candleY);
+  ctx.lineTo(W, candleY);
+  ctx.stroke();
+
+  // 虚像位置
+  const imgX = MIRROR_X + (MIRROR_X - candleX);
+
+  // 绘制光线
+  if (candleX < MIRROR_X) {
+    drawRays(candleX, imgX);
+  }
+
+  // 绘制镜面
+  drawMirror();
+
+  // 绘制虚像（在镜面后，半透明）
+  if (candleX < MIRROR_X) {
+    // 虚像发光效果
+    ctx.shadowColor = IMAGE_GLOW;
+    ctx.shadowBlur = 20;
+    drawCandle(imgX, candleY, IMAGE_COLOR, 0.55, true);
+    ctx.shadowBlur = 0;
+  }
+
+  // 绘制蜡烛（物体）
+  drawCandle(candleX, candleY, CANDLE_COLOR, 1.0, false);
+
+  // 距离标注
+  if (candleX < MIRROR_X) {
+    drawDistanceLabels(candleX, imgX);
+  }
+}
+
+// ── 拖拽交互 ──
+function hitTest(mx, my) {
+  // 检测是否在蜡烛附近
+  const halfW = 20;
+  return (
+    mx >= candleX - halfW && mx <= candleX + halfW &&
+    my >= candleY - CANDLE_HEIGHT - 10 && my <= candleY + 10
+  );
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  if (hitTest(mx, my)) {
+    dragging = true;
+    dragOffsetX = candleX - mx;
+    canvas.style.cursor = 'grabbing';
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  if (dragging) {
+    // 限制在镜面左侧，且不超出画布
+    let newX = mx + dragOffsetX;
+    newX = Math.max(50, Math.min(MIRROR_X - 20, newX));
+    candleX = newX;
+    draw();
+  } else {
+    canvas.style.cursor = hitTest(mx, my) ? 'grab' : 'default';
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragging = false;
+  canvas.style.cursor = 'default';
+});
+
+canvas.addEventListener('mouseleave', () => {
+  dragging = false;
+  canvas.style.cursor = 'default';
+});
+
+// 触摸支持
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const mx = touch.clientX - rect.left;
+  const my = touch.clientY - rect.top;
+  if (hitTest(mx, my)) {
+    dragging = true;
+    dragOffsetX = candleX - mx;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (dragging) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const mx = touch.clientX - rect.left;
+    let newX = mx + dragOffsetX;
+    newX = Math.max(50, Math.min(MIRROR_X - 20, newX));
+    candleX = newX;
+    draw();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+  dragging = false;
+});
+
+// ── 启动 ──
+draw();
+</script>
+</body>
+</html>
