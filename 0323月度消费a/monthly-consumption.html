@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月度消费统计</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    padding: 24px;
+  }
+  .page-title {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 28px;
+    letter-spacing: 2px;
+  }
+  .charts-row {
+    display: flex;
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .chart-card {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  }
+  .chart-title {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 16px;
+  }
+  .chart-container {
+    width: 100%;
+    height: 360px;
+  }
+</style>
+</head>
+<body>
+
+<h1 class="page-title">2026年3月 消费统计</h1>
+
+<div class="charts-row">
+  <!-- 每日消费折线图 -->
+  <div class="chart-card">
+    <h2 class="chart-title">每日消费趋势</h2>
+    <div id="lineChart" class="chart-container"></div>
+  </div>
+
+  <!-- 品类占比柱状图 -->
+  <div class="chart-card">
+    <h2 class="chart-title">品类消费占比</h2>
+    <div id="barChart" class="chart-container"></div>
+  </div>
+</div>
+
+<script>
+// ── 简约配色方案 ──
+const COLORS = {
+  line:    '#5B8DEF',
+  area:    'rgba(91, 141, 239, 0.12)',
+  bar:     '#5B8DEF',
+  barHover:'#3A6DD8',
+  text:    '#666',
+  gridLine:'#e8e8e8',
+  categoryBg: '#f7f8fa'
+};
+
+// ── 模拟数据 ──
+const days = [];
+const spend = [];
+for (let d = 1; d <= 31; d++) {
+  days.push(d + '日');
+  // 模拟日常消费波动
+  const base = 120;
+  const wave = Math.sin(d * 0.4) * 50 + Math.cos(d * 0.15) * 30;
+  const random = (Math.random() - 0.5) * 80;
+  spend.push(Math.round(Math.max(30, base + wave + random)));
+}
+
+const categories = ['餐饮', '交通', '购物', '娱乐', '日用', '其他'];
+const categoryValues = [2180, 680, 1550, 520, 920, 430];
+
+// ── 通用 tooltip 配置 ──
+const tooltipStyle = {
+  backgroundColor: '#fff',
+  borderColor: '#e0e0e0',
+  borderWidth: 1,
+  textStyle: { color: '#333', fontSize: 13 },
+  padding: [8, 12],
+  extraCssText: 'box-shadow: 0 2px 12px rgba(0,0,0,0.1);'
+};
+
+// ── 每日消费折线图 ──
+const lineChart = echarts.init(document.getElementById('lineChart'));
+lineChart.setOption({
+  tooltip: {
+    trigger: 'axis',
+    ...tooltipStyle,
+    formatter: function(params) {
+      return `<b>${params[0].axisValue}</b><br/>消费：<b style="color:${COLORS.line}">￥${params[0].value}</b>`;
+    }
+  },
+  grid: { left: 50, right: 20, top: 30, bottom: 40 },
+  xAxis: {
+    type: 'category',
+    data: days,
+    axisLine: { lineStyle: { color: COLORS.gridLine } },
+    axisLabel: { color: COLORS.text, fontSize: 11 },
+    axisTick: { show: false }
+  },
+  yAxis: {
+    type: 'value',
+    name: '金额(元)',
+    nameTextStyle: { color: COLORS.text, fontSize: 12 },
+    axisLine: { show: false },
+    axisTick: { show: false },
+    splitLine: { lineStyle: { color: COLORS.gridLine, type: 'dashed' } },
+    axisLabel: { color: COLORS.text, fontSize: 11 }
+  },
+  series: [{
+    type: 'line',
+    data: spend,
+    smooth: true,
+    symbol: 'circle',
+    symbolSize: 5,
+    lineStyle: { width: 2.5, color: COLORS.line },
+    itemStyle: {
+      color: COLORS.line,
+      borderColor: '#fff',
+      borderWidth: 2
+    },
+    areaStyle: {
+      color: {
+        type: 'linear',
+        x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [
+          { offset: 0, color: 'rgba(91, 141, 239, 0.25)' },
+          { offset: 1, color: 'rgba(91, 141, 239, 0.02)' }
+        ]
+      }
+    },
+    emphasis: {
+      scale: true,
+      itemStyle: {
+        shadowBlur: 12,
+        shadowColor: 'rgba(91, 141, 239, 0.4)',
+        borderWidth: 3
+      }
+    }
+  }]
+});
+
+// ── 品类占比柱状图 ──
+const barChart = echarts.init(document.getElementById('barChart'));
+barChart.setOption({
+  tooltip: {
+    trigger: 'axis',
+    ...tooltipStyle,
+    formatter: function(params) {
+      const p = params[0];
+      const total = categoryValues.reduce((a, b) => a + b, 0);
+      const pct = ((p.value / total) * 100).toFixed(1);
+      return `<b>${p.name}</b><br/>消费：￥${p.value}<br/>占比：<b style="color:${COLORS.bar}">${pct}%</b>`;
+    }
+  },
+  grid: { left: 50, right: 20, top: 30, bottom: 40 },
+  xAxis: {
+    type: 'category',
+    data: categories,
+    axisLine: { lineStyle: { color: COLORS.gridLine } },
+    axisLabel: { color: COLORS.text, fontSize: 12 },
+    axisTick: { show: false }
+  },
+  yAxis: {
+    type: 'value',
+    name: '金额(元)',
+    nameTextStyle: { color: COLORS.text, fontSize: 12 },
+    axisLine: { show: false },
+    axisTick: { show: false },
+    splitLine: { lineStyle: { color: COLORS.gridLine, type: 'dashed' } },
+    axisLabel: { color: COLORS.text, fontSize: 11 }
+  },
+  series: [{
+    type: 'bar',
+    data: categoryValues,
+    barWidth: '45%',
+    itemStyle: {
+      color: {
+        type: 'linear',
+        x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [
+          { offset: 0, color: '#5B8DEF' },
+          { offset: 1, color: '#8BB3F0' }
+        ]
+      },
+      borderRadius: [6, 6, 0, 0]
+    },
+    emphasis: {
+      itemStyle: {
+        color: {
+          type: 'linear',
+          x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: '#3A6DD8' },
+            { offset: 1, color: '#5B8DEF' }
+          ]
+        }
+      }
+    },
+    label: {
+      show: true,
+      position: 'top',
+      fontSize: 11,
+      color: '#888',
+      formatter: '￥{c}'
+    }
+  }]
+});
+
+// ── 响应式 ──
+window.addEventListener('resize', function() {
+  lineChart.resize();
+  barChart.resize();
+});
+</script>
+
+</body>
+</html>
