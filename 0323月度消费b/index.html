@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>月度消费统计</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f8f9fa;
+      color: #2c3e50;
+      min-height: 100vh;
+      padding: 40px 24px;
+    }
+
+    .page-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 36px;
+      letter-spacing: 2px;
+    }
+
+    .charts {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .chart-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    }
+
+    .chart-title {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a2e;
+      margin-bottom: 24px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 340px;
+    }
+
+    @media (max-width: 600px) {
+      .page-title { font-size: 22px; }
+      .chart-card { padding: 20px; }
+      .chart-wrapper { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1 class="page-title">2026年3月 消费统计</h1>
+
+  <div class="charts">
+    <!-- 每日消费折线图 -->
+    <div class="chart-card">
+      <h2 class="chart-title">每日消费趋势</h2>
+      <div class="chart-wrapper">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 品类占比柱状图 -->
+    <div class="chart-card">
+      <h2 class="chart-title">品类消费分布</h2>
+      <div class="chart-wrapper">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 模拟数据 =====
+    const dailyLabels = Array.from({ length: 31 }, (_, i) => `${i + 1}日`);
+    const dailyData = [
+      128, 85, 210, 56, 320, 95, 410,
+      180, 230, 75, 290, 150, 380, 60,
+      200, 115, 340, 90, 260, 175, 420,
+      135, 250, 80, 310, 165, 285, 100,
+      195, 240, 360
+    ];
+
+    const categoryLabels = ['餐饮', '交通', '购物', '娱乐', '居住', '医疗', '其他'];
+    const categoryData = [1850, 420, 2380, 650, 1500, 280, 560];
+
+    // ===== 统一配色 =====
+    const primaryColor = '#6c5ce7';
+    const primaryAlpha = 'rgba(108,92,231,0.15)';
+    const accentColor = '#00cec9';
+    const accentAlpha = 'rgba(0,206,201,0.15)';
+    const textColor = '#2c3e50';
+    const gridColor = 'rgba(0,0,0,0.06)';
+    const hoverBorder = '#4834d4';
+
+    // ===== Tooltip 样式 =====
+    const tooltipConfig = {
+      backgroundColor: 'rgba(26,26,46,0.88)',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 14 },
+      padding: 12,
+      cornerRadius: 8,
+      displayColors: true,
+      callbacks: {
+        label: function (ctx) {
+          return ` ¥${ctx.parsed.y.toLocaleString()} 元`;
+        }
+      }
+    };
+
+    // ===== 折线图 =====
+    new Chart(document.getElementById('lineChart'), {
+      type: 'line',
+      data: {
+        labels: dailyLabels,
+        datasets: [{
+          label: '消费金额（元）',
+          data: dailyData,
+          borderColor: primaryColor,
+          backgroundColor: primaryAlpha,
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointHoverRadius: 7,
+          pointHoverBorderWidth: 3,
+          pointHoverBorderColor: '#fff',
+          fill: true,
+          tension: 0.35
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: tooltipConfig
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: textColor, font: { size: 11 }, maxRotation: 45 }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              font: { size: 11 },
+              callback: v => `¥${v}`
+            },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // ===== 柱状图 =====
+    new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: {
+        labels: categoryLabels,
+        datasets: [{
+          label: '消费金额（元）',
+          data: categoryData,
+          backgroundColor: categoryData.map((_, i) =>
+            `hsla(${260 - i * 18}, 65%, 60%, 0.82)`
+          ),
+          borderRadius: 8,
+          borderSkipped: false,
+          hoverBackgroundColor: categoryData.map((_, i) =>
+            `hsla(${260 - i * 18}, 65%, 48%, 1)`
+          ),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...tooltipConfig,
+            callbacks: {
+              label: function (ctx) {
+                const total = categoryData.reduce((a, b) => a + b, 0);
+                const pct = ((ctx.parsed.y / total) * 100).toFixed(1);
+                return ` ¥${ctx.parsed.y.toLocaleString()} 元（占比 ${pct}%）`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: textColor, font: { size: 12 } }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              font: { size: 11 },
+              callback: v => `¥${v}`
+            },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
