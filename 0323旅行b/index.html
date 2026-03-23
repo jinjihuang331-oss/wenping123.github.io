@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4A90D9">
+    <title>旅行地图 - Travel Map</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div id="app">
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <button id="btn-add-marker" class="toolbar-btn" title="添加景点">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                添加景点
+            </button>
+            <button id="btn-clear" class="toolbar-btn" title="清除所有">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                清除
+            </button>
+            <button id="btn-route" class="toolbar-btn" title="计算路线">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                规划路线
+            </button>
+            <button id="btn-save" class="toolbar-btn" title="保存行程">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                保存
+            </button>
+            <button id="btn-install" class="toolbar-btn hidden" title="安装应用">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                安装
+            </button>
+        </div>
+
+        <!-- 地图容器 -->
+        <div id="map"></div>
+
+        <!-- 右侧面板 -->
+        <div id="side-panel" class="side-panel">
+            <div class="panel-header">
+                <h3 id="panel-title">景点列表</h3>
+                <button class="panel-close">&times;</button>
+            </div>
+            <div id="panel-content" class="panel-content">
+                <div class="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <p>点击地图添加景点<br>或点击"添加景点"按钮</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 景点弹窗表单 -->
+        <div id="marker-form-overlay" class="overlay hidden">
+            <div class="marker-form">
+                <h3>添加景点</h3>
+                <div class="form-group">
+                    <label>景点名称</label>
+                    <input type="text" id="marker-name" placeholder="例如：故宫" />
+                </div>
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="marker-desc" rows="3" placeholder="简单描述这个景点..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>分类</label>
+                    <select id="marker-category">
+                        <option value="scenic">自然风光</option>
+                        <option value="culture">文化古迹</option>
+                        <option value="food">美食推荐</option>
+                        <option value="hotel">住宿</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button id="marker-cancel" class="btn btn-secondary">取消</button>
+                    <button id="marker-confirm" class="btn btn-primary">确认添加</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 路线规划面板 -->
+        <div id="route-panel" class="overlay hidden">
+            <div class="route-form">
+                <h3>规划路线</h3>
+                <p class="route-hint">从景点列表中选择起点和终点</p>
+                <div class="form-group">
+                    <label>起点</label>
+                    <select id="route-start"></select>
+                </div>
+                <div class="form-group">
+                    <label>终点</label>
+                    <select id="route-end"></select>
+                </div>
+                <div class="form-group">
+                    <label>交通方式</label>
+                    <select id="route-mode">
+                        <option value="walking">步行</option>
+                        <option value="biking">骑行</option>
+                        <option value="driving">驾车</option>
+                    </select>
+                </div>
+                <div id="route-result" class="route-result hidden">
+                    <div class="result-item">
+                        <span class="result-label">直线距离</span>
+                        <span id="route-distance" class="result-value">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">预计时间</span>
+                        <span id="route-time" class="result-value">--</span>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button id="route-cancel" class="btn btn-secondary">取消</button>
+                    <button id="route-calc" class="btn btn-primary">计算</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 状态栏 -->
+        <div id="status-bar" class="status-bar">
+            <span id="status-text">就绪</span>
+            <span id="cache-status" class="cache-dot"></span>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
