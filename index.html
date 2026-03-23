@@ -1,482 +1,1042 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a1a">
-  <meta name="description" content="健身追踪仪表盘 - 记录锻炼、追踪进展、达成目标">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="健身追踪">
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon-192.svg">
-  <title>健身追踪仪表盘</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>虚拟教室</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #263348;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --radius: 12px;
+}
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* === Top Bar === */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+.top-bar h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.top-bar .rec-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+  display: none;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+.top-bar .rec-dot.active { display: inline-block; }
+.rec-time {
+  font-size: 0.8rem;
+  color: var(--danger);
+  margin-left: 6px;
+  display: none;
+}
+.rec-time.active { display: inline-block; font-variant-numeric: tabular-nums; }
+
+.top-bar .session-info {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.top-bar .controls {
+  display: flex;
+  gap: 8px;
+}
+.top-bar button {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.top-bar button:hover { background: var(--bg-card-hover); }
+.top-bar button.recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+.top-bar button.recording:hover { background: #dc2626; }
+
+/* === Main Layout === */
+.main {
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  height: calc(100vh - 52px);
+}
+
+/* === Sidebar === */
+.sidebar {
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 14px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* === Participants === */
+.participant-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+}
+.participant-item:hover { background: var(--bg-card-hover); }
+.participant-item.active {
+  background: rgba(79, 70, 229, 0.12);
+  border-left: 3px solid var(--primary);
+}
+.participant-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.participant-info { flex: 1; min-width: 0; }
+.participant-name {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.participant-role {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.participant-status {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.participant-status.sharing {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* === Canvas Area === */
+.canvas-area {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.canvas-toolbar .divider {
+  width: 1px; height: 24px;
+  background: var(--border);
+  margin: 0 6px;
+}
+.canvas-toolbar button {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-size: 1rem;
+}
+.canvas-toolbar button:hover { background: var(--bg-card-hover); }
+.canvas-toolbar button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.canvas-toolbar button:disabled { opacity: 0.35; cursor: not-allowed; }
+.canvas-toolbar .color-picker-wrap {
+  position: relative;
+  width: 34px; height: 34px;
+}
+.canvas-toolbar .color-picker-wrap input[type="color"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0; cursor: pointer;
+}
+.canvas-toolbar .color-preview {
+  width: 100%; height: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+.canvas-toolbar .slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+}
+.canvas-toolbar .slider-wrap label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.canvas-toolbar input[type="range"] {
+  width: 80px;
+  accent-color: var(--primary);
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #fafafa;
+}
+#whiteboard {
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+.canvas-container .share-overlay {
+  position: absolute;
+  border: 3px dashed var(--success);
+  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.08);
+  pointer-events: none;
+  display: none;
+  z-index: 5;
+}
+.canvas-container .share-overlay.active { display: block; }
+.canvas-container .share-overlay::after {
+  content: "正在共享此区域";
+  position: absolute;
+  top: -24px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--success);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.canvas-container .select-hint {
+  position: absolute;
+  bottom: 10px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  color: white;
+  font-size: 0.75rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  pointer-events: none;
+  display: none;
+  z-index: 6;
+}
+.canvas-container .select-hint.active { display: block; }
+
+/* === Chat === */
+.chat-panel {
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-msg {
+  padding: 8px 12px;
+  border-radius: 10px;
+  max-width: 85%;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.chat-msg.self {
+  align-self: flex-end;
+  background: var(--primary);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg.other {
+  align-self: flex-start;
+  background: var(--bg-card-hover);
+  border-bottom-left-radius: 4px;
+}
+.chat-msg .msg-author {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+.chat-msg.self .msg-author { color: rgba(255,255,255,0.7); }
+.chat-msg .msg-time {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  text-align: right;
+}
+.chat-msg.self .msg-time { color: rgba(255,255,255,0.5); }
+.chat-input-area {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.chat-input-area .emoji-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.chat-input-area .emoji-bar button {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.chat-input-area .emoji-bar button:hover { background: var(--bg-card-hover); }
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.chat-input-row textarea {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  resize: none;
+  max-height: 100px;
+  font-family: inherit;
+}
+.chat-input-row textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.chat-input-row button.send {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.chat-input-row button.send:hover { background: var(--primary-hover); }
+
+/* === Mobile Responsive === */
+@media (max-width: 768px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  .sidebar {
+    display: none;
+  }
+  .sidebar.open {
+    display: flex;
+    position: absolute;
+    top: 52px; left: 0;
+    width: 260px;
+    height: calc(100% - 52px);
+    z-index: 20;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+  }
+  .chat-panel {
+    display: none;
+  }
+  .chat-panel.open {
+    display: flex;
+    position: absolute;
+    top: 52px; right: 0;
+    width: 100%;
+    height: calc(100% - 52px);
+    z-index: 20;
+  }
+  .mobile-nav {
+    display: flex;
+  }
+  .top-bar button.sidebar-toggle {
+    display: flex;
+  }
+}
+@media (min-width: 769px) {
+  .sidebar-toggle { display: none !important; }
+  .mobile-tab-bar { display: none !important; }
+}
+
+.mobile-tab-bar {
+  display: flex;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  z-index: 30;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+.mobile-tab-bar button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.mobile-tab-bar button.active { color: var(--primary); }
+.mobile-tab-bar button span { font-size: 1.2rem; }
+.sidebar-toggle {
+  display: none;
+  padding: 6px 12px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+</style>
 </head>
 <body>
-  <div id="app">
-    <!-- Status Bar Spacer -->
-    <div class="status-bar-spacer"></div>
 
-    <!-- Header -->
-    <header id="app-header">
-      <div class="header-content">
-        <div>
-          <h1 id="page-title">仪表盘</h1>
-          <p id="header-subtitle" class="subtitle"></p>
-        </div>
-        <div class="header-actions">
-          <button id="btn-steps" class="icon-btn" title="计步器">
-            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>
-            <span class="step-badge" id="step-badge" style="display:none">0</span>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- Main Content -->
-    <main id="main-content">
-
-      <!-- Dashboard Page -->
-      <section id="page-dashboard" class="page active">
-        <div class="stats-grid">
-          <div class="stat-card accent-purple">
-            <div class="stat-icon">🔥</div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-weekly-workouts">0</span>
-              <span class="stat-label">本周锻炼次数</span>
-            </div>
-          </div>
-          <div class="stat-card accent-teal">
-            <div class="stat-icon">⏱️</div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-weekly-minutes">0</span>
-              <span class="stat-label">本周运动(分钟)</span>
-            </div>
-          </div>
-          <div class="stat-card accent-green">
-            <div class="stat-icon">📏</div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-weekly-distance">0</span>
-              <span class="stat-label">本周距离(km)</span>
-            </div>
-          </div>
-          <div class="stat-card accent-orange">
-            <div class="stat-icon">🎯</div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-active-goals">0</span>
-              <span class="stat-label">进行中目标</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Today's Summary -->
-        <div class="card">
-          <div class="card-header">
-            <h2>今日概览</h2>
-            <button class="btn-ghost" onclick="app.navigateTo('log')">+ 添加</button>
-          </div>
-          <div id="today-summary" class="today-summary">
-            <div class="empty-state-small">今天还没有锻炼记录</div>
-          </div>
-        </div>
-
-        <!-- Pedometer Card -->
-        <div class="card" id="pedometer-card" style="display:none">
-          <div class="card-header">
-            <h2>计步器</h2>
-            <button class="btn-ghost" id="btn-toggle-pedometer">开始</button>
-          </div>
-          <div class="pedometer-display">
-            <div class="step-ring" id="step-ring">
-              <svg viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="54" class="ring-bg"/>
-                <circle cx="60" cy="60" r="54" class="ring-progress" id="step-ring-progress"/>
-              </svg>
-              <div class="ring-text">
-                <span class="step-count" id="step-count">0</span>
-                <span class="step-label">步</span>
-              </div>
-            </div>
-            <div class="step-info">
-              <div class="step-stat">
-                <span class="step-stat-value" id="step-calories">0</span>
-                <span class="step-stat-label">千卡</span>
-              </div>
-              <div class="step-stat">
-                <span class="step-stat-value" id="step-distance-km">0</span>
-                <span class="step-stat-label">公里</span>
-              </div>
-              <div class="step-goal-input">
-                <label>每日目标</label>
-                <input type="number" id="step-goal-input" value="10000" min="1000" step="1000" onchange="pedometer.saveGoal()">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Weekly Chart -->
-        <div class="card">
-          <div class="card-header">
-            <h2>本周活动</h2>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-weekly"></canvas>
-          </div>
-        </div>
-
-        <!-- Recent Workouts -->
-        <div class="card">
-          <div class="card-header">
-            <h2>最近锻炼</h2>
-            <button class="btn-ghost" onclick="app.navigateTo('progress')">查看全部</button>
-          </div>
-          <div id="recent-workouts" class="workout-list">
-            <div class="empty-state-small">暂无锻炼记录</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Log Workout Page -->
-      <section id="page-log" class="page">
-        <div class="card">
-          <h2>记录锻炼</h2>
-          <form id="workout-form" onsubmit="app.saveWorkout(event)">
-            <div class="form-group">
-              <label>锻炼类型</label>
-              <div class="workout-type-grid" id="workout-types">
-                <button type="button" class="type-btn" data-type="running">
-                  <span class="type-icon">🏃</span>
-                  <span>跑步</span>
-                </button>
-                <button type="button" class="type-btn" data-type="weightlifting">
-                  <span class="type-icon">🏋️</span>
-                  <span>举重</span>
-                </button>
-                <button type="button" class="type-btn" data-type="cycling">
-                  <span class="type-icon">🚴</span>
-                  <span>骑行</span>
-                </button>
-                <button type="button" class="type-btn" data-type="swimming">
-                  <span class="type-icon">🏊</span>
-                  <span>游泳</span>
-                </button>
-                <button type="button" class="type-btn" data-type="yoga">
-                  <span class="type-icon">🧘</span>
-                  <span>瑜伽</span>
-                </button>
-                <button type="button" class="type-btn" data-type="walking">
-                  <span class="type-icon">🚶</span>
-                  <span>步行</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="workout-date">日期</label>
-              <input type="date" id="workout-date" required>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="workout-duration">时长 (分钟)</label>
-                <input type="number" id="workout-duration" placeholder="30" min="1" required>
-              </div>
-              <div class="form-group">
-                <label for="workout-calories">卡路里 (可选)</label>
-                <input type="number" id="workout-calories" placeholder="200" min="0">
-              </div>
-            </div>
-
-            <div class="form-row" id="distance-row">
-              <div class="form-group">
-                <label for="workout-distance">距离 (km)</label>
-                <input type="number" id="workout-distance" placeholder="5.0" min="0" step="0.1">
-              </div>
-            </div>
-
-            <div id="weightlifting-fields" style="display:none">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="workout-sets">组数</label>
-                  <input type="number" id="workout-sets" placeholder="3" min="0">
-                </div>
-                <div class="form-group">
-                  <label for="workout-reps">每组次数</label>
-                  <input type="number" id="workout-reps" placeholder="10" min="0">
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="workout-weight">重量 (kg)</label>
-                <input type="number" id="workout-weight" placeholder="50" min="0" step="0.5">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="workout-notes">备注</label>
-              <textarea id="workout-notes" placeholder="今天的锻炼感觉如何？" rows="2"></textarea>
-            </div>
-
-            <button type="submit" class="btn-primary btn-block">保存锻炼</button>
-          </form>
-        </div>
-
-        <!-- Weight Log -->
-        <div class="card">
-          <h2>记录体重</h2>
-          <form id="weight-form" onsubmit="app.saveWeight(event)">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="weight-date">日期</label>
-                <input type="date" id="weight-date" required>
-              </div>
-              <div class="form-group">
-                <label for="weight-value">体重 (kg)</label>
-                <input type="number" id="weight-value" placeholder="70.0" min="20" max="300" step="0.1" required>
-              </div>
-            </div>
-            <button type="submit" class="btn-secondary btn-block">保存体重</button>
-          </form>
-        </div>
-      </section>
-
-      <!-- Progress Page -->
-      <section id="page-progress" class="page">
-        <div class="period-selector">
-          <button class="period-btn active" data-period="week">周</button>
-          <button class="period-btn" data-period="month">月</button>
-          <button class="period-btn" data-period="year">年</button>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2>运动时长</h2>
-          </div>
-          <div class="chart-container chart-bar">
-            <canvas id="chart-duration"></canvas>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2>体重变化</h2>
-            <button class="btn-ghost" onclick="app.navigateTo('log')">+ 记录</button>
-          </div>
-          <div class="chart-container chart-line">
-            <canvas id="chart-weight"></canvas>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2>锻炼类型分布</h2>
-          </div>
-          <div class="chart-container chart-doughnut">
-            <canvas id="chart-types"></canvas>
-          </div>
-        </div>
-
-        <!-- Workout History -->
-        <div class="card">
-          <div class="card-header">
-            <h2>锻炼记录</h2>
-          </div>
-          <div id="workout-history" class="workout-list">
-            <div class="empty-state-small">暂无锻炼记录</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Goals Page -->
-      <section id="page-goals" class="page">
-        <div class="card">
-          <div class="card-header">
-            <h2>我的目标</h2>
-            <button class="btn-primary btn-sm" onclick="goals.showAddModal()">+ 新目标</button>
-          </div>
-          <div id="goals-list" class="goals-list">
-            <div class="empty-state">
-              <div class="empty-icon">🎯</div>
-              <p>还没有设定目标</p>
-              <p class="empty-sub">点击上方按钮创建你的第一个健身目标</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Completed Goals -->
-        <div class="card" id="completed-goals-card" style="display:none">
-          <div class="card-header">
-            <h2>已完成</h2>
-          </div>
-          <div id="completed-goals-list" class="goals-list"></div>
-        </div>
-      </section>
-
-      <!-- Profile Page -->
-      <section id="page-profile" class="page">
-        <div class="card profile-card">
-          <div class="profile-avatar">💪</div>
-          <h2 id="profile-name">健身达人</h2>
-          <p class="subtitle" id="profile-joined"></p>
-          <div class="profile-stats">
-            <div>
-              <span class="profile-stat-value" id="profile-total-workouts">0</span>
-              <span class="profile-stat-label">总锻炼次数</span>
-            </div>
-            <div>
-              <span class="profile-stat-value" id="profile-total-minutes">0</span>
-              <span class="profile-stat-label">总运动(分钟)</span>
-            </div>
-            <div>
-              <span class="profile-stat-value" id="profile-total-distance">0</span>
-              <span class="profile-stat-label">总距离(km)</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>设置</h2>
-          <div class="settings-list">
-            <div class="setting-item">
-              <span>每日步数目标</span>
-              <input type="number" id="settings-step-goal" value="10000" min="1000" step="500" class="setting-input">
-            </div>
-            <div class="setting-item">
-              <span>昵称</span>
-              <input type="text" id="settings-name" placeholder="健身达人" class="setting-input">
-            </div>
-            <div class="setting-item">
-              <span>导出数据</span>
-              <button class="btn-ghost" onclick="app.exportData()">导出 JSON</button>
-            </div>
-            <div class="setting-item">
-              <span>导入数据</span>
-              <label class="btn-ghost">
-                导入
-                <input type="file" id="import-file" accept=".json" onchange="app.importData(event)" hidden>
-              </label>
-            </div>
-            <div class="setting-item danger">
-              <span>清除所有数据</span>
-              <button class="btn-danger btn-sm" onclick="app.clearAllData()">清除</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>关于</h2>
-          <p class="text-muted">健身追踪仪表盘 v1.0</p>
-          <p class="text-muted">所有数据保存在本地，支持离线使用</p>
-        </div>
-      </section>
-    </main>
-
-    <!-- FAB - Quick Add -->
-    <button id="fab-add" class="fab" onclick="app.navigateTo('log')" title="快速记录">
-      <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-    </button>
-
-    <!-- Bottom Navigation -->
-    <nav id="bottom-nav">
-      <button class="nav-item active" data-page="dashboard">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-        <span>仪表盘</span>
-      </button>
-      <button class="nav-item" data-page="log">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-        <span>记录</span>
-      </button>
-      <button class="nav-item" data-page="progress">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
-        <span>进展</span>
-      </button>
-      <button class="nav-item" data-page="goals">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
-        <span>目标</span>
-      </button>
-      <button class="nav-item" data-page="profile">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-        <span>我的</span>
-      </button>
-    </nav>
+<!-- Top Bar -->
+<div class="top-bar">
+  <h1>
+    <span>&#127979;</span> 虚拟教室
+    <span class="rec-dot" id="recDot"></span>
+    <span class="rec-time" id="recTime">00:00</span>
+  </h1>
+  <span class="session-info">课程: Web前端开发 | 2026-03-23</span>
+  <div class="controls">
+    <button class="sidebar-toggle" id="sidebarToggle">&#128100; 成员</button>
+    <button id="btnRecord">&#9679; 录制</button>
+    <button id="btnShare">&#128225; 共享区域</button>
   </div>
+</div>
 
-  <!-- Modal Overlay -->
-  <div id="modal-overlay" class="modal-overlay" onclick="modal.close()">
-    <div id="modal-content" class="modal-content" onclick="event.stopPropagation()">
-      <!-- Dynamic content -->
+<!-- Main -->
+<div class="main">
+  <!-- Participants -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">&#128101; 参与者 (5)</div>
+    <div class="sidebar-body" id="participantList"></div>
+  </aside>
+
+  <!-- Whiteboard -->
+  <section class="canvas-area">
+    <div class="canvas-toolbar" id="toolbar">
+      <button id="toolPen" class="active" title="画笔">&#9998;</button>
+      <button id="toolEraser" title="橡皮">&#9723;</button>
+      <button id="toolLine" title="直线">&#175;</button>
+      <button id="toolRect" title="矩形">&#9633;</button>
+      <button id="toolCircle" title="圆形">&#9675;</button>
+      <button id="toolText" title="文字">T</button>
+      <div class="divider"></div>
+      <div class="color-picker-wrap">
+        <input type="color" id="colorPicker" value="#1a1a2e">
+        <div class="color-preview" id="colorPreview" style="background:#1a1a2e"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="slider-wrap">
+        <label>粗细</label>
+        <input type="range" id="brushSize" min="1" max="20" value="3">
+      </div>
+      <div class="divider"></div>
+      <button id="btnUndo" title="撤销">&#8634;</button>
+      <button id="btnClear" title="清空">&#128465;</button>
     </div>
-  </div>
-
-  <!-- Toast Container -->
-  <div id="toast-container" class="toast-container"></div>
-
-  <!-- Share Card Template (hidden) -->
-  <div id="share-card-template" class="share-card-template">
-    <div class="share-card" id="share-card">
-      <div class="share-card-header">
-        <span class="share-card-icon" id="share-card-icon">🏃</span>
-        <span class="share-card-title" id="share-card-title">跑步</span>
-      </div>
-      <div class="share-card-body">
-        <div class="share-card-stat">
-          <span class="share-card-value" id="share-card-duration">30</span>
-          <span class="share-card-label">分钟</span>
-        </div>
-        <div class="share-card-stat" id="share-card-distance-stat">
-          <span class="share-card-value" id="share-card-distance">5.0</span>
-          <span class="share-card-label">公里</span>
-        </div>
-        <div class="share-card-stat" id="share-card-calories-stat">
-          <span class="share-card-value" id="share-card-calories">300</span>
-          <span class="share-card-label">千卡</span>
-        </div>
-      </div>
-      <div class="share-card-footer">
-        <span id="share-card-date">2024-01-01</span>
-        <span id="share-card-app">健身追踪</span>
+    <div class="canvas-container">
+      <canvas id="whiteboard"></canvas>
+      <div class="share-overlay" id="shareOverlay"></div>
+      <div class="select-hint" id="selectHint">拖动鼠标选择要共享的区域，点击确认</div>
+      <div class="share-hint-bar" id="shareHintBar" style="
+        position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+        background:rgba(0,0,0,0.75); color:#fff; padding:6px 16px;
+        border-radius:6px; font-size:0.75rem; display:none; z-index:6;">
+        正在共享屏幕区域
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Goal Add Modal Template -->
-  <div id="goal-modal" style="display:none">
-    <h3>创建新目标</h3>
-    <form onsubmit="goals.saveGoal(event)">
-      <div class="form-group">
-        <label>目标类型</label>
-        <select id="goal-type" required>
-          <option value="total_workouts">总锻炼次数</option>
-          <option value="total_distance">总距离 (km)</option>
-          <option value="total_weight">总举重 (kg)</option>
-          <option value="weekly_frequency">每周锻炼次数</option>
-          <option value="weight_loss">减重 (kg)</option>
-          <option value="weight_gain">增重 (kg)</option>
-        </select>
+  <!-- Chat -->
+  <aside class="chat-panel" id="chatPanel">
+    <div class="sidebar-header">&#128172; 聊天</div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-area">
+      <div class="emoji-bar" id="emojiBar"></div>
+      <div class="chat-input-row">
+        <textarea id="chatInput" rows="1" placeholder="输入消息..."></textarea>
+        <button class="send" id="btnSend">&#10148;</button>
       </div>
-      <div class="form-group">
-        <label for="goal-target">目标值</label>
-        <input type="number" id="goal-target" min="1" required placeholder="例: 100">
-      </div>
-      <div class="form-group">
-        <label for="goal-deadline">截止日期 (可选)</label>
-        <input type="date" id="goal-deadline">
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="modal.close()">取消</button>
-        <button type="submit" class="btn-primary">创建目标</button>
-      </div>
-    </form>
-  </div>
+    </div>
+  </aside>
+</div>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- Scripts -->
-  <script src="js/db.js"></script>
-  <script src="js/charts.js"></script>
-  <script src="js/goals.js"></script>
-  <script src="js/share.js"></script>
-  <script src="js/pedometer.js"></script>
-  <script src="js/app.js"></script>
+<!-- Mobile Tab Bar -->
+<div class="mobile-tab-bar" id="mobileTabBar">
+  <button class="active" data-tab="whiteboard"><span>&#127912;</span>白板</button>
+  <button data-tab="chat"><span>&#128172;</span>聊天</button>
+  <button data-tab="participants"><span>&#128101;</span>成员</button>
+</div>
+
+<script>
+// ========================
+// State
+// ========================
+const state = {
+  participants: [
+    { id: 1, name: "张老师", role: "讲师", color: "#4f46e5", online: true, sharing: false },
+    { id: 2, name: "李明", role: "学生", color: "#059669", online: true, sharing: false },
+    { id: 3, name: "王芳", role: "学生", color: "#dc2626", online: true, sharing: false },
+    { id: 4, name: "陈浩", role: "学生", color: "#d97706", online: false, sharing: false },
+    { id: 5, name: "刘婷", role: "学生", color: "#7c3aed", online: true, sharing: false },
+  ],
+  chatMessages: [
+    { id: 1, author: "张老师", self: false, text: "大家好，今天我们学习 Canvas 绘图。", time: "14:00" },
+    { id: 2, author: "李明", self: false, text: "老师好！\ud83d\ude0a", time: "14:01" },
+    { id: 3, author: "王芳", self: true, text: "收到，开始吧！\ud83d\udc4d", time: "14:01" },
+  ],
+  tool: "pen",
+  color: "#1a1a2e",
+  brushSize: 3,
+  isDrawing: false,
+  lastX: 0, lastY: 0,
+  history: [],
+  historyIndex: -1,
+  shapeStart: null,
+  recording: false,
+  recStartTime: 0,
+  shareSelecting: false,
+  shareRect: null,
+  shareOverlay: null,
+  selectionRect: { x1: 0, y1: 0, x2: 0, y2: 0 },
+  selecting: false,
+  textInput: null,
+};
+
+// ========================
+// Canvas Setup
+// ========================
+const canvas = document.getElementById("whiteboard");
+const ctx = canvas.getContext("2d");
+let canvasRect;
+
+function resizeCanvas() {
+  const container = canvas.parentElement;
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+  canvasRect = canvas.getBoundingClientRect();
+  redrawCanvas();
+}
+
+function saveState() {
+  state.historyIndex++;
+  state.history = state.history.slice(0, state.historyIndex);
+  state.history.push(canvas.toDataURL());
+}
+
+function redrawCanvas() {
+  ctx.fillStyle = "#fafafa";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (state.history.length > 0 && state.historyIndex >= 0) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = state.history[state.historyIndex];
+  }
+}
+
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : null;
+  return {
+    x: (touch ? touch.clientX : e.clientX) - r.left,
+    y: (touch ? touch.clientY : e.clientY) - r.top,
+  };
+}
+
+// ========================
+// Drawing
+// ========================
+function startDraw(e) {
+  e.preventDefault();
+  if (state.shareSelecting) return;
+  state.isDrawing = true;
+  const pos = getPos(e);
+  state.lastX = pos.x;
+  state.lastY = pos.y;
+  if (state.tool === "line" || state.tool === "rect" || state.tool === "circle") {
+    state.shapeStart = pos;
+  }
+  if (state.tool === "text") {
+    const text = prompt("输入文字:");
+    if (text) {
+      ctx.font = state.brushSize * 5 + "px sans-serif";
+      ctx.fillStyle = state.color;
+      ctx.fillText(text, pos.x, pos.y);
+      saveState();
+    }
+    state.isDrawing = false;
+  }
+}
+
+function draw(e) {
+  if (!state.isDrawing || state.shareSelecting) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  if (state.tool === "pen") {
+    ctx.beginPath();
+    ctx.moveTo(state.lastX, state.lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = state.color;
+    ctx.lineWidth = state.brushSize;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    state.lastX = pos.x;
+    state.lastY = pos.y;
+  } else if (state.tool === "eraser") {
+    ctx.beginPath();
+    ctx.moveTo(state.lastX, state.lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = "#fafafa";
+    ctx.lineWidth = state.brushSize * 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    state.lastX = pos.x;
+    state.lastY = pos.y;
+  } else if (state.shapeStart) {
+    redrawCanvas();
+    ctx.strokeStyle = state.color;
+    ctx.lineWidth = state.brushSize;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if (state.tool === "line") {
+      ctx.beginPath();
+      ctx.moveTo(state.shapeStart.x, state.shapeStart.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (state.tool === "rect") {
+      ctx.strokeRect(
+        state.shapeStart.x, state.shapeStart.y,
+        pos.x - state.shapeStart.x, pos.y - state.shapeStart.y
+      );
+    } else if (state.tool === "circle") {
+      const rx = Math.abs(pos.x - state.shapeStart.x);
+      const ry = Math.abs(pos.y - state.shapeStart.y);
+      ctx.beginPath();
+      ctx.ellipse(
+        state.shapeStart.x + (pos.x > state.shapeStart.x ? rx / 2 : -rx / 2),
+        state.shapeStart.y + (pos.y > state.shapeStart.y ? ry / 2 : -ry / 2),
+        rx / 2, ry / 2, 0, 0, Math.PI * 2
+      );
+      ctx.stroke();
+    }
+  }
+}
+
+function endDraw() {
+  if (!state.isDrawing) return;
+  state.isDrawing = false;
+  if (state.shapeStart) {
+    state.shapeStart = null;
+  }
+  saveState();
+}
+
+canvas.addEventListener("mousedown", startDraw);
+canvas.addEventListener("mousemove", draw);
+canvas.addEventListener("mouseup", endDraw);
+canvas.addEventListener("mouseleave", endDraw);
+canvas.addEventListener("touchstart", startDraw, { passive: false });
+canvas.addEventListener("touchmove", draw, { passive: false });
+canvas.addEventListener("touchend", endDraw);
+
+// ========================
+// Toolbar
+// ========================
+const toolBtns = ["toolPen", "toolEraser", "toolLine", "toolRect", "toolCircle", "toolText"];
+toolBtns.forEach(id => {
+  document.getElementById(id).addEventListener("click", () => {
+    state.tool = id.replace("tool", "").toLowerCase();
+    toolBtns.forEach(b => document.getElementById(b).classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  });
+});
+
+document.getElementById("colorPicker").addEventListener("input", e => {
+  state.color = e.target.value;
+  document.getElementById("colorPreview").style.background = e.target.value;
+});
+document.getElementById("brushSize").addEventListener("input", e => {
+  state.brushSize = parseInt(e.target.value);
+});
+document.getElementById("btnUndo").addEventListener("click", () => {
+  if (state.historyIndex > 0) {
+    state.historyIndex--;
+    redrawCanvas();
+  }
+});
+document.getElementById("btnClear").addEventListener("click", () => {
+  if (confirm("确定清空白板？")) {
+    ctx.fillStyle = "#fafafa";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    saveState();
+  }
+});
+
+// ========================
+// Recording
+// ========================
+const btnRecord = document.getElementById("btnRecord");
+const recDot = document.getElementById("recDot");
+const recTime = document.getElementById("recTime");
+let recTimer;
+
+btnRecord.addEventListener("click", () => {
+  state.recording = !state.recording;
+  if (state.recording) {
+    btnRecord.classList.add("recording");
+    btnRecord.textContent = "\u25a0 停止录制";
+    recDot.classList.add("active");
+    recTime.classList.add("active");
+    state.recStartTime = Date.now();
+    recTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - state.recStartTime) / 1000);
+      const m = String(Math.floor(s / 60)).padStart(2, "0");
+      const sec = String(s % 60).padStart(2, "0");
+      recTime.textContent = m + ":" + sec;
+    }, 1000);
+  } else {
+    btnRecord.classList.remove("recording");
+    btnRecord.textContent = "\u25cf 录制";
+    recDot.classList.remove("active");
+    recTime.classList.remove("active");
+    clearInterval(recTimer);
+    recTime.textContent = "00:00";
+  }
+});
+
+// ========================
+// Screen Share Selection
+// ========================
+const btnShare = document.getElementById("btnShare");
+const shareOverlay = document.getElementById("shareOverlay");
+const selectHint = document.getElementById("selectHint");
+
+function getCanvasPos(e) {
+  const r = canvas.parentElement.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : null;
+  return {
+    x: (touch ? touch.clientX : e.clientX) - r.left,
+    y: (touch ? touch.clientY : e.clientY) - r.top,
+  };
+}
+
+function startSelection(e) {
+  if (!state.shareSelecting) return;
+  e.preventDefault();
+  const pos = getCanvasPos(e);
+  state.selecting = true;
+  state.selectionRect.x1 = pos.x;
+  state.selectionRect.y1 = pos.y;
+  state.selectionRect.x2 = pos.x;
+  state.selectionRect.y2 = pos.y;
+  updateSelectionBox();
+}
+
+function moveSelection(e) {
+  if (!state.selecting || !state.shareSelecting) return;
+  e.preventDefault();
+  const pos = getCanvasPos(e);
+  state.selectionRect.x2 = pos.x;
+  state.selectionRect.y2 = pos.y;
+  updateSelectionBox();
+}
+
+function updateSelectionBox() {
+  const r = state.selectionRect;
+  const left = Math.min(r.x1, r.x2);
+  const top = Math.min(r.y1, r.y2);
+  const w = Math.abs(r.x2 - r.x1);
+  const h = Math.abs(r.y2 - r.y1);
+  shareOverlay.style.left = left + "px";
+  shareOverlay.style.top = top + "px";
+  shareOverlay.style.width = w + "px";
+  shareOverlay.style.height = h + "px";
+  shareOverlay.classList.add("active");
+}
+
+function endSelection() {
+  if (!state.selecting) return;
+  state.selecting = false;
+  // Auto confirm if selection is large enough
+  const w = Math.abs(state.selectionRect.x2 - state.selectionRect.x1);
+  const h = Math.abs(state.selectionRect.y2 - state.selectionRect.y1);
+  if (w > 20 && h > 20) {
+    confirmShare();
+  } else {
+    cancelShare();
+  }
+}
+
+function confirmShare() {
+  state.shareRect = { ...state.selectionRect };
+  const left = Math.min(state.shareRect.x1, state.shareRect.x2);
+  const top = Math.min(state.shareRect.y1, state.shareRect.y2);
+  const w = Math.abs(state.shareRect.x2 - state.shareRect.x1);
+  const h = Math.abs(state.shareRect.y2 - state.shareRect.y1);
+  shareOverlay.style.left = left + "px";
+  shareOverlay.style.top = top + "px";
+  shareOverlay.style.width = w + "px";
+  shareOverlay.style.height = h + "px";
+  shareOverlay.classList.add("active");
+  selectHint.classList.remove("active");
+  document.getElementById("shareHintBar").style.display = "block";
+  btnShare.textContent = "\u25cf 停止共享";
+  // Mark a participant as sharing
+  state.participants[0].sharing = true;
+  renderParticipants();
+  addChatMessage("系统", false, "\ud83d\udcf8 张老师 开始共享屏幕区域");
+}
+
+function cancelShare() {
+  state.shareSelecting = false;
+  state.selecting = false;
+  shareOverlay.classList.remove("active");
+  selectHint.classList.remove("active");
+  document.getElementById("shareHintBar").style.display = "none";
+  btnShare.textContent = "\ud83d\udcf8 共享区域";
+  state.participants[0].sharing = false;
+  renderParticipants();
+}
+
+btnShare.addEventListener("click", () => {
+  if (state.shareSelecting || state.shareRect) {
+    cancelShare();
+    return;
+  }
+  state.shareSelecting = true;
+  selectHint.classList.add("active");
+  addChatMessage("系统", false, "\u23f0 请在白板上拖动选择要共享的区域...");
+});
+
+canvas.parentElement.addEventListener("mousedown", startSelection);
+canvas.parentElement.addEventListener("mousemove", moveSelection);
+canvas.parentElement.addEventListener("mouseup", endSelection);
+canvas.parentElement.addEventListener("touchstart", startSelection, { passive: false });
+canvas.parentElement.addEventListener("touchmove", moveSelection, { passive: false });
+canvas.parentElement.addEventListener("touchend", endSelection);
+
+// ========================
+// Participants
+// ========================
+function renderParticipants() {
+  const list = document.getElementById("participantList");
+  list.innerHTML = state.participants.map(p => `
+    <div class="participant-item ${p.sharing ? 'active' : ''}">
+      <div class="participant-avatar" style="background:${p.color}20;color:${p.color}">
+        ${p.name[0]}
+      </div>
+      <div class="participant-info">
+        <div class="participant-name">${p.name}</div>
+        <div class="participant-role">${p.role} ${!p.online ? '(离线)' : ''}</div>
+      </div>
+      <div class="participant-status ${p.sharing ? 'sharing' : ''}">
+        ${p.sharing ? '共享中' : (p.online ? '在线' : '离线')}
+      </div>
+    </div>
+  `).join("");
+  document.querySelector(".sidebar-header").textContent =
+    `\ud83d\udc65 参与者 (${state.participants.filter(p => p.online).length}/${state.participants.length})`;
+}
+renderParticipants();
+
+// ========================
+// Chat
+// ========================
+const EMOJIS = ["\ud83d\ude00","\ud83d\ude03","\ud83d\ude04","\ud83d\ude09","\ud83d\ude0a","\ud83d\ude02","\ud83d\ude06",
+  "\ud83d\udc4d","\ud83d\udc4e","\ud83d\udc40","\ud83d\udc4f","\ud83d\udcaa","\ud83d\ude80","\u2728","\ud83c\udf89","\ud83d\udc68",
+  "\ud83d\udc69","\ud83d\ude4f","\ud83d\udeab","\ud83d\udc95","\ud83d\udc96","\ud83d\ude31","\ud83d\ude2d","\ud83d\ude22",
+  "\u2705","\u274c","\u2753","\u2757","\u203c","\ud83d\udca1","\u2600","\u2601","\u26c5","\u26a1",
+  "\ud83c\udf1f","\ud83c\udf08","\ud83d\udc83","\ud83c\udf93","\ud83d\udcdc","\u2709","\ud83d\udce7","\ud83d\udcf1"];
+
+function renderEmojiBar() {
+  document.getElementById("emojiBar").innerHTML = EMOJIS.map(e =>
+    `<button data-emoji="${e}">${e}</button>`
+  ).join("");
+}
+renderEmojiBar();
+
+document.getElementById("emojiBar").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-emoji]");
+  if (!btn) return;
+  const ta = document.getElementById("chatInput");
+  ta.value += btn.dataset.emoji;
+  ta.focus();
+});
+
+function renderChat() {
+  const el = document.getElementById("chatMessages");
+  el.innerHTML = state.chatMessages.map(m => `
+    <div class="chat-msg ${m.self ? 'self' : 'other'}">
+      ${!m.self ? `<div class="msg-author">${m.author}</div>` : ""}
+      <div>${m.text}</div>
+      <div class="msg-time">${m.time}</div>
+    </div>
+  `).join("");
+  el.scrollTop = el.scrollHeight;
+}
+renderChat();
+
+function addChatMessage(author, self, text) {
+  const now = new Date();
+  const time = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  state.chatMessages.push({ id: Date.now(), author, self, text, time });
+  renderChat();
+}
+
+document.getElementById("btnSend").addEventListener("click", sendMessage);
+document.getElementById("chatInput").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function sendMessage() {
+  const ta = document.getElementById("chatInput");
+  const text = ta.value.trim();
+  if (!text) return;
+  addChatMessage("王芳", true, text);
+  ta.value = "";
+  ta.style.height = "auto";
+  // Simulate a reply after 1-3s
+  if (Math.random() > 0.5) {
+    setTimeout(() => {
+      const replies = ["收到！", "好的~", "明白了", "这个问题很好！", "\ud83d\udc4d", "继续！", "不错"];
+      const author = state.participants.filter(p => p.online && p.name !== "王芳")
+        .sort(() => Math.random() - 0.5)[0]?.name || "张老师";
+      addChatMessage(author, false, replies[Math.floor(Math.random() * replies.length)]);
+    }, 1000 + Math.random() * 2000);
+  }
+}
+
+// Auto-resize textarea
+document.getElementById("chatInput").addEventListener("input", e => {
+  e.target.style.height = "auto";
+  e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
+});
+
+// ========================
+// Mobile
+// ========================
+document.getElementById("sidebarToggle").addEventListener("click", () => {
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("chatPanel").classList.remove("open");
+  document.getElementById("sidebar").classList.toggle("open");
+});
+
+document.getElementById("mobileTabBar").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-tab]");
+  if (!btn) return;
+  document.querySelectorAll("#mobileTabBar button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const tab = btn.dataset.tab;
+  document.getElementById("sidebar").classList.toggle("open", tab === "participants");
+  document.getElementById("chatPanel").classList.toggle("open", tab === "chat");
+  if (tab === "whiteboard") {
+    document.getElementById("sidebar").classList.remove("open");
+    document.getElementById("chatPanel").classList.remove("open");
+  }
+});
+
+// ========================
+// Init
+// ========================
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+saveState(); // save initial blank state
+</script>
 </body>
 </html>
