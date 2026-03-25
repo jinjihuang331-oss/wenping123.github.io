@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线问卷构建工具</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="nav-brand" onclick="navigateTo('home')">
+      <span class="logo">📋</span> 问卷构建工具
+    </div>
+    <div class="nav-links">
+      <button class="nav-btn" onclick="navigateTo('home')">首页</button>
+      <button class="nav-btn" onclick="navigateTo('builder')" id="nav-builder">创建问卷</button>
+      <button class="nav-btn" onclick="navigateTo('results')" id="nav-results">结果分析</button>
+    </div>
+    <button class="hamburger" onclick="toggleMobileMenu()">☰</button>
+  </nav>
+
+  <div class="mobile-menu" id="mobileMenu">
+    <button onclick="navigateTo('home');toggleMobileMenu()">首页</button>
+    <button onclick="navigateTo('builder');toggleMobileMenu()">创建问卷</button>
+    <button onclick="navigateTo('results');toggleMobileMenu()">结果分析</button>
+  </div>
+
+  <!-- 首页 -->
+  <div id="page-home" class="page active">
+    <div class="hero">
+      <h1>智能在线问卷构建工具</h1>
+      <p>创建专业问卷，收集数据，实时分析结果</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-lg" onclick="createNewSurvey()">创建新问卷</button>
+        <button class="btn btn-outline btn-lg" onclick="loadFromURL()">从链接导入</button>
+      </div>
+    </div>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">📝</div>
+        <h3>多种题型</h3>
+        <p>支持单选、多选、文本输入、滑块等多种问题类型</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔀</div>
+        <h3>分支逻辑</h3>
+        <p>根据回答动态跳转到不同问题</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>实时分析</h3>
+        <p>交互式图表实时展示问卷结果</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⏱️</div>
+        <h3>限时测验</h3>
+        <p>创建带时间限制的测验问卷</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔗</div>
+        <h3>一键分享</h3>
+        <p>生成唯一链接，快速分享问卷</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h3>自动保存</h3>
+        <p>支持暂存填写进度，随时继续</p>
+      </div>
+    </div>
+    <div class="recent-surveys" id="recentSurveys"></div>
+  </div>
+
+  <!-- 问卷构建器 -->
+  <div id="page-builder" class="page">
+    <div class="builder-container">
+      <div class="builder-header">
+        <input type="text" id="surveyTitle" placeholder="输入问卷标题..." class="survey-title-input">
+        <textarea id="surveyDesc" placeholder="输入问卷描述（可选）..." class="survey-desc-input" rows="2"></textarea>
+        <div class="builder-meta">
+          <label class="toggle-label">
+            <input type="checkbox" id="enableTimer">
+            <span>启用限时模式</span>
+          </label>
+          <div class="timer-config" id="timerConfig" style="display:none">
+            <label>时间限制（分钟）：<input type="number" id="timeLimit" value="10" min="1" max="120" class="input-sm"></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-body">
+        <div class="question-list" id="questionList">
+          <div class="empty-state">
+            <p>还没有问题，点击下方按钮添加第一个问题</p>
+          </div>
+        </div>
+
+        <div class="add-question-bar">
+          <button class="btn btn-add" onclick="addQuestion('radio')">⚪ 单选题</button>
+          <button class="btn btn-add" onclick="addQuestion('checkbox')">☑️ 多选题</button>
+          <button class="btn btn-add" onclick="addQuestion('text')">✏️ 文本题</button>
+          <button class="btn btn-add" onclick="addQuestion('slider')">🎚️ 滑块题</button>
+        </div>
+      </div>
+
+      <div class="builder-footer">
+        <button class="btn btn-outline" onclick="previewSurvey()">预览问卷</button>
+        <button class="btn btn-outline" onclick="saveSurvey()">保存</button>
+        <button class="btn btn-primary" onclick="publishSurvey()">发布问卷</button>
+        <button class="btn btn-secondary" onclick="shareSurvey()">分享链接</button>
+        <button class="btn btn-outline" onclick="navigateTo('results')">查看结果</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 问卷填写页 -->
+  <div id="page-fill" class="page">
+    <div class="fill-container">
+      <div class="fill-header">
+        <h1 id="fillTitle"></h1>
+        <p id="fillDesc"></p>
+        <div class="timer-bar" id="timerBar" style="display:none">
+          <div class="timer-progress" id="timerProgress"></div>
+          <span class="timer-text" id="timerText">剩余时间：--:--</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="fillProgress"></div>
+          <span class="progress-text" id="fillProgressText">0%</span>
+        </div>
+      </div>
+
+      <div class="fill-body" id="fillBody"></div>
+
+      <div class="fill-footer">
+        <button class="btn btn-outline" id="btnPrev" onclick="fillPrev()" style="display:none">上一题</button>
+        <button class="btn btn-outline" onclick="saveProgress()">
+          💾 暂存进度
+        </button>
+        <button class="btn btn-primary" id="btnNext" onclick="fillNext()">下一题</button>
+        <button class="btn btn-primary" id="btnSubmit" onclick="submitSurvey()" style="display:none">提交问卷</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果分析页 -->
+  <div id="page-results" class="page">
+    <div class="results-container">
+      <div class="results-header">
+        <h2>问卷结果分析</h2>
+        <select id="resultsSurveySelect" onchange="loadResults()" class="select-styled">
+          <option value="">选择问卷...</option>
+        </select>
+      </div>
+      <div class="results-summary" id="resultsSummary" style="display:none">
+        <div class="stat-card">
+          <div class="stat-number" id="totalResponses">0</div>
+          <div class="stat-label">总提交数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="avgTime">--</div>
+          <div class="stat-label">平均用时</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="completionRate">--</div>
+          <div class="stat-label">完成率</div>
+        </div>
+      </div>
+      <div class="results-charts" id="resultsCharts"></div>
+    </div>
+  </div>
+
+  <!-- 分享弹窗 -->
+  <div class="modal-overlay" id="shareModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>分享问卷</h3>
+        <button class="modal-close" onclick="closeShareModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>分享链接：</label>
+        <div class="share-url-box">
+          <input type="text" id="shareUrl" readonly class="share-url-input">
+          <button class="btn btn-sm btn-primary" onclick="copyShareUrl()">复制</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 预览弹窗 -->
+  <div class="modal-overlay" id="previewModal" style="display:none">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3>问卷预览</h3>
+        <button class="modal-close" onclick="closePreviewModal()">✕</button>
+      </div>
+      <div class="modal-body" id="previewBody"></div>
+    </div>
+  </div>
+
+  <!-- Toast 通知 -->
+  <div class="toast-container" id="toastContainer"></div>
+</div>
+
+<script src="app.js"></script>
+<script src="charts.js"></script>
+</body>
+</html>
