@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>调色板生成工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#6366f1;--primary-hover:#4f46e5;--bg:#0f172a;--surface:#1e293b;--surface2:#334155;--text:#f1f5f9;--text-muted:#94a3b8;--border:#475569;--radius:10px;--shadow:0 4px 24px rgba(0,0,0,.3)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header h1{font-size:20px;font-weight:700;background:linear-gradient(135deg,#6366f1,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-actions{display:flex;gap:8px}
+.btn{padding:8px 16px;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-hover)}
+.btn-secondary{background:var(--surface2);color:var(--text)}.btn-secondary:hover{background:var(--border)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.container{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 60px)}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px;overflow-y:auto;max-height:calc(100vh - 60px)}
+.main{padding:24px;overflow-y:auto;max-height:calc(100vh - 60px)}
+.section{margin-bottom:24px}
+.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px}
+.base-color-wrap{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.color-input-wrap{position:relative;width:48px;height:48px;border-radius:var(--radius);overflow:hidden;border:2px solid var(--border);flex-shrink:0}
+.color-input-wrap input[type=color]{position:absolute;top:-8px;left:-8px;width:calc(100% + 16px);height:calc(100% + 16px);border:none;cursor:pointer;background:none}
+.hex-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:15px;font-family:monospace;outline:none;transition:border-color .2s}
+.hex-input:focus{border-color:var(--primary)}
+.scheme-buttons{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.scheme-btn{padding:6px 14px;border:1px solid var(--border);border-radius:20px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:12px;transition:all .2s}
+.scheme-btn:hover,.scheme-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.palette-display{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.color-card{display:flex;align-items:center;gap:10px;padding:8px;background:var(--surface2);border-radius:var(--radius);cursor:pointer;transition:transform .15s}
+.color-card:hover{transform:scale(1.03)}
+.color-swatch{width:36px;height:36px;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,.1)}
+.color-info{flex:1;min-width:0}
+.color-hex{font-size:13px;font-weight:600;font-family:monospace}
+.color-rgb{font-size:11px;color:var(--text-muted)}
+.color-actions{display:flex;gap:4px}
+.color-action-btn{width:28px;height:28px;border:none;border-radius:6px;background:rgba(255,255,255,.08);color:var(--text-muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.color-action-btn:hover{background:var(--primary);color:#fff}
+.upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
+.upload-area:hover{border-color:var(--primary);background:rgba(99,102,241,.05)}
+.upload-area svg{width:32px;height:32px;margin-bottom:8px;color:var(--text-muted)}
+.upload-area p{font-size:13px;color:var(--text-muted)}
+.preview-section{margin-bottom:24px}
+.preview-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--surface2);padding:4px;border-radius:var(--radius)}
+.preview-tab{flex:1;padding:8px;border:none;border-radius:8px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:600;transition:all .2s}
+.preview-tab.active{background:var(--primary);color:#fff}
+.preview-content{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+.website-preview{background:#fff;min-height:500px}
+.wp-hero{padding:40px 32px;text-align:center;min-height:180px;display:flex;flex-direction:column;justify-content:center}
+.wp-nav{display:flex;justify-content:space-between;align-items:center;padding:12px 24px}
+.wp-nav-logo{font-weight:800;font-size:16px}
+.wp-nav-links{display:flex;gap:16px;font-size:12px}
+.wp-hero h2{font-size:28px;font-weight:800;margin-bottom:10px}
+.wp-hero p{font-size:14px;max-width:400px;margin:0 auto;line-height:1.6}
+.wp-hero-btn{display:inline-block;padding:10px 24px;border-radius:8px;font-weight:700;font-size:13px;margin-top:16px;border:none;cursor:default}
+.wp-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:24px 32px}
+.wp-card{border-radius:12px;padding:20px;min-height:120px}
+.wp-card h4{font-weight:700;font-size:14px;margin-bottom:8px}
+.wp-card p{font-size:12px;line-height:1.5;opacity:.8}
+.wp-footer{padding:24px 32px;display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.image-palette-area{display:flex;flex-direction:column;gap:10px}
+.image-preview{width:100%;max-height:200px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)}
+.extracted-colors{display:flex;gap:6px;flex-wrap:wrap}
+.extracted-swatch{width:48px;height:48px;border-radius:8px;cursor:pointer;transition:transform .15s;border:2px solid transparent}
+.extracted-swatch:hover{transform:scale(1.15);border-color:#fff}
+.cb-types{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cb-display{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.cb-item{text-align:center}
+.cb-swatch{width:100%;height:48px;border-radius:8px;margin-bottom:4px;border:1px solid rgba(255,255,255,.1)}
+.cb-label{font-size:10px;color:var(--text-muted)}
+.export-code{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;font-family:'Courier New',monospace;font-size:12px;color:#a5f3fc;white-space:pre-wrap;max-height:300px;overflow-y:auto;line-height:1.6}
+.history-bar{display:flex;gap:4px;align-items:center}
+.history-item{width:24px;height:24px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:all .2s;position:relative}
+.history-item:hover{transform:scale(1.2)}
+.history-item.current{border-color:var(--primary)}
+.history-dots{display:flex;gap:4px;flex:1;overflow-x:auto;padding:4px}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--primary);color:#fff;padding:12px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;opacity:0;transform:translateY(20px);transition:all .3s;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.export-area{display:none}.export-area.active{display:block}
+.hidden{display:none!important}
+@media(max-width:900px){.container{grid-template-columns:1fr}.sidebar{max-height:none;border-right:none;border-bottom:1px solid var(--border)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#x1f3a8; 调色板生成工具</h1>
+  <div class="header-actions">
+    <div class="history-bar">
+      <button class="btn btn-sm btn-secondary" id="undoBtn" disabled onclick="undo()" title="撤销">&#x21A9;</button>
+      <button class="btn btn-sm btn-secondary" id="redoBtn" disabled onclick="redo()" title="重做">&#x21AA;</button>
+      <div class="history-dots" id="historyDots"></div>
+    </div>
+    <button class="btn btn-primary" onclick="generatePalette()">&#x2728; 生成调色板</button>
+  </div>
+</div>
+
+<div class="container">
+  <aside class="sidebar">
+    <div class="section">
+      <div class="section-title">基础颜色</div>
+      <div class="base-color-wrap">
+        <div class="color-input-wrap"><input type="color" id="colorPicker" value="#6366f1" oninput="syncHex(this.value)"></div>
+        <input type="text" class="hex-input" id="hexInput" value="#6366f1" oninput="syncPicker(this.value)" maxlength="7" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">配色方案</div>
+      <div class="scheme-buttons">
+        <button class="scheme-btn active" data-scheme="complementary" onclick="setScheme(this)">互补色</button>
+        <button class="scheme-btn" data-scheme="analogous" onclick="setScheme(this)">邻近色</button>
+        <button class="scheme-btn" data-scheme="triadic" onclick="setScheme(this)">三元色</button>
+        <button class="scheme-btn" data-scheme="split" onclick="setScheme(this)">分裂互补</button>
+        <button class="scheme-btn" data-scheme="tetradic" onclick="setScheme(this)">四元色</button>
+        <button class="scheme-btn" data-scheme="monochromatic" onclick="setScheme(this)">单色调</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">当前调色板 <span id="paletteCount"></span></div>
+      <div class="palette-display" id="paletteDisplay"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">从图片提取</div>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>点击或拖拽上传图片</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+      <div class="image-palette-area hidden" id="imagePaletteArea">
+        <canvas id="imageCanvas" class="hidden"></canvas>
+        <div class="extracted-colors" id="extractedColors"></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="section">
+      <div class="section-title">预览效果</div>
+      <div class="preview-tabs">
+        <button class="preview-tab active" onclick="switchPreview(this,'website')">网站预览</button>
+        <button class="preview-tab" onclick="switchPreview(this,'colorblind')">色盲模拟</button>
+        <button class="preview-tab" onclick="switchPreview(this,'export')">导出</button>
+      </div>
+
+      <div class="preview-content">
+        <div id="previewWebsite">
+          <div class="website-preview" id="websitePreview">
+            <div class="wp-nav" id="wpNav">
+              <span class="wp-nav-logo">Brand</span>
+              <div class="wp-nav-links"><span>首页</span><span>关于</span><span>服务</span><span>联系</span></div>
+            </div>
+            <div class="wp-hero" id="wpHero">
+              <h2>欢迎使用调色板工具</h2>
+              <p>选择一种配色方案，实时预览颜色在真实页面中的效果</p>
+              <button class="wp-hero-btn" id="wpHeroBtn">立即开始</button>
+            </div>
+            <div class="wp-cards" id="wpCards"></div>
+            <div class="wp-footer" id="wpFooter">
+              <span>&copy; 2024 Brand</span>
+              <span>隐私政策 · 使用条款</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="previewColorblind" class="hidden">
+          <div style="padding:20px;background:var(--surface)">
+            <div class="section-title">选择色盲类型</div>
+            <div class="cb-types">
+              <button class="scheme-btn active" data-cb="protanopia" onclick="setCBType(this)">红色盲</button>
+              <button class="scheme-btn" data-cb="deuteranopia" onclick="setCBType(this)">绿色盲</button>
+              <button class="scheme-btn" data-cb="tritanopia" onclick="setCBType(this)">蓝黄色盲</button>
+              <button class="scheme-btn" data-cb="achromatopsia" onclick="setCBType(this)">全色盲</button>
+            </div>
+            <div class="cb-display" id="cbDisplay"></div>
+          </div>
+        </div>
+
+        <div id="previewExport" class="hidden">
+          <div style="padding:20px;background:var(--surface)">
+            <div class="scheme-buttons" style="margin-bottom:16px">
+              <button class="scheme-btn active" data-fmt="css" onclick="setExportFmt(this)">CSS</button>
+              <button class="scheme-btn" data-fmt="scss" onclick="setExportFmt(this)">SCSS</button>
+              <button class="scheme-btn" data-fmt="svg" onclick="setExportFmt(this)">SVG</button>
+            </div>
+            <div class="export-code" id="exportCode"></div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" onclick="copyExport()">&#x1F4CB; 复制</button>
+              <button class="btn btn-secondary btn-sm" onclick="downloadExport()">&#x1F4E5; 下载</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== State ==========
+let state = {
+  baseColor: '#6366f1',
+  scheme: 'complementary',
+  palette: [],
+  history: [],
+  historyIndex: -1,
+  cbType: 'protanopia',
+  exportFmt: 'css',
+  imageColors: []
+};
+const MAX_HISTORY = 30;
+
+// ========== Color Math ==========
+function hexToRgb(hex) {
+  hex = hex.replace('#','');
+  if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  const n = parseInt(hex, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+      case g: h = ((b-r)/d + 2)/6; break;
+      case b: h = ((r-g)/d + 4)/6; break;
+    }
+  }
+  return { h: h*360, s: s*100, l: l*100 };
+}
+
+function hslToRgb(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => { if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p; };
+    const q = l < 0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+    r = hue2rgb(p,q,h+1/3); g = hue2rgb(p,q,h); b = hue2rgb(p,q,h-1/3);
+  }
+  return { r: Math.round(r*255), g: Math.round(g*255), b: Math.round(b*255) };
+}
+
+function shiftHue(hex, degrees) {
+  const rgb = hexToRgb(hex);
+  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  hsl.h = (hsl.h + degrees + 360) % 360;
+  const nrgb = hslToRgb(hsl.h, hsl.s, hsl.l);
+  return rgbToHex(nrgb.r, nrgb.g, nrgb.b);
+}
+
+function withLightness(hex, lightness) {
+  const rgb = hexToRgb(hex);
+  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  hsl.l = Math.max(0, Math.min(100, lightness));
+  const nrgb = hslToRgb(hsl.h, hsl.s, hsl.l);
+  return rgbToHex(nrgb.r, nrgb.g, nrgb.b);
+}
+
+// ========== Palette Generation ==========
+function generateSchemeColors(hex, scheme) {
+  const rgb = hexToRgb(hex);
+  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  let colors = [];
+  switch (scheme) {
+    case 'complementary':
+      colors = [
+        hex,
+        withLightness(hex, Math.min(95, hsl.l + 30)),
+        withLightness(hex, Math.max(10, hsl.l - 25)),
+        shiftHue(hex, 180),
+        withLightness(shiftHue(hex, 180), Math.min(90, hsl.l + 20))
+      ];
+      break;
+    case 'analogous':
+      colors = [
+        shiftHue(hex, -30),
+        shiftHue(hex, -15),
+        hex,
+        shiftHue(hex, 15),
+        shiftHue(hex, 30)
+      ];
+      break;
+    case 'triadic':
+      colors = [
+        hex,
+        withLightness(hex, Math.min(90, hsl.l + 25)),
+        shiftHue(hex, 120),
+        shiftHue(hex, 240),
+        withLightness(shiftHue(hex, 240), Math.max(15, hsl.l - 15))
+      ];
+      break;
+    case 'split':
+      colors = [
+        hex,
+        withLightness(hex, Math.min(90, hsl.l + 25)),
+        shiftHue(hex, 150),
+        shiftHue(hex, 210),
+        withLightness(shiftHue(hex, 180), Math.max(15, hsl.l - 10))
+      ];
+      break;
+    case 'tetradic':
+      colors = [
+        hex,
+        shiftHue(hex, 90),
+        shiftHue(hex, 180),
+        shiftHue(hex, 270),
+        withLightness(hex, Math.min(90, hsl.l + 30))
+      ];
+      break;
+    case 'monochromatic':
+      colors = [
+        withLightness(hex, Math.max(10, hsl.l - 30)),
+        withLightness(hex, Math.max(10, hsl.l - 15)),
+        hex,
+        withLightness(hex, Math.min(95, hsl.l + 20)),
+        withLightness(hex, Math.min(97, hsl.l + 40))
+      ];
+      break;
+  }
+  return colors;
+}
+
+function generatePalette() {
+  const colors = generateSchemeColors(state.baseColor, state.scheme);
+  state.palette = colors;
+  pushHistory();
+  renderAll();
+}
+
+// ========== History ==========
+function pushHistory() {
+  // Remove any redo states
+  state.history = state.history.slice(0, state.historyIndex + 1);
+  state.history.push({
+    baseColor: state.baseColor,
+    scheme: state.scheme,
+    palette: [...state.palette],
+    timestamp: Date.now()
+  });
+  if (state.history.length > MAX_HISTORY) state.history.shift();
+  state.historyIndex = state.history.length - 1;
+  renderHistory();
+}
+
+function undo() {
+  if (state.historyIndex <= 0) return;
+  state.historyIndex--;
+  restoreHistory();
+}
+
+function redo() {
+  if (state.historyIndex >= state.history.length - 1) return;
+  state.historyIndex++;
+  restoreHistory();
+}
+
+function restoreHistory() {
+  const snap = state.history[state.historyIndex];
+  state.baseColor = snap.baseColor;
+  state.scheme = snap.scheme;
+  state.palette = [...snap.palette];
+  document.getElementById('colorPicker').value = state.baseColor;
+  document.getElementById('hexInput').value = state.baseColor;
+  document.querySelectorAll('.scheme-btn[data-scheme]').forEach(b => {
+    b.classList.toggle('active', b.dataset.scheme === state.scheme);
+  });
+  renderAll();
+}
+
+function jumpHistory(index) {
+  state.historyIndex = index;
+  restoreHistory();
+}
+
+function renderHistory() {
+  const dots = document.getElementById('historyDots');
+  document.getElementById('undoBtn').disabled = state.historyIndex <= 0;
+  document.getElementById('redoBtn').disabled = state.historyIndex >= state.history.length - 1;
+  dots.innerHTML = '';
+  state.history.forEach((snap, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'history-item' + (i === state.historyIndex ? ' current' : '');
+    dot.style.background = snap.baseColor;
+    dot.title = `${snap.scheme} #${i+1}`;
+    dot.onclick = () => jumpHistory(i);
+    dots.appendChild(dot);
+  });
+  dots.scrollLeft = dots.scrollWidth;
+}
+
+// ========== Image Extraction ==========
+function handleImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => extractColors(img);
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function extractColors(img) {
+  const canvas = document.getElementById('imageCanvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const maxDim = 100;
+  const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+  canvas.width = Math.floor(img.width * scale);
+  canvas.height = Math.floor(img.height * scale);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+  const colorMap = {};
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = Math.round(pixels[i] / 32) * 32;
+    const g = Math.round(pixels[i+1] / 32) * 32;
+    const b = Math.round(pixels[i+2] / 32) * 32;
+    const a = pixels[i+3];
+    if (a < 128) continue;
+    const key = `${r},${g},${b}`;
+    colorMap[key] = (colorMap[key] || 0) + 1;
+  }
+
+  let sorted = Object.entries(colorMap).sort((a,b) => b[1] - a[1]);
+
+  // Cluster similar colors
+  const result = [];
+  for (const [key] of sorted) {
+    const [r,g,b] = key.split(',').map(Number);
+    const hex = rgbToHex(r,g,b);
+    const hsl = rgbToHsl(r,g,b);
+    // Skip very dark or very light
+    if (hsl.l < 5 || hsl.l > 98) continue;
+    // Check distance from existing
+    let tooClose = false;
+    for (const existing of result) {
+      const eRgb = hexToRgb(existing);
+      const dist = Math.sqrt((r-eRgb.r)**2 + (g-eRgb.g)**2 + (b-eRgb.b)**2);
+      if (dist < 60) { tooClose = true; break; }
+    }
+    if (!tooClose) result.push(hex);
+    if (result.length >= 8) break;
+  }
+
+  state.imageColors = result;
+  state.palette = result.length > 0 ? result : state.palette;
+  if (result.length > 0) {
+    state.baseColor = result[0];
+    document.getElementById('colorPicker').value = state.baseColor;
+    document.getElementById('hexInput').value = state.baseColor;
+  }
+  pushHistory();
+  renderAll();
+}
+
+// ========== Color Blindness Simulation ==========
+// Using Brett et al. matrices (simplified)
+function simulateColorBlindness(r, g, b, type) {
+  let rr, gg, bb;
+  switch(type) {
+    case 'protanopia':
+      rr = 0.567*r + 0.433*g + 0.000*b;
+      gg = 0.558*r + 0.442*g + 0.000*b;
+      bb = 0.000*r + 0.242*g + 0.758*b;
+      break;
+    case 'deuteranopia':
+      rr = 0.625*r + 0.375*g + 0.000*b;
+      gg = 0.700*r + 0.300*g + 0.000*b;
+      bb = 0.000*r + 0.300*g + 0.700*b;
+      break;
+    case 'tritanopia':
+      rr = 0.950*r + 0.050*g + 0.000*b;
+      gg = 0.000*r + 0.433*g + 0.567*b;
+      bb = 0.000*r + 0.475*g + 0.525*b;
+      break;
+    case 'achromatopsia':
+      const gray = 0.299*r + 0.587*g + 0.114*b;
+      rr = gg = bb = gray;
+      break;
+    default:
+      rr = r; gg = g; bb = b;
+  }
+  return rgbToHex(Math.round(rr), Math.round(gg), Math.round(bb));
+}
+
+// ========== Export ==========
+function generateExport(fmt) {
+  const pal = state.palette;
+  const names = ['primary','secondary','accent','highlight','muted'];
+  switch(fmt) {
+    case 'css':
+      return `:root {\n${pal.map((c,i) => `  --${names[i]||'color-'+(i+1)}: ${c};`).join('\n')}\n}`;
+    case 'scss':
+      return pal.map((c,i) => `$${names[i]||'color-'+(i+1)}: ${c};`).join('\n');
+    case 'svg':
+      const w = Math.max(600, pal.length * 120);
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="200" viewBox="0 0 ${w} 200">\n${pal.map((c,i) => {
+        const x = i * (w/pal.length);
+        const sw = w/pal.length;
+        return `  <rect x="${x}" y="0" width="${sw}" height="140" fill="${c}" rx="8"/>\n  <text x="${x+sw/2}" y="170" text-anchor="middle" font-size="12" fill="#333">${c}</text>\n  <text x="${x+sw/2}" y="190" text-anchor="middle" font-size="10" fill="#666">${names[i]||''}</text>`;
+      }).join('\n')}\n</svg>`;
+  }
+}
+
+function copyExport() {
+  const code = generateExport(state.exportFmt);
+  navigator.clipboard.writeText(code).then(() => showToast('已复制到剪贴板'));
+}
+
+function downloadExport() {
+  const code = generateExport(state.exportFmt);
+  const ext = state.exportFmt === 'svg' ? 'svg' : state.exportFmt;
+  const mime = state.exportFmt === 'svg' ? 'image/svg+xml' : 'text/plain';
+  const blob = new Blob([code], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `palette.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('文件已下载');
+}
+
+// ========== UI Helpers ==========
+function syncHex(val) {
+  state.baseColor = val;
+  document.getElementById('hexInput').value = val;
+  generatePalette();
+}
+
+function syncPicker(val) {
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    state.baseColor = val;
+    document.getElementById('colorPicker').value = val;
+    generatePalette();
+  }
+}
+
+function setScheme(btn) {
+  document.querySelectorAll('.scheme-btn[data-scheme]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.scheme = btn.dataset.scheme;
+  generatePalette();
+}
+
+function setCBType(btn) {
+  document.querySelectorAll('.scheme-btn[data-cb]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.cbType = btn.dataset.cb;
+  renderColorBlindness();
+}
+
+function setExportFmt(btn) {
+  document.querySelectorAll('.scheme-btn[data-fmt]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.exportFmt = btn.dataset.fmt;
+  renderExport();
+}
+
+function switchPreview(tab, panel) {
+  document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('previewWebsite').classList.toggle('hidden', panel !== 'website');
+  document.getElementById('previewColorblind').classList.toggle('hidden', panel !== 'colorblind');
+  document.getElementById('previewExport').classList.toggle('hidden', panel !== 'export');
+  if (panel === 'colorblind') renderColorBlindness();
+  if (panel === 'export') renderExport();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function copyColor(hex) {
+  navigator.clipboard.writeText(hex).then(() => showToast(`已复制 ${hex}`));
+}
+
+function useAsBase(hex) {
+  state.baseColor = hex;
+  document.getElementById('colorPicker').value = hex;
+  document.getElementById('hexInput').value = hex;
+  generatePalette();
+}
+
+function removeColor(index) {
+  state.palette.splice(index, 1);
+  pushHistory();
+  renderAll();
+}
+
+// ========== Render Functions ==========
+function renderAll() {
+  renderPalette();
+  renderWebsitePreview();
+  renderColorBlindness();
+  renderExport();
+  renderImageColors();
+}
+
+function renderPalette() {
+  const el = document.getElementById('paletteDisplay');
+  document.getElementById('paletteCount').textContent = `(${state.palette.length})`;
+  el.innerHTML = state.palette.map((hex, i) => {
+    const rgb = hexToRgb(hex);
+    return `<div class="color-card" onclick="copyColor('${hex}')">
+      <div class="color-swatch" style="background:${hex}"></div>
+      <div class="color-info">
+        <div class="color-hex">${hex.toUpperCase()}</div>
+        <div class="color-rgb">rgb(${rgb.r}, ${rgb.g}, ${rgb.b})</div>
+      </div>
+      <div class="color-actions">
+        <button class="color-action-btn" onclick="event.stopPropagation();useAsBase('${hex}')" title="设为基础色">&#x1F3A8;</button>
+        <button class="color-action-btn" onclick="event.stopPropagation();removeColor(${i})" title="移除">&#x2715;</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderWebsitePreview() {
+  if (state.palette.length < 3) return;
+  const [c1, c2, c3, c4, c5] = state.palette;
+  const heroBg = c1;
+  const heroText = withLightness(c1, rgbToHsl(...Object.values(hexToRgb(c1))).l > 50 ? 10 : 95);
+  const card1 = c3 || c1;
+  const card2 = c4 || c2;
+  const card3 = c5 || c3 || c1;
+  const c1rgb = hexToRgb(c1);
+
+  document.getElementById('wpNav').style.background = withLightness(c1, 8);
+  document.getElementById('wpNav').querySelector('.wp-nav-logo').style.color = c1;
+  document.getElementById('wpNav').style.color = withLightness(c1, 65);
+  document.getElementById('wpHero').style.background = heroBg;
+  document.getElementById('wpHero').style.color = heroText;
+  document.getElementById('wpHeroBtn').style.background = c2 || heroText;
+  document.getElementById('wpHeroBtn').style.color = heroBg;
+  document.getElementById('wpHeroBtn').style.border = 'none';
+
+  const cards = document.getElementById('wpCards');
+  cards.innerHTML = [card1, card2, card3].map((c, i) => {
+    const rgb = hexToRgb(c);
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    const textColor = hsl.l > 55 ? '#1e293b' : '#ffffff';
+    const texts = ['设计系统', '开发工具', '创意灵感'];
+    const descs = ['构建一致的视觉语言', '提升工作效率的利器', '激发无限创造可能'];
+    return `<div class="wp-card" style="background:${c};color:${textColor}">
+      <h4>${texts[i]}</h4><p>${descs[i]}</p>
+    </div>`;
+  }).join('');
+
+  document.getElementById('wpFooter').style.background = withLightness(c1, 8);
+  document.getElementById('wpFooter').style.color = withLightness(c1, 60);
+}
+
+function renderColorBlindness() {
+  const el = document.getElementById('cbDisplay');
+  if (!el) return;
+  const labels = ['原色','红色盲','绿色盲','蓝黄色盲','全色盲'];
+  const types = ['original','protanopia','deuteranopia','tritanopia','achromatopsia'];
+  el.innerHTML = state.palette.map((hex) => {
+    const rgb = hexToRgb(hex);
+    return `<div class="cb-item">
+      <div class="cb-swatch" style="background:${hex}"></div>
+      <div class="cb-label">原色</div>
+      ${types.slice(1).map((t,i) => {
+        const sim = simulateColorBlindness(rgb.r, rgb.g, rgb.b, t);
+        return `<div class="cb-swatch" style="background:${sim}"></div><div class="cb-label">${labels[i+1]}</div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderExport() {
+  const el = document.getElementById('exportCode');
+  if (!el) return;
+  el.textContent = generateExport(state.exportFmt);
+}
+
+function renderImageColors() {
+  const area = document.getElementById('imagePaletteArea');
+  const el = document.getElementById('extractedColors');
+  if (state.imageColors.length === 0) { area.classList.add('hidden'); return; }
+  area.classList.remove('hidden');
+  el.innerHTML = state.imageColors.map(c =>
+    `<div class="extracted-swatch" style="background:${c}" title="${c}" onclick="useAsBase('${c}')"></div>`
+  ).join('');
+}
+
+// ========== Drag & Drop ==========
+const uploadArea = document.getElementById('uploadArea');
+['dragenter','dragover'].forEach(e => uploadArea.addEventListener(e, (ev) => { ev.preventDefault(); uploadArea.style.borderColor = '#6366f1'; }));
+['dragleave','drop'].forEach(e => uploadArea.addEventListener(e, (ev) => { ev.preventDefault(); uploadArea.style.borderColor = ''; }));
+uploadArea.addEventListener('drop', (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const input = document.getElementById('fileInput');
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    handleImageUpload(input);
+  }
+});
+
+// ========== Keyboard shortcuts ==========
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if(e.shiftKey) redo(); else undo(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
+});
+
+// ========== Init ==========
+generatePalette();
+</script>
+</body>
+</html>
