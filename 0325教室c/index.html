@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>虚拟教室</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#4f46e5;--primary-light:#6366f1;--primary-dark:#4338ca;
+  --bg:#f1f5f9;--surface:#fff;--surface2:#f8fafc;
+  --text:#1e293b;--text2:#64748b;--border:#e2e8f0;
+  --danger:#ef4444;--success:#22c55e;--warning:#f59e0b;
+  --radius:12px;--shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.toolbar-title{font-weight:700;font-size:1rem;white-space:nowrap;margin-right:auto;display:flex;align-items:center;gap:8px}
+.toolbar-title span{color:var(--primary)}
+.logo{width:28px;height:28px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.8rem}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--surface2);border-color:var(--primary);color:var(--primary)}
+.btn-outline.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-warning:hover{background:#d97706}
+.btn-sm{padding:5px 10px;font-size:.75rem}
+
+.rec-indicator{display:none;align-items:center;gap:6px;font-size:.82rem;font-weight:600;color:var(--danger);animation:pulse-rec 1s infinite}
+.rec-indicator.show{display:flex}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--danger);animation:pulse-dot 1s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes pulse-rec{0%,100%{opacity:1}50%{opacity:.7}}
+
+/* ── Main Layout ── */
+.main{display:flex;flex:1;overflow:hidden}
+
+/* ── Sidebar ── */
+.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width .3s,opacity .3s}
+.sidebar.collapsed{width:0;opacity:0;overflow:hidden;border:none}
+.sidebar-section{padding:12px;border-bottom:1px solid var(--border)}
+.sidebar-section:last-child{border-bottom:none}
+.sidebar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sidebar-header h3{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
+.badge{background:var(--primary);color:#fff;font-size:.65rem;padding:2px 7px;border-radius:20px;font-weight:700}
+
+/* Participants */
+.participant{display:flex;align-items:center;gap:10px;padding:6px 0}
+.avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:#fff;flex-shrink:0}
+.avatar.host{box-shadow:0 0 0 2px var(--warning)}
+.participant-info{flex:1;min-width:0}
+.participant-name{font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.participant-role{font-size:.7rem;color:var(--text2)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0}
+
+/* ── Whiteboard Area ── */
+.workspace{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.whiteboard-toolbar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.tool-group{display:flex;align-items:center;gap:4px}
+.tool-btn{width:34px;height:34px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:all .15s}
+.tool-btn:hover{border-color:var(--primary);color:var(--primary)}
+.tool-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.color-input{width:34px;height:34px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:#fff}
+.size-slider{width:80px;accent-color:var(--primary)}
+.tool-sep{width:1px;height:24px;background:var(--border);margin:0 4px}
+
+.canvas-wrap{flex:1;position:relative;overflow:hidden;background:#fff}
+.canvas-wrap canvas{display:block;width:100%;height:100%;cursor:crosshair}
+.canvas-wrap.screen-share-target{outline:3px dashed var(--warning);outline-offset:-3px}
+.canvas-wrap.screen-share-active{outline:3px solid var(--success);outline-offset:-3px}
+.share-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(245,158,11,.08);display:none;z-index:5;pointer-events:none}
+.share-overlay.show{display:block}
+.share-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#fff;padding:12px 24px;border-radius:10px;font-size:.9rem;pointer-events:none;z-index:6;display:none}
+.share-hint.show{display:block}
+
+/* Screen share selection box */
+.share-box{position:absolute;border:3px solid var(--success);background:rgba(34,197,94,.08);z-index:10;display:none;pointer-events:none;border-radius:4px}
+.share-box.show{display:block}
+
+/* ── Chat Panel ── */
+.chat-panel{width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width .3s,opacity .3s}
+.chat-panel.collapsed{width:0;opacity:0;overflow:hidden;border:none}
+.chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:85%;animation:msg-in .3s}
+@keyframes msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.chat-msg.self{align-self:flex-end}
+.msg-bubble{padding:8px 12px;border-radius:14px;font-size:.85rem;line-height:1.4;word-break:break-word}
+.chat-msg:not(.self) .msg-bubble{background:var(--surface2);border-bottom-left-radius:4px}
+.chat-msg.self .msg-bubble{background:var(--primary);color:#fff;border-bottom-right-radius:4px}
+.msg-meta{font-size:.65rem;color:var(--text2);margin-top:2px;padding:0 4px}
+.chat-msg.self .msg-meta{text-align:right;color:rgba(255,255,255,.5)}
+.emoji-only{font-size:2rem}
+
+.chat-input-area{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.chat-input-row{display:flex;gap:6px;align-items:flex-end}
+.chat-input{flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:.85rem;font-family:inherit;outline:none;resize:none;max-height:80px;min-height:38px;transition:border-color .2s}
+.chat-input:focus{border-color:var(--primary)}
+.send-btn{width:38px;height:38px;border-radius:10px;background:var(--primary);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;transition:background .2s}
+.send-btn:hover{background:var(--primary-dark)}
+.send-btn:disabled{background:var(--border);cursor:default}
+
+.emoji-bar{display:flex;gap:2px;flex-wrap:wrap;padding:4px 0}
+.emoji-bar button{width:32px;height:28px;border:none;background:transparent;border-radius:6px;font-size:1rem;cursor:pointer;transition:background .15s}
+.emoji-bar button:hover{background:var(--surface2)}
+.emoji-toggle{width:32px;height:32px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-size:1.1rem}
+.emoji-toggle:hover{background:var(--surface2)}
+
+/* ── Recording Overlay ── */
+.rec-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(239,68,68,.03);pointer-events:none;z-index:100;display:none}
+.rec-overlay.show{display:block}
+.rec-border{position:fixed;pointer-events:none;z-index:101;display:none}
+.rec-border.show{display:block;animation:rec-border-pulse 2s infinite}
+@keyframes rec-border-pulse{0%,100%{box-shadow:inset 0 0 0 3px rgba(239,68,68,.5)}50%{box-shadow:inset 0 0 0 3px rgba(239,68,68,.15)}}
+.rec-badge{position:fixed;top:16px;right:16px;background:var(--danger);color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;font-size:.82rem;display:none;align-items:center;gap:8px;z-index:102;animation:rec-badge-in .3s}
+.rec-badge.show{display:flex}
+.rec-badge .rec-dot{width:8px;height:8px}
+@keyframes rec-badge-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.rec-timer{font-variant-numeric:tabular-nums}
+
+/* ── Mobile ── */
+.mobile-tabs{display:none;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0}
+.mobile-tab{flex:1;padding:10px 0;border:none;background:transparent;font-size:.7rem;font-weight:600;color:var(--text2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
+.mobile-tab.active{color:var(--primary)}
+.mobile-tab svg{width:20px;height:20px}
+
+@media(max-width:768px){
+  .sidebar,.chat-panel{position:fixed;top:0;bottom:56px;z-index:50;transition:transform .3s,opacity .3s}
+  .sidebar{left:0;width:260px}
+  .sidebar.collapsed{transform:translateX(-100%);opacity:0}
+  .chat-panel{right:0;width:300px}
+  .chat-panel.collapsed{transform:translateX(100%);opacity:0;border-left:none;border-right:none}
+  .mobile-tabs{display:flex}
+  .toolbar .btn-text{display:none}
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- Recording overlay -->
+<div class="rec-overlay" id="recOverlay"></div>
+<div class="rec-border" id="recBorder"></div>
+<div class="rec-badge" id="recBadge"><span class="rec-dot"></span>录制中 <span class="rec-timer" id="recTimer">00:00</span></div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="toolbar-title"><div class="logo">VC</div><span>虚拟教室</span></div>
+  <div class="rec-indicator" id="recIndicator"><span class="rec-dot"></span>录制中</div>
+  <button class="btn btn-outline btn-sm" id="btnShareScreen" title="屏幕共享">&#x1F5A5; <span class="btn-text">屏幕共享</span></button>
+  <button class="btn btn-danger btn-sm" id="btnRecord" title="录制">&#x1F534; <span class="btn-text">录制</span></button>
+  <button class="btn btn-outline btn-sm" id="btnToggleSidebar" title="参与者">&#x1F465; <span class="btn-text">参与者</span></button>
+  <button class="btn btn-outline btn-sm" id="btnToggleChat" title="聊天">&#x1F4AC; <span class="btn-text">聊天</span></button>
+</div>
+
+<!-- Main Area -->
+<div class="main">
+  <!-- Sidebar: Participants -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-header"><h3>参与者</h3><span class="badge" id="participantCount">5</span></div>
+      <div id="participantList"></div>
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div class="workspace">
+    <div class="whiteboard-toolbar">
+      <div class="tool-group">
+        <button class="tool-btn active" data-tool="pen" title="画笔">&#x270D;</button>
+        <button class="tool-btn" data-tool="eraser" title="橡皮擦">&#x1F9F9;</button>
+        <button class="tool-btn" data-tool="line" title="直线">&#x2500;</button>
+        <button class="tool-btn" data-tool="rect" title="矩形">&#x25A1;</button>
+        <button class="tool-btn" data-tool="circle" title="圆形">&#x25CB;</button>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-group">
+        <input type="color" class="color-input" id="colorPicker" value="#1e293b" title="颜色">
+        <label style="font-size:.72rem;color:var(--text2);white-space:nowrap">粗细</label>
+        <input type="range" class="size-slider" id="sizeSlider" min="1" max="20" value="3">
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-group">
+        <button class="tool-btn" id="btnUndo" title="撤销">&#x21A9;</button>
+        <button class="tool-btn" id="btnClear" title="清空">&#x1F5D1;</button>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-group">
+        <button class="tool-btn" id="btnShareArea" title="框选共享区域" style="font-size:.7rem;width:auto;padding:0 8px">&#x1F5A5;&#xFE0F; 框选共享</button>
+        <button class="tool-btn" id="btnStopShare" title="停止共享" style="display:none;font-size:.7rem;color:var(--danger)">&#x2716; 停止共享</button>
+      </div>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="whiteboard"></canvas>
+      <div class="share-overlay" id="shareOverlay"></div>
+      <div class="share-hint" id="shareHint">点击并拖动选择要共享的区域</div>
+      <div class="share-box" id="shareBox"></div>
+    </div>
+  </div>
+
+  <!-- Chat Panel -->
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-area">
+      <div class="emoji-bar" id="emojiBar" style="display:none"></div>
+      <div class="chat-input-row">
+        <button class="emoji-toggle" id="emojiToggle" title="表情">&#x1F60A;</button>
+        <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
+        <button class="send-btn" id="btnSend" disabled title="发送">&#x27A4;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile bottom tabs -->
+<div class="mobile-tabs" id="mobileTabs">
+  <button class="mobile-tab active" data-panel="workspace">&#x1F58C;<br>白板</button>
+  <button class="mobile-tab" data-panel="sidebar">&#x1F465;<br>参与者</button>
+  <button class="mobile-tab" data-panel="chat">&#x1F4AC;<br>聊天</button>
+</div>
+
+<script>
+/* ──────────────────────────────────────
+   State
+   ────────────────────────────────────── */
+const STATE = {
+  tool: 'pen',
+  color: '#1e293b',
+  size: 3,
+  drawing: false,
+  startX: 0, startY: 0,
+  lastX: 0, lastY: 0,
+  history: [],       // saved canvas snapshots
+  messages: [],
+  recording: false,
+  recStart: 0,
+  recInterval: null,
+  shareMode: false,   // selecting area to share
+  sharing: false,     // area is being shared
+  shareRect: null,
+  emojiOpen: false,
+};
+
+const EMOJIS = ['😀','😂','🤣','😍','🥰','😎','🤔','👍','👏','🎉','🔥','❤️','💯','🙌','😱','🤗','😅','😢','🙏','✨','📝','📚','🎓','💡','⭐'];
+const PARTICIPANTS = [
+  { name:'张老师', role:'主持人', color:'#4f46e5', host:true },
+  { name:'李明',   role:'学生',   color:'#059669', host:false },
+  { name:'王芳',   role:'学生',   color:'#d97706', host:false },
+  { name:'赵强',   role:'学生',   color:'#dc2626', host:false },
+  { name:'你',     role:'学生',   color:'#7c3aed', host:false, self:true },
+];
+
+/* ──────────────────────────────────────
+   DOM refs
+   ────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const canvas    = $('whiteboard');
+const ctx       = canvas.getContext('2d');
+const canvasWrap= $('canvasWrap');
+const chatMsgs  = $('chatMessages');
+const chatInput = $('chatInput');
+const btnSend   = $('btnSend');
+const sizeSlider= $('sizeSlider');
+const colorPicker=$('colorPicker');
+const emojiBar  = $('emojiBar');
+const shareBox  = $('shareBox');
+const shareHint = $('shareHint');
+const shareOverlay=$('shareOverlay');
+
+/* ──────────────────────────────────────
+   Canvas Setup
+   ────────────────────────────────────── */
+let snapshot = null; // for shape preview
+
+function resizeCanvas(){
+  const rect = canvasWrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  // save current drawing
+  let imgData = null;
+  if(canvas.width && canvas.height){
+    imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  }
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width  = rect.width  + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // restore drawing
+  if(imgData){
+    ctx.putImageData(imgData,0,0);
+  }
+}
+
+function saveState(){
+  STATE.history.push(canvas.toDataURL());
+  if(STATE.history.length > 30) STATE.history.shift();
+}
+
+function undo(){
+  if(!STATE.history.length) return;
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const dpr = window.devicePixelRatio || 1;
+    ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(img,0,0);
+    ctx.restore();
+  };
+  img.src = STATE.history.pop();
+}
+
+function clearCanvas(){
+  saveState();
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+}
+
+/* get position from mouse/touch event */
+function getPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+}
+
+/* ── Drawing ── */
+function startDraw(e){
+  if(STATE.shareMode) return startShareSelect(e);
+  e.preventDefault();
+  STATE.drawing = true;
+  const p = getPos(e);
+  STATE.startX = STATE.lastX = p.x;
+  STATE.startY = STATE.lastY = p.y;
+
+  if(STATE.tool === 'pen' || STATE.tool === 'eraser'){
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }
+  if(['line','rect','circle'].includes(STATE.tool)){
+    snapshot = ctx.getImageData(0,0,canvas.width,canvas.height);
+  }
+}
+
+function moveDraw(e){
+  if(STATE.shareMode) return moveShareSelect(e);
+  if(!STATE.drawing) return;
+  e.preventDefault();
+  const p = getPos(e);
+
+  if(STATE.tool === 'pen'){
+    ctx.strokeStyle = STATE.color;
+    ctx.lineWidth   = STATE.size;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  } else if(STATE.tool === 'eraser'){
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth = STATE.size * 4;
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  } else if(STATE.tool === 'line'){
+    ctx.putImageData(snapshot,0,0);
+    ctx.beginPath();
+    ctx.strokeStyle = STATE.color;
+    ctx.lineWidth   = STATE.size;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.moveTo(STATE.startX, STATE.startY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  } else if(STATE.tool === 'rect'){
+    ctx.putImageData(snapshot,0,0);
+    ctx.strokeStyle = STATE.color;
+    ctx.lineWidth   = STATE.size;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeRect(STATE.startX, STATE.startY, p.x-STATE.startX, p.y-STATE.startY);
+  } else if(STATE.tool === 'circle'){
+    ctx.putImageData(snapshot,0,0);
+    ctx.strokeStyle = STATE.color;
+    ctx.lineWidth   = STATE.size;
+    ctx.globalCompositeOperation = 'source-over';
+    const rx = Math.abs(p.x - STATE.startX);
+    const ry = Math.abs(p.y - STATE.startY);
+    const cx = (STATE.startX + p.x)/2;
+    const cy = (STATE.startY + p.y)/2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.max(1,rx/2), Math.max(1,ry/2), 0, 0, Math.PI*2);
+    ctx.stroke();
+  }
+  STATE.lastX = p.x;
+  STATE.lastY = p.y;
+}
+
+function endDraw(e){
+  if(STATE.shareMode) return endShareSelect(e);
+  if(!STATE.drawing) return;
+  STATE.drawing = false;
+  ctx.globalCompositeOperation = 'source-over';
+  saveState();
+}
+
+/* ── Canvas Events ── */
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  moveDraw);
+canvas.addEventListener('mouseup',    endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+canvas.addEventListener('touchstart', startDraw, {passive:false});
+canvas.addEventListener('touchmove',  moveDraw,  {passive:false});
+canvas.addEventListener('touchend',   endDraw);
+
+/* ── Tool buttons ── */
+document.querySelectorAll('[data-tool]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    STATE.tool = btn.dataset.tool;
+  });
+});
+colorPicker.addEventListener('input', e => STATE.color = e.target.value);
+sizeSlider.addEventListener('input',  e => STATE.size  = +e.target.value);
+$('btnUndo').addEventListener('click', undo);
+$('btnClear').addEventListener('click', clearCanvas);
+
+/* ──────────────────────────────────────
+   Screen Share Simulation
+   ────────────────────────────────────── */
+let shareStart = null;
+
+function startShareSelect(e){
+  e.preventDefault();
+  STATE.drawing = true;
+  const rect = canvasWrap.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  shareStart = { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  shareBox.classList.add('show');
+  shareHint.classList.remove('show');
+}
+
+function moveShareSelect(e){
+  if(!STATE.drawing) return;
+  e.preventDefault();
+  const rect = canvasWrap.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  const cx = t.clientX - rect.left;
+  const cy = t.clientY - rect.top;
+  const x = Math.min(shareStart.x, cx);
+  const y = Math.min(shareStart.y, cy);
+  const w = Math.abs(cx - shareStart.x);
+  const h = Math.abs(cy - shareStart.y);
+  shareBox.style.left   = x + 'px';
+  shareBox.style.top    = y + 'px';
+  shareBox.style.width  = w + 'px';
+  shareBox.style.height = h + 'px';
+}
+
+function endShareSelect(e){
+  if(!STATE.drawing) return;
+  STATE.drawing = false;
+  if(!shareStart) return;
+  const rect = canvasWrap.getBoundingClientRect();
+  const t = e.changedTouches ? e.changedTouches[0] : (e.clientX !== undefined ? e : null);
+  if(!t) return;
+  const cx = t.clientX - rect.left;
+  const cy = t.clientY - rect.top;
+  const w = Math.abs(cx - shareStart.x);
+  const h = Math.abs(cy - shareStart.y);
+  if(w < 20 || h < 20){
+    cancelShareMode();
+    return;
+  }
+  // Done: mark as shared
+  STATE.shareMode = false;
+  STATE.sharing   = true;
+  STATE.shareRect = {
+    x: Math.min(shareStart.x, cx),
+    y: Math.min(shareStart.y, cy),
+    w, h
+  };
+  shareBox.style.borderColor = 'var(--success)';
+  shareBox.style.background  = 'rgba(34,197,94,.08)';
+  $('btnShareArea').style.display = 'none';
+  $('btnStopShare').style.display = '';
+  canvasWrap.classList.add('screen-share-active');
+  canvasWrap.classList.remove('screen-share-target');
+  canvas.style.cursor = 'crosshair';
+}
+
+function cancelShareMode(){
+  STATE.shareMode = false;
+  shareBox.classList.remove('show');
+  shareHint.classList.remove('show');
+  shareOverlay.classList.remove('show');
+  canvasWrap.classList.remove('screen-share-target');
+  canvas.style.cursor = 'crosshair';
+}
+
+$('btnShareArea').addEventListener('click', () => {
+  STATE.shareMode = true;
+  canvasWrap.classList.add('screen-share-target');
+  shareOverlay.classList.add('show');
+  shareHint.classList.add('show');
+  canvas.style.cursor = 'cell';
+});
+
+$('btnStopShare').addEventListener('click', () => {
+  STATE.sharing = false;
+  STATE.shareRect = null;
+  shareBox.classList.remove('show');
+  shareBox.style.borderColor = '';
+  shareBox.style.background  = '';
+  $('btnShareArea').style.display = '';
+  $('btnStopShare').style.display = 'none';
+  canvasWrap.classList.remove('screen-share-active');
+});
+
+/* ──────────────────────────────────────
+   Recording
+   ────────────────────────────────────── */
+$('btnRecord').addEventListener('click', () => {
+  if(STATE.recording) stopRecording();
+  else startRecording();
+});
+
+function startRecording(){
+  STATE.recording = true;
+  STATE.recStart  = Date.now();
+  $('recOverlay').classList.add('show');
+  $('recBorder').classList.add('show');
+  $('recBadge').classList.add('show');
+  $('recIndicator').classList.add('show');
+  $('btnRecord').innerHTML = '&#x23F9; <span class="btn-text">停止录制</span>';
+  $('btnRecord').classList.remove('btn-danger');
+  $('btnRecord').classList.add('btn-warning');
+  STATE.recInterval = setInterval(updateRecTimer, 1000);
+  updateRecTimer();
+}
+
+function stopRecording(){
+  STATE.recording = false;
+  clearInterval(STATE.recInterval);
+  $('recOverlay').classList.remove('show');
+  $('recBorder').classList.remove('show');
+  $('recBadge').classList.remove('show');
+  $('recIndicator').classList.remove('show');
+  $('btnRecord').innerHTML = '&#x1F534; <span class="btn-text">录制</span>';
+  $('btnRecord').classList.add('btn-danger');
+  $('btnRecord').classList.remove('btn-warning');
+  $('recTimer').textContent = '00:00';
+}
+
+function updateRecTimer(){
+  const elapsed = Math.floor((Date.now() - STATE.recStart)/1000);
+  const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+  const s = String(elapsed%60).padStart(2,'0');
+  $('recTimer').textContent = m+':'+s;
+}
+
+/* ──────────────────────────────────────
+   Sidebar / Participants
+   ────────────────────────────────────── */
+function renderParticipants(){
+  const list = $('participantList');
+  list.innerHTML = PARTICIPANTS.map(p => `
+    <div class="participant">
+      <div class="avatar" style="background:${p.color}" title="${p.name}">${p.name[0]}</div>
+      <div class="participant-info">
+        <div class="participant-name">${p.name}${p.self?' (你)':''}</div>
+        <div class="participant-role">${p.role}</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  `).join('');
+  $('participantCount').textContent = PARTICIPANTS.length;
+}
+renderParticipants();
+
+/* ──────────────────────────────────────
+   Toggle panels
+   ────────────────────────────────────── */
+$('btnToggleSidebar').addEventListener('click', () => {
+  $('sidebar').classList.toggle('collapsed');
+});
+$('btnToggleChat').addEventListener('click', () => {
+  $('chatPanel').classList.toggle('collapsed');
+});
+
+/* ── Mobile tabs ── */
+document.querySelectorAll('.mobile-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const panel = tab.dataset.panel;
+    if(panel === 'sidebar'){
+      $('sidebar').classList.remove('collapsed');
+      $('chatPanel').classList.add('collapsed');
+    } else if(panel === 'chat'){
+      $('chatPanel').classList.remove('collapsed');
+      $('sidebar').classList.add('collapsed');
+    } else {
+      $('sidebar').classList.add('collapsed');
+      $('chatPanel').classList.add('collapsed');
+    }
+  });
+});
+
+/* ──────────────────────────────────────
+   Chat
+   ────────────────────────────────────── */
+// Build emoji bar
+emojiBar.innerHTML = EMOJIS.map(e => `<button type="button">${e}</button>`).join('');
+emojiBar.addEventListener('click', e => {
+  if(e.target.tagName==='BUTTON'){
+    chatInput.value += e.target.textContent;
+    chatInput.focus();
+    updateSendBtn();
+  }
+});
+$('emojiToggle').addEventListener('click', () => {
+  STATE.emojiOpen = !STATE.emojiOpen;
+  emojiBar.style.display = STATE.emojiOpen ? 'flex' : 'none';
+});
+
+function updateSendBtn(){
+  btnSend.disabled = !chatInput.value.trim();
+}
+chatInput.addEventListener('input', () => {
+  updateSendBtn();
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 80) + 'px';
+});
+chatInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+btnSend.addEventListener('click', sendMessage);
+
+function sendMessage(){
+  const text = chatInput.value.trim();
+  if(!text) return;
+  addMessage('你', text, true);
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  updateSendBtn();
+
+  // Simulate reply
+  setTimeout(() => {
+    const replyUser = PARTICIPANTS[Math.floor(Math.random()*(PARTICIPANTS.length-1))];
+    const replies = ['收到！','好的 👍','明白了','没问题','太棒了 🎉','我同意','谢谢老师！','了解 ✨'];
+    addMessage(replyUser.name, replies[Math.floor(Math.random()*replies.length)]);
+  }, 800 + Math.random()*1500);
+}
+
+function addMessage(sender, text, self=false){
+  const time = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+  const isEmoji = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+$/u.test(text);
+  STATE.messages.push({sender, text, self, time});
+
+  const div = document.createElement('div');
+  div.className = 'chat-msg' + (self?' self':'');
+  div.innerHTML = `
+    <div class="msg-bubble${isEmoji?' emoji-only':''}">${escHtml(text)}</div>
+    <div class="msg-meta">${escHtml(sender)} · ${time}</div>
+  `;
+  chatMsgs.appendChild(div);
+  chatMsgs.scrollTop = chatMsgs.scrollHeight;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// Welcome message
+addMessage('系统', '欢迎来到虚拟教室 🎓 开始在白板上协作吧！');
+
+/* ──────────────────────────────────────
+   Keyboard shortcuts
+   ────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if(e.target === chatInput) return;
+  if(e.ctrlKey && e.key === 'z'){ e.preventDefault(); undo(); }
+});
+
+/* ──────────────────────────────────────
+   Init
+   ────────────────────────────────────── */
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+saveState();
+
+// Responsive: collapse sidebar & chat on small screens by default
+if(window.innerWidth <= 768){
+  $('sidebar').classList.add('collapsed');
+  $('chatPanel').classList.add('collapsed');
+}
+</script>
+</body>
+</html>
