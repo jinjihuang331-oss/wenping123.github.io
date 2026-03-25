@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字滚动计数器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>数字滚动计数器</h1>
+
+    <div class="demo-area">
+      <div class="counter-group">
+        <div class="label">总营收（元）</div>
+        <div class="rolling-counter" id="counter1" data-from="0" data-to="1234567.89"
+             data-speed="2000" data-decimals="2" data-separator="true"></div>
+      </div>
+      <div class="counter-group">
+        <div class="label">用户数</div>
+        <div class="rolling-counter" id="counter2" data-from="0" data-to="98000"
+             data-speed="1500" data-decimals="0" data-separator="true"></div>
+      </div>
+      <div class="counter-group">
+        <div class="label">完成率（%）</div>
+        <div class="rolling-counter" id="counter3" data-from="0" data-to="99.7"
+             data-speed="2500" data-decimals="1" data-separator="false"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-row">
+        <label>起始值 <input type="number" id="fromVal" value="0" step="any"></label>
+        <label>目标值 <input type="number" id="toVal" value="888888.88" step="any"></label>
+        <label>速度(ms) <input type="number" id="speedVal" value="2000" min="200" max="10000"></label>
+      </div>
+      <div class="control-row">
+        <label>小数位 <input type="number" id="decimalsVal" value="2" min="0" max="6"></label>
+        <label>
+          千分位
+          <select id="separatorVal">
+            <option value="true">开启</option>
+            <option value="false">关闭</option>
+          </select>
+        </label>
+        <label>
+          缓动函数
+          <select id="easingVal">
+            <option value="easeOutExpo">指数缓出</option>
+            <option value="easeOutCubic">三次缓出</option>
+            <option value="linear">线性</option>
+            <option value="easeInOutQuad">二次缓入出</option>
+          </select>
+        </label>
+      </div>
+      <div class="button-row">
+        <button id="btnRun">运行动画</button>
+        <button id="btnReset">重置</button>
+        <button id="btnRandom">随机数</button>
+      </div>
+    </div>
+
+    <div class="demo-area">
+      <div class="counter-group large">
+        <div class="label">自定义计数器</div>
+        <div class="rolling-counter" id="customCounter" data-from="0" data-to="0"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="rolling-counter.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

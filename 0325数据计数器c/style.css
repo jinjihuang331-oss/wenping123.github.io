@@ -1,0 +1,217 @@
+/* ── 基础重置 ──────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  color: #e4e6f0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 16px;
+}
+
+/* ── 页面布局 ──────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: 860px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 40px;
+  background: linear-gradient(90deg, #79f1d1, #6c63ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── 展示区 ────────────────────────────────────── */
+.demo-area {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+.counter-group {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 28px 32px;
+  text-align: center;
+  min-width: 200px;
+  backdrop-filter: blur(12px);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.counter-group:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px rgba(108, 99, 255, 0.25);
+}
+
+.counter-group.large {
+  width: 100%;
+  min-width: auto;
+}
+
+.counter-group .label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12px;
+}
+
+/* ── 计数器组件样式 ─────────────────────────────── */
+.rc-wrapper {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-digits {
+  display: inline-flex;
+}
+
+.rc-digit {
+  display: inline-block;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  transition: color 0.25s;
+  color: #e4e6f0;
+}
+
+.counter-group.large .rc-digit {
+  font-size: 52px;
+}
+
+/* 数字变化时的渐变闪烁动画 */
+.rc-digit.rc-flash {
+  animation: digitFlash 0.45s ease-out;
+}
+
+@keyframes digitFlash {
+  0%   { color: #79f1d1; transform: translateY(-3px); }
+  100% { color: #e4e6f0; transform: translateY(0); }
+}
+
+.rc-prefix,
+.rc-suffix {
+  font-size: 20px;
+  opacity: 0.7;
+}
+
+.counter-group.large .rc-prefix,
+.counter-group.large .rc-suffix {
+  font-size: 28px;
+}
+
+/* ── 控制面板 ───────────────────────────────────── */
+.controls {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 36px;
+  backdrop-filter: blur(12px);
+}
+
+.control-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.control-row:last-of-type {
+  margin-bottom: 20px;
+}
+
+.control-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  flex: 1;
+  min-width: 140px;
+}
+
+.control-row input,
+.control-row select {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #e4e6f0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.control-row input:focus,
+.control-row select:focus {
+  border-color: #6c63ff;
+}
+
+.control-row select option {
+  background: #1e1b40;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+#btnRun {
+  background: linear-gradient(135deg, #6c63ff, #79f1d1);
+  color: #0f0c29;
+}
+
+#btnRun:hover {
+  background: linear-gradient(135deg, #7b73ff, #88ffdd);
+}
+
+#btnReset {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e6f0;
+}
+
+#btnReset:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+#btnRandom {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  color: #1e1b40;
+}
+
+#btnRandom:hover {
+  background: linear-gradient(135deg, #ffa63e, #ffe040);
+}
