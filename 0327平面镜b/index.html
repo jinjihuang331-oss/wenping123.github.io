@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平面镜成像实验模拟器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  color: #e0e0e0;
+}
+h1 { margin: 16px 0 8px; font-size: 22px; color: #fff; }
+.info { margin-bottom: 8px; font-size: 14px; color: #aaa; }
+#canvas {
+  border: 2px solid #333;
+  border-radius: 8px;
+  cursor: grab;
+  background: #16213e;
+}
+#canvas:active { cursor: grabbing; }
+.panel {
+  margin-top: 12px;
+  display: flex;
+  gap: 24px;
+  font-size: 15px;
+}
+.panel span { color: #88ccff; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>平面镜成像实验模拟器</h1>
+<p class="info">拖动蜡烛观察成像变化</p>
+<canvas id="canvas" width="800" height="450"></canvas>
+<div class="panel">
+  物距: <span id="objDist">--</span> cm &nbsp;|&nbsp;
+  像距: <span id="imgDist">--</span> cm &nbsp;|&nbsp;
+  物像等大: <span id="equalSize">是</span>
+</div>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const objDistEl = document.getElementById('objDist');
+const imgDistEl = document.getElementById('imgDist');
+const equalSizeEl = document.getElementById('equalSize');
+
+const W = canvas.width, H = canvas.height;
+const mirrorX = W * 0.6;        // 镜面x坐标
+const scale = 4;                // 1px = 0.25cm, 4px = 1cm
+const candleW = 22, candleH = 80;
+
+let candleX = W * 0.3;         // 蜡烛底座x
+let candleY = H * 0.75;        // 蜡烛底座y（桌面线）
+let dragging = false;
+let dragOffX = 0, dragOffY = 0;
+
+// --- 绘制桌面 ---
+function drawTable() {
+  ctx.fillStyle = '#2a2a4a';
+  ctx.fillRect(0, candleY, W, H - candleY);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, candleY);
+  ctx.lineTo(W, candleY);
+  ctx.stroke();
+}
+
+// --- 绘制平面镜 ---
+function drawMirror() {
+  // 镜面（竖线 + 斜线表示反射面）
+  ctx.strokeStyle = '#aaccff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(mirrorX, 40);
+  ctx.lineTo(mirrorX, candleY);
+  ctx.stroke();
+
+  // 镜面背面斜线
+  ctx.strokeStyle = '#6688aa';
+  ctx.lineWidth = 1.5;
+  for (let y = 45; y < candleY - 5; y += 12) {
+    ctx.beginPath();
+    ctx.moveTo(mirrorX, y);
+    ctx.lineTo(mirrorX + 10, y - 8);
+    ctx.stroke();
+  }
+
+  // 标签
+  ctx.fillStyle = '#aaccff';
+  ctx.font = '14px sans-serif';
+  ctx.fillText('平面镜', mirrorX - 22, 28);
+}
+
+// --- 绘制蜡烛 ---
+function drawCandle(x, isImage) {
+  const alpha = isImage ? 0.45 : 1;
+  const dash = isImage;
+
+  if (dash) ctx.setLineDash([6, 4]);
+
+  // 蜡烛主体
+  const grad = ctx.createLinearGradient(x - candleW / 2, candleY - candleH, x + candleW / 2, candleY - candleH);
+  if (isImage) {
+    grad.addColorStop(0, `rgba(180,140,100,${alpha})`);
+    grad.addColorStop(0.5, `rgba(240,210,160,${alpha})`);
+    grad.addColorStop(1, `rgba(180,140,100,${alpha})`);
+  } else {
+    grad.addColorStop(0, '#b48c64');
+    grad.addColorStop(0.5, '#f0d2a0');
+    grad.addColorStop(1, '#b48c64');
+  }
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(x - candleW / 2, candleY - candleH, candleW, candleH, [4, 4, 0, 0]);
+  ctx.fill();
+
+  // 烛芯
+  ctx.strokeStyle = isImage ? `rgba(60,40,20,${alpha})` : '#3c2814';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, candleY - candleH);
+  ctx.lineTo(x, candleY - candleH - 8);
+  ctx.stroke();
+
+  // 火焰
+  const flameY = candleY - candleH - 18;
+  ctx.beginPath();
+  ctx.moveTo(x, flameY - 22);
+  ctx.quadraticCurveTo(x - 10, flameY - 5, x - 5, flameY + 4);
+  ctx.quadraticCurveTo(x, flameY + 10, x + 5, flameY + 4);
+  ctx.quadraticCurveTo(x + 10, flameY - 5, x, flameY - 22);
+  ctx.closePath();
+
+  const fGrad = ctx.createRadialGradient(x, flameY - 4, 2, x, flameY - 4, 18);
+  if (isImage) {
+    fGrad.addColorStop(0, `rgba(255,255,200,${alpha * 0.7})`);
+    fGrad.addColorStop(0.4, `rgba(255,180,50,${alpha * 0.6})`);
+    fGrad.addColorStop(1, `rgba(255,80,0,${alpha * 0.3})`);
+  } else {
+    fGrad.addColorStop(0, '#ffffc8');
+    fGrad.addColorStop(0.4, '#ffb432');
+    fGrad.addColorStop(1, '#ff5000');
+  }
+  ctx.fillStyle = fGrad;
+  ctx.fill();
+
+  ctx.setLineDash([]);
+
+  // 底座（托盘）
+  ctx.fillStyle = isImage ? `rgba(100,80,60,${alpha})` : '#64503c';
+  ctx.beginPath();
+  ctx.ellipse(x, candleY + 4, candleW / 2 + 6, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// --- 绘制连线（光线辅助） ---
+function drawRays(objX, imgX) {
+  // 物到镜面的连线（虚线）
+  ctx.strokeStyle = 'rgba(255,200,100,0.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(objX, candleY - candleH / 2);
+  ctx.lineTo(mirrorX, candleY - candleH / 2);
+  ctx.stroke();
+
+  // 镜面到像的连线（虚线，延长线）
+  ctx.strokeStyle = 'rgba(150,200,255,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(mirrorX, candleY - candleH / 2);
+  ctx.lineTo(imgX, candleY - candleH / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 物距 / 像距 标注
+  const objD = Math.abs(mirrorX - objX) / scale;
+  const imgD = Math.abs(imgX - mirrorX) / scale;
+  const midObj = (objX + mirrorX) / 2;
+  const midImg = (imgX + mirrorX) / 2;
+
+  ctx.fillStyle = '#ffcc66';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${objD.toFixed(1)} cm`, midObj, candleY + 24);
+
+  ctx.fillStyle = '#88ccff';
+  ctx.fillText(`${imgD.toFixed(1)} cm`, midImg, candleY + 24);
+
+  // 虚像标签
+  ctx.fillStyle = 'rgba(150,200,255,0.7)';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('虚像', imgX, candleY - candleH - 35);
+
+  // 物体标签
+  ctx.fillStyle = '#ffcc66';
+  ctx.fillText('物体', objX, candleY - candleH - 35);
+
+  ctx.textAlign = 'left';
+}
+
+// --- 主绘制 ---
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  drawTable();
+  drawMirror();
+
+  // 计算虚像位置：关于镜面对称
+  const imgX = 2 * mirrorX - candleX;
+
+  // 先画虚像（在镜子后面）
+  drawCandle(imgX, true);
+  // 再画物体
+  drawCandle(candleX, false);
+
+  // 连线与标注
+  drawRays(candleX, imgX);
+
+  // 更新面板
+  const objD = Math.abs(mirrorX - candleX) / scale;
+  const imgD = Math.abs(imgX - mirrorX) / scale;
+  objDistEl.textContent = objD.toFixed(1);
+  imgDistEl.textContent = imgD.toFixed(1);
+  equalSizeEl.textContent = '是（等大正立虚像）';
+}
+
+// --- 交互 ---
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  // 判断是否点中蜡烛区域（放大点击区域方便操作）
+  if (mx >= candleX - candleW && mx <= candleX + candleW &&
+      my >= candleY - candleH - 25 && my <= candleY + 12) {
+    dragging = true;
+    dragOffX = mx - candleX;
+    dragOffY = my - candleY;
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  let nx = e.clientX - rect.left - dragOffX;
+  // 限制范围：不能越过镜面，不能超出左边界
+  nx = Math.max(candleW + 10, Math.min(mirrorX - 15, nx));
+  candleX = nx;
+  draw();
+});
+
+canvas.addEventListener('mouseup', () => { dragging = false; });
+canvas.addEventListener('mouseleave', () => { dragging = false; });
+
+// 触摸支持
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  const mx = t.clientX - rect.left;
+  const my = t.clientY - rect.top;
+  if (mx >= candleX - candleW && mx <= candleX + candleW &&
+      my >= candleY - candleH - 25 && my <= candleY + 12) {
+    dragging = true;
+    dragOffX = mx - candleX;
+    dragOffY = my - candleY;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  if (!dragging) return;
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  let nx = e.touches[0].clientX - rect.left - dragOffX;
+  nx = Math.max(candleW + 10, Math.min(mirrorX - 15, nx));
+  candleX = nx;
+  draw();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { dragging = false; });
+
+// 初始绘制
+draw();
+</script>
+</body>
+</html>
