@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>科学函数计算器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="logo">科学函数计算器</h1>
+      <div class="header-controls">
+        <select id="themeSelect" class="theme-select" title="切换主题">
+          <option value="dark">深色主题</option>
+          <option value="light">浅色主题</option>
+          <option value="retro">复古主题</option>
+        </select>
+        <button id="toggleHistory" class="icon-btn" title="历史记录">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </button>
+        <button id="toggleGraph" class="icon-btn" title="函数绘图">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Calculator Panel -->
+      <section class="calculator">
+        <!-- Display -->
+        <div class="display">
+          <div class="expression" id="expression"></div>
+          <div class="result" id="result">0</div>
+        </div>
+
+        <!-- Button Grid -->
+        <div class="keypad" id="keypad">
+          <button class="btn func" data-action="clear">AC</button>
+          <button class="btn func" data-action="backspace">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
+            </svg>
+          </button>
+          <button class="btn func" data-action="percent">%</button>
+          <button class="btn operator" data-value="/">÷</button>
+
+          <button class="btn func" data-action="parenthesis">(</button>
+          <button class="btn func" data-action="parenthesis">)</button>
+          <button class="btn func" data-action="pow" data-value="^">x<sup>y</sup></button>
+          <button class="btn operator" data-value="*">×</button>
+
+          <button class="btn number" data-value="7">7</button>
+          <button class="btn number" data-value="8">8</button>
+          <button class="btn number" data-value="9">9</button>
+          <button class="btn operator" data-value="-">−</button>
+
+          <button class="btn number" data-value="4">4</button>
+          <button class="btn number" data-value="5">5</button>
+          <button class="btn number" data-value="6">6</button>
+          <button class="btn operator" data-value="+">+</button>
+
+          <button class="btn number" data-value="1">1</button>
+          <button class="btn number" data-value="2">2</button>
+          <button class="btn number" data-value="3">3</button>
+          <button class="btn equals" data-action="equals" rowspan="2">=</button>
+
+          <button class="btn number zero" data-value="0">0</button>
+          <button class="btn number" data-value=".">.</button>
+          <button class="btn func" data-action="negate">±</button>
+
+          <!-- Scientific functions row -->
+          <button class="btn sci" data-value="sin(">sin</button>
+          <button class="btn sci" data-value="cos(">cos</button>
+          <button class="btn sci" data-value="tan(">tan</button>
+          <button class="btn sci" data-value="log(">log</button>
+
+          <button class="btn sci" data-value="ln(">ln</button>
+          <button class="btn sci" data-value="sqrt(">√</button>
+          <button class="btn sci" data-value="abs(">|x|</button>
+          <button class="btn sci" data-value="pi">π</button>
+
+          <button class="btn sci" data-value="e">e</button>
+          <button class="btn sci" data-value="exp(">exp</button>
+          <button class="btn sci" data-value="asin(">asin</button>
+          <button class="btn sci" data-value="acos(">acos</button>
+
+          <button class="btn sci" data-value="atan(">atan</button>
+          <button class="btn sci" data-value="floor(">⌊x⌋</button>
+          <button class="btn sci" data-value="ceil(">⌈x⌉</button>
+          <button class="btn sci" data-value="fact(">n!</button>
+        </div>
+      </section>
+
+      <!-- History Panel -->
+      <aside class="panel history-panel" id="historyPanel">
+        <div class="panel-header">
+          <h2>历史记录</h2>
+          <button id="clearHistory" class="icon-btn small" title="清除历史">✕</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <p class="empty-hint">暂无计算记录</p>
+        </div>
+      </aside>
+
+      <!-- Graph Panel -->
+      <aside class="panel graph-panel" id="graphPanel">
+        <div class="panel-header">
+          <h2>函数绘图</h2>
+        </div>
+        <div class="graph-controls">
+          <input type="text" id="graphInput" class="graph-input" placeholder="输入函数，如: x^2, sin(x), x^3-2*x" value="sin(x)">
+          <div class="graph-btns">
+            <button id="plotBtn" class="btn func small">绘图</button>
+            <button id="clearGraphBtn" class="btn func small">清除</button>
+          </div>
+        </div>
+        <div class="graph-info" id="graphInfo"></div>
+        <canvas id="graphCanvas" width="500" height="400"></canvas>
+        <div class="graph-nav">
+          <button class="btn func small" data-zoom="in">放大 +</button>
+          <button class="btn func small" data-zoom="out">缩小 -</button>
+          <button class="btn func small" data-zoom="reset">重置</button>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="calculator.js"></script>
+</body>
+</html>
