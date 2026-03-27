@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberNexus | Where Code Meets Culture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;700&family=Inter:wght@300;400;600;700&display=swap');
+
+  :root {
+    --neon-cyan: #00f0ff;
+    --neon-green: #00ff41;
+    --neon-magenta: #ff00ff;
+    --neon-orange: #ff6b00;
+    --bg-deep: #0a0a0f;
+    --bg-card: rgba(10, 15, 30, 0.7);
+    --bg-glass: rgba(0, 240, 255, 0.03);
+    --text-primary: #e0e6ed;
+    --text-muted: #6a7a8a;
+    --border-subtle: rgba(0, 240, 255, 0.12);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ── Matrix Canvas Background ── */
+  #matrix-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.35;
+  }
+
+  /* ── Scanline overlay ── */
+  .scanlines {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+  }
+
+  /* ── Noise grain overlay ── */
+  .noise {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: noiseShift 0.3s steps(3) infinite;
+  }
+
+  @keyframes noiseShift {
+    0% { transform: translate(0, 0); }
+    33% { transform: translate(-2px, -2px); }
+    66% { transform: translate(2px, 2px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* ── Content wrapper ── */
+  .content { position: relative; z-index: 2; }
+
+  /* ── Navigation ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    z-index: 100;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(20px) saturate(1.4);
+    background: rgba(10, 10, 15, 0.6);
+    border-bottom: 1px solid var(--border-subtle);
+    transition: all 0.3s ease;
+  }
+
+  nav.scrolled {
+    background: rgba(10, 10, 15, 0.9);
+    box-shadow: 0 4px 30px rgba(0, 240, 255, 0.05);
+  }
+
+  .nav-logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.5rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-logo .logo-bracket { color: var(--neon-cyan); }
+  .nav-logo .logo-text {
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .nav-logo .logo-sub { font-size: 0.5rem; font-weight: 400; color: var(--text-muted); letter-spacing: 2px; }
+
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    position: relative;
+    transition: color 0.3s;
+  }
+
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan);
+    transition: width 0.3s ease;
+  }
+
+  .nav-links a:hover { color: var(--neon-cyan); }
+  .nav-links a:hover::after { width: 100%; }
+
+  .nav-cta {
+    padding: 0.5rem 1.5rem;
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    background: transparent;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+  }
+
+  .nav-cta:hover {
+    background: var(--neon-cyan);
+    color: var(--bg-deep);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3), inset 0 0 20px rgba(0, 240, 255, 0.1);
+  }
+
+  .menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex-direction: column;
+    gap: 5px;
+    padding: 4px;
+  }
+
+  .menu-toggle span {
+    width: 24px;
+    height: 2px;
+    background: var(--neon-cyan);
+    transition: all 0.3s;
+  }
+
+  /* ── Hero Section ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 6rem 2rem 4rem;
+    position: relative;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.4rem 1.2rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--neon-green);
+    margin-bottom: 2rem;
+    background: rgba(0, 255, 65, 0.05);
+    animation: fadeInUp 0.8s ease both;
+  }
+
+  .hero-badge .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--neon-green);
+    box-shadow: 0 0 10px var(--neon-green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+
+  .hero-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2.5rem, 7vw, 6rem);
+    font-weight: 900;
+    letter-spacing: 4px;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    animation: fadeInUp 0.8s 0.1s ease both;
+  }
+
+  .hero-title .glitch-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  .hero-title .glitch-wrapper span {
+    background: linear-gradient(135deg, #fff 0%, var(--neon-cyan) 50%, var(--neon-green) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-title .glitch-wrapper::before,
+  .hero-title .glitch-wrapper::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-title .glitch-wrapper::before {
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+    clip-path: inset(0 0 55% 0);
+    animation: glitchTop 3s infinite linear alternate-reverse;
+  }
+
+  .hero-title .glitch-wrapper::after {
+    background: linear-gradient(135deg, var(--neon-green), var(--neon-cyan));
+    clip-path: inset(55% 0 0 0);
+    animation: glitchBottom 2.5s infinite linear alternate-reverse;
+  }
+
+  @keyframes glitchTop {
+    0% { transform: translate(0); }
+    20% { transform: translate(-3px, 2px); }
+    40% { transform: translate(3px, -1px); }
+    60% { transform: translate(-1px, 3px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+  }
+
+  @keyframes glitchBottom {
+    0% { transform: translate(0); }
+    25% { transform: translate(2px, -1px); }
+    50% { transform: translate(-2px, 2px); }
+    75% { transform: translate(1px, -2px); }
+    100% { transform: translate(0); }
+  }
+
+  .hero-subtitle {
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto 2.5rem;
+    font-weight: 300;
+    animation: fadeInUp 0.8s 0.2s ease both;
+  }
+
+  .hero-subtitle .leet {
+    color: var(--neon-cyan);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: fadeInUp 0.8s 0.3s ease both;
+  }
+
+  .btn-primary {
+    padding: 1rem 2.5rem;
+    background: linear-gradient(135deg, var(--neon-cyan), #0080ff);
+    color: var(--bg-deep);
+    border: none;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-decoration: none;
+  }
+
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.5s;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 240, 255, 0.4);
+  }
+
+  .btn-primary:hover::before { left: 100%; }
+
+  .btn-secondary {
+    padding: 1rem 2.5rem;
+    background: transparent;
+    color: var(--neon-cyan);
+    border: 1px solid var(--border-subtle);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 3rem;
+    margin-top: 4rem;
+    animation: fadeInUp 0.8s 0.5s ease both;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: fadeInUp 0.8s 0.7s ease both;
+  }
+
+  .scroll-indicator span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--neon-cyan), transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
+    50% { opacity: 1; transform: scaleY(1); }
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Section Common ── */
+  section {
+    padding: 6rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .section-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--neon-cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .section-tag::before, .section-tag::after {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan));
+  }
+
+  .section-tag::after {
+    background: linear-gradient(90deg, var(--neon-cyan), transparent);
+  }
+
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+  }
+
+  .section-title .leet-highlight {
+    color: var(--neon-green);
+    position: relative;
+  }
+
+  .section-title .leet-highlight::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--neon-green);
+    box-shadow: 0 0 8px var(--neon-green);
+  }
+
+  .section-desc {
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1.05rem;
+  }
+
+  /* ── Features Section ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 2rem;
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .feature-card:hover {
+    border-color: rgba(0, 240, 255, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 240, 255, 0.05);
+  }
+
+  .feature-card:hover::before { opacity: 1; }
+
+  .feature-icon {
+    width: 56px; height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+  }
+
+  .feature-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    letter-spacing: 1px;
+  }
+
+  .feature-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .feature-tag {
+    display: inline-block;
+    margin-top: 1.2rem;
+    padding: 0.25rem 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--neon-green);
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    border-radius: 100px;
+    background: rgba(0, 255, 65, 0.05);
+  }
+
+  /* ── Terminal / Live Demo Section ── */
+  .terminal-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+  }
+
+  .terminal-wrapper {
+    background: rgba(5, 10, 20, 0.9);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 240, 255, 0.03);
+  }
+
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid var(--border-subtle);
+    gap: 8px;
+  }
+
+  .terminal-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+  }
+
+  .terminal-dot.red { background: #ff5f57; }
+  .terminal-dot.yellow { background: #ffbd2e; }
+  .terminal-dot.green { background: #28ca42; }
+
+  .terminal-title {
+    margin-left: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    flex: 1;
+  }
+
+  .terminal-body {
+    padding: 2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.8;
+    min-height: 350px;
+  }
+
+  .terminal-line {
+    opacity: 0;
+    animation: typeLine 0.5s ease forwards;
+  }
+
+  .terminal-line.cmd { color: var(--neon-green); }
+  .terminal-line.output { color: var(--text-muted); }
+  .terminal-line.highlight { color: var(--neon-cyan); }
+  .terminal-line.error { color: var(--neon-orange); }
+  .terminal-line.success { color: var(--neon-green); }
+  .terminal-line .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1.2em;
+    background: var(--neon-cyan);
+    animation: blink 1s step-end infinite;
+    vertical-align: text-bottom;
+  }
+
+  @keyframes typeLine {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* ── Community / Leet Section ── */
+  .community-section {
+    padding: 6rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .community-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .community-visual {
+    position: relative;
+  }
+
+  .leet-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(3rem, 8vw, 5.5rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -2px;
+  }
+
+  .leet-display .line {
+    display: block;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.6s ease;
+  }
+
+  .leet-display .line.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .leet-display .line:nth-child(1) { color: var(--neon-cyan); }
+  .leet-display .line:nth-child(2) { color: var(--neon-green); }
+  .leet-display .line:nth-child(3) { color: var(--neon-magenta); }
+  .leet-display .line:nth-child(4) { color: var(--neon-orange); }
+
+  .leet-decode {
+    margin-top: 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding: 1rem;
+    background: rgba(0, 240, 255, 0.05);
+    border-left: 3px solid var(--neon-cyan);
+    border-radius: 0 8px 8px 0;
+  }
+
+  .leet-decode code {
+    color: var(--neon-cyan);
+  }
+
+  .community-content h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    letter-spacing: 1px;
+  }
+
+  .community-content p {
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+
+  .community-list {
+    list-style: none;
+    margin-bottom: 2rem;
+  }
+
+  .community-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.95rem;
+  }
+
+  .community-list li::before {
+    content: '>';
+    color: var(--neon-green);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+  }
+
+  /* ── CTA Section ── */
+  .cta-section {
+    text-align: center;
+    padding: 8rem 2rem;
+    position: relative;
+  }
+
+  .cta-border {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: 24px;
+    margin: 0 2rem;
+    pointer-events: none;
+  }
+
+  .cta-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 50%;
+    background: radial-gradient(ellipse, rgba(0, 240, 255, 0.06), transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 900;
+    letter-spacing: 2px;
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-title .leet {
+    color: var(--neon-green);
+    position: relative;
+  }
+
+  .cta-desc {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto 2.5rem;
+  }
+
+  .cta-form {
+    display: flex;
+    gap: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .cta-input {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 240, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-right: none;
+    border-radius: 12px 0 0 12px;
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.3s;
+  }
+
+  .cta-input::placeholder { color: var(--text-muted); }
+  .cta-input:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+  }
+
+  .cta-submit {
+    padding: 1rem 2rem;
+    background: var(--neon-cyan);
+    color: var(--bg-deep);
+    border: none;
+    border-radius: 0 12px 12px 0;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+
+  .cta-submit:hover {
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border-subtle);
+    padding: 3rem 2rem;
+    text-align: center;
+  }
+
+  .footer-logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.2rem;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+  }
+
+  .footer-text {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .footer-text .leet {
+    color: var(--neon-cyan);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .footer-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    transition: color 0.3s;
+  }
+
+  .footer-links a:hover { color: var(--neon-cyan); }
+
+  .footer-copyright {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(106, 122, 138, 0.5);
+    letter-spacing: 1px;
+  }
+
+  /* ── Reveal Animations ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .menu-toggle { display: flex; }
+
+    .hero-stats {
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .community-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .community-visual { order: 2; }
+    .community-content { order: 1; }
+
+    .cta-form {
+      flex-direction: column;
+    }
+
+    .cta-input {
+      border-right: 1px solid var(--border-subtle);
+      border-radius: 12px 12px 0 0;
+    }
+
+    .cta-submit {
+      border-radius: 0 0 12px 12px;
+    }
+
+    .footer-links {
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    nav { padding: 1rem; }
+    .hero { padding: 5rem 1rem 3rem; }
+    section { padding: 4rem 1rem; }
+    .feature-card { padding: 1.5rem; }
+    .terminal-body { padding: 1.5rem; font-size: 0.8rem; }
+  }
+
+  /* ── Mobile Menu ── */
+  .mobile-menu {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100vh;
+    background: rgba(10, 10, 15, 0.98);
+    backdrop-filter: blur(30px);
+    z-index: 99;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .mobile-menu.active { display: flex; }
+
+  .mobile-menu a {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-decoration: none;
+    letter-spacing: 3px;
+    transition: color 0.3s;
+  }
+
+  .mobile-menu a:hover { color: var(--neon-cyan); }
+
+  /* ── Cursor trail ── */
+  .cursor-dot {
+    position: fixed;
+    width: 6px; height: 6px;
+    background: var(--neon-cyan);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s;
+    box-shadow: 0 0 10px var(--neon-cyan);
+  }
+
+  body:hover .cursor-dot { opacity: 0.6; }
+
+  @media (max-width: 768px) {
+    .cursor-dot { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="noise"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+
+<!-- Navigation -->
+<nav id="navbar">
+  <div class="nav-logo">
+    <span class="logo-bracket">[</span>
+    <span class="logo-text">CYBERNEXUS</span>
+    <span class="logo-bracket">]</span>
+    <span class="logo-sub">v3.0</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#terminal">Terminal</a></li>
+    <li><a href="#community">Community</a></li>
+    <li><a href="#join">Join</a></li>
+  </ul>
+  <a href="#join" class="nav-cta">Access</a>
+  <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#features">Features</a>
+  <a href="#terminal">Terminal</a>
+  <a href="#community">Community</a>
+  <a href="#join">Join</a>
+</div>
+
+<div class="content">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      SYSTEM ONLINE &mdash; NODES: 14,847 ACTIVE
+    </div>
+    <h1 class="hero-title">
+      <div class="glitch-wrapper" data-text="CYBERNEXUS">
+        <span>CYBERNEXUS</span>
+      </div>
+    </h1>
+    <p class="hero-subtitle">
+      The underground network where <span class="leet">h4ck3rs</span>, builders, and digital rebels converge.
+      <br>Secure. Decentralized. Untamed.
+    </p>
+    <div class="hero-buttons">
+      <a href="#join" class="btn-primary">Enter The Nexus</a>
+      <a href="#terminal" class="btn-secondary">View Demo</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-value" id="statUsers">0</div>
+        <div class="stat-label">Active Members</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="statProjects">0</div>
+        <div class="stat-label">Shared Projects</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="statUptime">0</div>
+        <div class="stat-label">Days Uptime</div>
+      </div>
+    </div>
+    <div class="scroll-indicator">
+      <span>scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="section-header reveal">
+      <div class="section-tag">:: capabilities</div>
+      <h2 class="section-title">What We <span class="leet-highlight">0FF3R</span></h2>
+      <p class="section-desc">
+        A toolkit forged in the fires of digital freedom. Every feature designed for those who refuse to compromise.
+      </p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">🔐</div>
+        <h3 class="feature-title">Zero-Knowledge Vault</h3>
+        <p class="feature-desc">End-to-end encrypted storage where even we can't read your data. Your keys. Your rules. Always.</p>
+        <span class="feature-tag">E2E ENCRYPTED</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">⚡</div>
+        <h3 class="feature-title">Mesh Networking</h3>
+        <p class="feature-desc">Decentralized P2P infrastructure. No central servers, no single point of failure. The network is the platform.</p>
+        <span class="feature-tag">DECENTRALIZED</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🛡️</div>
+        <h3 class="feature-title">Threat Intelligence</h3>
+        <p class="feature-desc">Real-time vulnerability scanning and community-sourced threat data. Know the holes before they're exploited.</p>
+        <span class="feature-tag">AI-POWERED</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🧩</div>
+        <h3 class="feature-title">Code Arena</h3>
+        <p class="feature-desc">Collaborative coding spaces with live terminals, shared environments, and build-in CI/CD pipelines.</p>
+        <span class="feature-tag">COLLABORATIVE</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">📡</div>
+        <h3 class="feature-title">Signal Broadcast</h3>
+        <p class="feature-desc">Encrypted messaging with ephemeral channels. Messages self-destruct. Metadata is stripped at the source.</p>
+        <span class="feature-tag">PRIVATE</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🌐</div>
+        <h3 class="feature-title">Onion Routing</h3>
+        <p class="feature-desc">Built-in Tor integration with custom exit nodes. Browse, communicate, and operate with complete anonymity.</p>
+        <span class="feature-tag">ANONYMOUS</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Terminal Demo -->
+  <div class="terminal-section" id="terminal">
+    <div class="section-header reveal">
+      <div class="section-tag">:: live demo</div>
+      <h2 class="section-title">See It In Action</h2>
+      <p class="section-desc">
+        Watch CyberNexus establish a secure connection in real-time.
+      </p>
+    </div>
+    <div class="terminal-wrapper reveal">
+      <div class="terminal-bar">
+        <span class="terminal-dot red"></span>
+        <span class="terminal-dot yellow"></span>
+        <span class="terminal-dot green"></span>
+        <span class="terminal-title">cybernexus@node-7:~</span>
+      </div>
+      <div class="terminal-body" id="terminalBody"></div>
+    </div>
+  </div>
+
+  <!-- Community / Leet Section -->
+  <section class="community-section" id="community">
+    <div class="community-grid">
+      <div class="community-visual reveal">
+        <div class="leet-display" id="leetDisplay">
+          <span class="line" style="transition-delay: 0.1s">H3LL0</span>
+          <span class="line" style="transition-delay: 0.3s">W0RLD</span>
+          <span class="line" style="transition-delay: 0.5s">W3LC0ME</span>
+          <span class="line" style="transition-delay: 0.7s">T0 N3XUS</span>
+        </div>
+        <div class="leet-decode">
+          <code>// Decoded:</code> "Hello World, Welcome to Nexus"<br>
+          Leetspeak isn't just text &mdash; it's identity.
+        </div>
+      </div>
+      <div class="community-content reveal">
+        <h3>More Than A Platform</h3>
+        <p>
+          CyberNexus is a digital frontier. A place where the curious, the skilled, and the rebellious come together
+          to build, break, and reimagine what technology can be. We don't just use tools &mdash; we craft them.
+        </p>
+        <ul class="community-list">
+          <li>Global hacker collectives and independent operators</li>
+          <li>Open-source projects with thousands of contributors</li>
+          <li>Capture-the-flag competitions and wargames</li>
+          <li>Anonymous mentorship and knowledge sharing</li>
+        </ul>
+        <a href="#join" class="btn-secondary">Explore The Network</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="join">
+    <div class="cta-border"></div>
+    <div class="cta-glow"></div>
+    <div class="reveal">
+      <div class="section-tag">:: initialization</div>
+      <h2 class="cta-title">R3ADY T0 <span class="leet">J0IN</span>?</h2>
+      <p class="cta-desc">
+        Get early access to the next generation of decentralized networks. Your journey starts with a single connection.
+      </p>
+      <form class="cta-form" onsubmit="return false;">
+        <input type="email" class="cta-input" placeholder="your@email.com" aria-label="Email address">
+        <button type="submit" class="cta-submit" onclick="handleSubmit(this)">Connect</button>
+      </form>
+      <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
+        // No spam. No tracking. No compromises.
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-logo">[ CYBERNEXUS ]</div>
+    <p class="footer-text">
+      Built by <span class="leet">h4ck3rs</span>, for <span class="leet">h4ck3rs</span>.<br>
+      The future is decentralized.
+    </p>
+    <div class="footer-links">
+      <a href="#">Docs</a>
+      <a href="#">GitHub</a>
+      <a href="#">Discord</a>
+      <a href="#">Blog</a>
+      <a href="#">Status</a>
+    </div>
+    <div class="footer-copyright">
+      &copy; 2026 CyberNexus &mdash; All systems nominal
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ── Matrix Code Rain ──
+(function() {
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ{}[]<>\\/|~`@#$%^&*()_+-=;';
+  const charArray = chars.split('');
+  const fontSize = 14;
+  const columns = Math.floor(canvas.width / fontSize);
+  const drops = Array(columns).fill(1);
+
+  // Color variation
+  const colors = [
+    'rgba(0, 240, 255, ',   // cyan
+    'rgba(0, 255, 65, ',    // green
+    'rgba(0, 200, 255, ',   // light cyan
+    'rgba(0, 180, 100, ',   // dark green
+  ];
+
+  function draw() {
+    ctx.fillStyle = 'rgba(10, 10, 15, 0.06)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = fontSize + 'px JetBrains Mono, monospace';
+
+    for (let i = 0; i < drops.length; i++) {
+      const char = charArray[Math.floor(Math.random() * charArray.length)];
+      const colorIdx = Math.floor(Math.random() * colors.length);
+      const alpha = Math.random() * 0.5 + 0.3;
+      ctx.fillStyle = colors[colorIdx] + alpha + ')';
+      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+
+      // Random reset with varied thresholds
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i] += Math.random() * 0.5 + 0.5; // Variable speed
+    }
+  }
+
+  setInterval(draw, 50);
+})();
+
+// ── Cursor Trail ──
+(function() {
+  const dot = document.getElementById('cursorDot');
+  let mouseX = 0, mouseY = 0;
+  let dotX = 0, dotY = 0;
+
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  function animate() {
+    dotX += (mouseX - dotX) * 0.15;
+    dotY += (mouseY - dotY) * 0.15;
+    dot.style.left = dotX - 3 + 'px';
+    dot.style.top = dotY - 3 + 'px';
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// ── Nav Scroll Effect ──
+(function() {
+  const nav = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 50);
+  });
+})();
+
+// ── Mobile Menu ──
+(function() {
+  const toggle = document.getElementById('menuToggle');
+  const menu = document.getElementById('mobileMenu');
+  toggle.addEventListener('click', () => {
+    menu.classList.toggle('active');
+    toggle.classList.toggle('active');
+  });
+  menu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      menu.classList.remove('active');
+      toggle.classList.remove('active');
+    });
+  });
+})();
+
+// ── Scroll Reveal ──
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  reveals.forEach(el => observer.observe(el));
+})();
+
+// ── Leet Display Reveal ──
+(function() {
+  const leetDisplay = document.getElementById('leetDisplay');
+  const lines = leetDisplay.querySelectorAll('.line');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        lines.forEach(line => line.classList.add('visible'));
+      }
+    });
+  }, { threshold: 0.3 });
+  observer.observe(leetDisplay);
+})();
+
+// ── Stat Counter Animation ──
+function animateCounter(el, target, suffix = '') {
+  let current = 0;
+  const step = target / 60;
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= target) {
+      current = target;
+      clearInterval(timer);
+    }
+    el.textContent = Math.floor(current).toLocaleString() + suffix;
+  }, 30);
+}
+
+(function() {
+  const statUsers = document.getElementById('statUsers');
+  const statProjects = document.getElementById('statProjects');
+  const statUptime = document.getElementById('statUptime');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        animateCounter(statUsers, 14847);
+        animateCounter(statProjects, 3842);
+        animateCounter(statUptime, 847);
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.5 });
+
+  observer.observe(document.querySelector('.hero-stats'));
+})();
+
+// ── Terminal Typewriter ──
+(function() {
+  const terminalBody = document.getElementById('terminalBody');
+  const lines = [
+    { text: '$ ./cybernexus --init --secure', cls: 'cmd' },
+    { text: '[*] Initializing secure connection...', cls: 'output' },
+    { text: '[*] Establishing mesh network topology...', cls: 'output' },
+    { text: '[OK] 14,847 nodes connected across 47 regions', cls: 'highlight' },
+    { text: '[*] Running zero-knowledge protocol...', cls: 'output' },
+    { text: '[OK] E2E encryption: AES-256-GCM + X25519', cls: 'success' },
+    { text: '[*] Scanning for vulnerabilities...', cls: 'output' },
+    { text: '[!] Detected 3 legacy protocols (auto-patching)', cls: 'error' },
+    { text: '[OK] All systems patched. Integrity verified.', cls: 'success' },
+    { text: '[*] Loading threat intelligence feed...', cls: 'output' },
+    { text: '[OK] 2,847 new CVEs indexed | 0 critical in your stack', cls: 'highlight' },
+    { text: '', cls: 'output' },
+    { text: '╔══════════════════════════════════════╗', cls: 'highlight' },
+    { text: '║  CYBERNEXUS v3.0  |  STATUS: ONLINE ║', cls: 'success' },
+    { text: '║  UPTIME: 847 days  |  LATENCY: 12ms  ║', cls: 'output' },
+    { text: '║  ENCRYPTION: ACTIVE  |  NODES: 14,847 ║', cls: 'output' },
+    { text: '╚══════════════════════════════════════╝', cls: 'highlight' },
+    { text: '', cls: 'output' },
+    { text: '$ nexus> <span class="cursor"></span>', cls: 'cmd' },
+  ];
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        lines.forEach((line, i) => {
+          setTimeout(() => {
+            const div = document.createElement('div');
+            div.className = 'terminal-line ' + line.cls;
+            div.innerHTML = line.text;
+            div.style.animationDelay = (i * 0.08) + 's';
+            terminalBody.appendChild(div);
+          }, i * 150);
+        });
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.2 });
+
+  observer.observe(terminalBody);
+})();
+
+// ── CTA Form Handler ──
+function handleSubmit(btn) {
+  const input = btn.previousElementSibling;
+  if (input.value.trim()) {
+    btn.textContent = 'Connected!';
+    btn.style.background = 'var(--neon-green)';
+    input.value = '';
+    setTimeout(() => {
+      btn.textContent = 'Connect';
+      btn.style.background = '';
+    }, 3000);
+  }
+}
+
+// ── Smooth scroll for nav links ──
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
