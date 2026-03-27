@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品秒杀</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #fff;
+    padding: 20px;
+  }
+
+  .card {
+    width: 420px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ff4757, #ff6b81, #ff4757);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .tag {
+    display: inline-block;
+    background: linear-gradient(135deg, #ff4757, #ff6b81);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+
+  .product-name {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .product-desc {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 20px;
+  }
+
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .sale-price {
+    font-size: 36px;
+    font-weight: 800;
+    color: #ff4757;
+  }
+
+  .sale-price::before {
+    content: '¥';
+    font-size: 20px;
+  }
+
+  .original-price {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.4);
+    text-decoration: line-through;
+  }
+
+  /* --- 倒计时 --- */
+  .countdown-section {
+    margin-bottom: 24px;
+  }
+
+  .countdown-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 10px;
+  }
+
+  .countdown {
+    display: flex;
+    gap: 6px;
+  }
+
+  .time-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .time-num {
+    width: 52px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .time-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .separator {
+    font-size: 22px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.3);
+    line-height: 48px;
+  }
+
+  /* --- 限购 & 库存 --- */
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+
+  .limit-hint {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .limit-hint strong {
+    color: #ffa502;
+  }
+
+  .stock-text {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .stock-text span {
+    color: #ff4757;
+    font-weight: 600;
+  }
+
+  .progress-wrap {
+    margin-bottom: 24px;
+  }
+
+  .progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ff4757, #ff6b81);
+    transition: width 0.4s ease;
+  }
+
+  /* --- 按钮 --- */
+  .btn {
+    width: 100%;
+    height: 52px;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+  }
+
+  .btn--waiting {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .btn--active {
+    background: linear-gradient(135deg, #ff4757, #ff6b81);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(255, 71, 87, 0.4);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .btn--active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(255, 71, 87, 0.5);
+  }
+
+  .btn--active:active {
+    transform: translateY(0);
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 8px 24px rgba(255, 71, 87, 0.4); }
+    50% { box-shadow: 0 8px 36px rgba(255, 71, 87, 0.6); }
+  }
+
+  /* --- 模态框 --- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .modal {
+    width: 340px;
+    background: #1e1e2e;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 36px 28px;
+    text-align: center;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+  }
+
+  .modal-overlay.show .modal {
+    transform: scale(1);
+  }
+
+  .modal-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-icon--success {
+    background: rgba(46, 213, 115, 0.15);
+    color: #2ed573;
+  }
+
+  .modal-icon--fail {
+    background: rgba(255, 71, 87, 0.15);
+    color: #ff4757;
+  }
+
+  .modal-icon--warning {
+    background: rgba(255, 165, 2, 0.15);
+    color: #ffa502;
+  }
+
+  .modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .modal-desc {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.6;
+  }
+
+  .modal-btn {
+    margin-top: 24px;
+    padding: 12px 40px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .modal-btn--primary {
+    background: linear-gradient(135deg, #ff4757, #ff6b81);
+    color: #fff;
+  }
+
+  .modal-btn--primary:hover {
+    transform: translateY(-1px);
+  }
+
+  .modal-btn--default {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .modal-btn--default:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  /* --- 粒子动画背景 --- */
+  .particles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(255, 71, 87, 0.4);
+    border-radius: 50%;
+    animation: floatUp linear infinite;
+  }
+
+  @keyframes floatUp {
+    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 粒子背景 -->
+<div class="particles" id="particles"></div>
+
+<div class="card">
+  <span class="tag">限时秒杀</span>
+  <div class="product-name">Apple MacBook Pro 14" M4 芯片</div>
+  <div class="product-desc">Apple M4 芯片 / 16GB 统一内存 / 512GB SSD</div>
+
+  <div class="price-row">
+    <span class="sale-price">8999</span>
+    <span class="original-price">¥ 12999</span>
+  </div>
+
+  <!-- 倒计时 -->
+  <div class="countdown-section">
+    <div class="countdown-label" id="countdownLabel">距开始还有</div>
+    <div class="countdown" id="countdown">
+      <div class="time-block">
+        <div class="time-num" id="d">00</div>
+        <div class="time-label">天</div>
+      </div>
+      <span class="separator">:</span>
+      <div class="time-block">
+        <div class="time-num" id="h">00</div>
+        <div class="time-label">时</div>
+      </div>
+      <span class="separator">:</span>
+      <div class="time-block">
+        <div class="time-num" id="m">00</div>
+        <div class="time-label">分</div>
+      </div>
+      <span class="separator">:</span>
+      <div class="time-block">
+        <div class="time-num" id="s">00</div>
+        <div class="time-label">秒</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 限购 & 库存 -->
+  <div class="info-row">
+    <div class="limit-hint">每人限购 <strong id="limitNum">2</strong> 件</div>
+    <div class="stock-text">剩余库存 <span id="stockNum">86</span> 件</div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width: 14%"></div>
+    </div>
+  </div>
+
+  <!-- 抢购按钮 -->
+  <button class="btn btn--waiting" id="grabBtn" disabled>即将开始</button>
+</div>
+
+<!-- 模态框 -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-icon" id="modalIcon">!</div>
+    <div class="modal-title" id="modalTitle">提示</div>
+    <div class="modal-desc" id="modalDesc">内容</div>
+    <button class="modal-btn" id="modalBtn">确定</button>
+  </div>
+</div>
+
+<script>
+// ========== 配置 ==========
+const SALE_START_TIME = new Date();  // 默认 5 秒后开始
+SALE_START_TIME.setSeconds(SALE_START_TIME.getSeconds() + 5);
+
+const TOTAL_STOCK = 100;
+const STOCK_INIT = 86;
+const LIMIT_PER_PERSON = 2;
+
+// ========== 状态 ==========
+let stock = STOCK_INIT;
+let purchased = 0;
+let saleStarted = false;
+let saleEnded = false;
+
+// ========== DOM ==========
+const $ = id => document.getElementById(id);
+const dEl   = $('d');
+const hEl   = $('h');
+const mEl   = $('m');
+const sEl   = $('s');
+const labelEl = $('countdownLabel');
+const btn   = $('grabBtn');
+const stockEl = $('stockNum');
+const limitEl = $('limitNum');
+const progressEl = $('progressFill');
+const overlay = $('modalOverlay');
+const modalIcon = $('modalIcon');
+const modalTitle = $('modalTitle');
+const modalDesc = $('modalDesc');
+const modalBtn = $('modalBtn');
+
+limitEl.textContent = LIMIT_PER_PERSON;
+
+// ========== 粒子背景 ==========
+(function createParticles() {
+  const container = $('particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (4 + Math.random() * 6) + 's';
+    p.style.animationDelay = Math.random() * 6 + 's';
+    p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+    container.appendChild(p);
+  }
+})();
+
+// ========== 倒计时 ==========
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function setCountdown(ms) {
+  const ss = Math.floor(ms / 1000);
+  const dd = Math.floor(ss / 86400);
+  const hh = Math.floor((ss % 86400) / 3600);
+  const mm = Math.floor((ss % 3600) / 60);
+  const sec = ss % 60;
+
+  dEl.textContent = pad(dd);
+  hEl.textContent = pad(hh);
+  mEl.textContent = pad(mm);
+  sEl.textContent = pad(sec);
+}
+
+function tick() {
+  const now = Date.now();
+  const diff = SALE_START_TIME - now;
+
+  if (diff > 0) {
+    setCountdown(diff);
+    labelEl.textContent = '距开始还有';
+  } else if (!saleStarted) {
+    // 秒杀开始
+    saleStarted = true;
+    labelEl.textContent = '进行中';
+    dEl.textContent = '--';
+    hEl.textContent = '--';
+    mEl.textContent = '--';
+    sEl.textContent = '--';
+    btn.disabled = false;
+    btn.className = 'btn btn--active';
+    btn.textContent = '立即抢购';
+  }
+
+  requestAnimationFrame(tick);
+}
+
+// ========== 库存更新 ==========
+function updateStock() {
+  stockEl.textContent = stock;
+  const pct = Math.max(0, Math.min(100, (stock / TOTAL_STOCK) * 100));
+  progressEl.style.width = pct + '%';
+
+  if (stock <= 0) {
+    btn.disabled = true;
+    btn.className = 'btn btn--waiting';
+    btn.textContent = '已售罄';
+    saleEnded = true;
+  }
+}
+
+// ========== 模态框 ==========
+function showModal(type, title, desc, btnText, btnClass) {
+  modalIcon.className = 'modal-icon modal-icon--' + type;
+  modalIcon.textContent = type === 'success' ? '✓' : type === 'fail' ? '✕' : '!';
+  modalTitle.textContent = title;
+  modalDesc.textContent = desc;
+  modalBtn.textContent = btnText;
+  modalBtn.className = 'modal-btn ' + btnClass;
+  overlay.classList.add('show');
+}
+
+modalBtn.onclick = () => overlay.classList.remove('show');
+overlay.onclick = e => { if (e.target === overlay) overlay.classList.remove('show'); };
+
+// ========== 抢购逻辑 ==========
+btn.onclick = () => {
+  if (!saleStarted) return;
+
+  // 限购检查
+  if (purchased >= LIMIT_PER_PERSON) {
+    showModal('warning', '已达限购上限',
+      `每人限购 ${LIMIT_PER_PERSON} 件，您已购买 ${purchased} 件。`, '我知道了', 'modal-btn--default');
+    return;
+  }
+
+  // 库存检查
+  if (stock <= 0) {
+    showModal('fail', '已售罄', '该商品已被抢光，下次再来吧！', '返回', 'modal-btn--default');
+    return;
+  }
+
+  // 模拟抢购结果（70% 成功率）
+  const success = Math.random() < 0.7;
+
+  if (success) {
+    stock--;
+    purchased++;
+    updateStock();
+
+    showModal('success', '抢购成功',
+      `恭喜您成功抢到 1 件！已购 ${purchased}/${LIMIT_PER_PERSON} 件`, '继续逛逛', 'modal-btn--primary');
+  } else {
+    showModal('fail', '抢购失败',
+      '太可惜了，差一点就抢到了！', '再试一次', 'modal-btn--primary');
+  }
+};
+
+// ========== 启动 ==========
+updateStock();
+tick();
+</script>
+</body>
+</html>
