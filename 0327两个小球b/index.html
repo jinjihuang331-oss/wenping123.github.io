@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>两个小球同时下落实验</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border-bottom: 2px solid #3b82f6;
+  }
+  header h1 { font-size: 1.6rem; color: #f1f5f9; }
+  header p { margin-top: 6px; font-size: 0.9rem; color: #94a3b8; }
+  .main {
+    display: flex;
+    flex: 1;
+    gap: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  /* 左侧控制面板 */
+  .panel {
+    width: 300px;
+    background: #1e293b;
+    padding: 20px;
+    border-right: 1px solid #334155;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .panel h2 {
+    font-size: 1.1rem;
+    margin-bottom: 18px;
+    color: #60a5fa;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 8px;
+  }
+  .control-group {
+    margin-bottom: 18px;
+  }
+  .control-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 6px;
+  }
+  .control-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .control-group select:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+  .control-group .range-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .control-group input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: #334155;
+    outline: none;
+  }
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: 2px solid #1e293b;
+  }
+  .control-group .range-value {
+    min-width: 50px;
+    text-align: right;
+    font-size: 0.85rem;
+    color: #60a5fa;
+    font-family: monospace;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #475569;
+    border-radius: 26px;
+    transition: 0.3s;
+  }
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: 0.3s;
+  }
+  .toggle-switch input:checked + .toggle-slider {
+    background: #3b82f6;
+  }
+  .toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+  }
+  .toggle-label {
+    font-size: 0.9rem;
+    color: #e2e8f0;
+  }
+  .object-preview {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 6px;
+    padding: 12px;
+    background: #0f172a;
+    border-radius: 8px;
+  }
+  .preview-item {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+  .preview-icon {
+    font-size: 1.8rem;
+    margin-bottom: 4px;
+  }
+  /* 右侧实验区 */
+  .experiment-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    min-height: 450px;
+    background: linear-gradient(180deg, #0c1222 0%, #1a2340 100%);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  /* 标尺 */
+  .ruler {
+    position: absolute;
+    left: 40px;
+    top: 60px;
+    bottom: 40px;
+    width: 2px;
+    background: rgba(148, 163, 184, 0.3);
+  }
+  .ruler-mark {
+    position: absolute;
+    left: 0;
+    font-size: 0.7rem;
+    color: #64748b;
+    white-space: nowrap;
+    transform: translateY(-50%);
+  }
+  .ruler-mark::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 8px;
+    height: 1px;
+    background: #64748b;
+  }
+  /* 底部控制栏 */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+    background: #1e293b;
+    border-top: 1px solid #334155;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-start {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+  }
+  .btn-start:hover { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+  .btn-reset {
+    background: #475569;
+    color: #e2e8f0;
+  }
+  .btn-reset:hover { background: #64748b; }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .results {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .result-card {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px 16px;
+    min-width: 140px;
+  }
+  .result-card .label {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 2px;
+  }
+  .result-card .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .result-card.a .value { color: #60a5fa; }
+  .result-card.b .value { color: #f472b6; }
+  .result-card.conclusion .value { color: #4ade80; font-size: 0.9rem; }
+
+  /* 图例 */
+  .legend {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .legend-dot.a { background: #60a5fa; }
+  .legend-dot.b { background: #f472b6; }
+
+  /* 状态指示 */
+  .status {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-size: 0.8rem;
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.8);
+    color: #94a3b8;
+  }
+  .status.running { color: #4ade80; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>自由落体实验 — 两个物体同时下落</h1>
+  <p>探究重力、空气阻力对物体下落的影响</p>
+</header>
+
+<div class="main">
+  <!-- 左侧控制面板 -->
+  <div class="panel">
+    <h2>实验参数</h2>
+
+    <div class="control-group">
+      <label>物体 A 类型</label>
+      <select id="objA-type">
+        <option value="ball">小球</option>
+        <option value="feather">羽毛</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>物体 B 类型</label>
+      <select id="objB-type">
+        <option value="feather">羽毛</option>
+        <option value="ball">小球</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <div class="toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" id="vacuum" checked>
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">真空环境（无空气阻力）</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>风阻系数 (Cd)</label>
+      <div class="range-wrap">
+        <input type="range" id="drag" min="0" max="2" step="0.01" value="0.47">
+        <span class="range-value" id="drag-val">0.47</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>重力加速度 (m/s²)</label>
+      <div class="range-wrap">
+        <input type="range" id="gravity" min="0.1" max="30" step="0.1" value="9.8">
+        <span class="range-value" id="gravity-val">9.8</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>物体 A 质量 (kg)</label>
+      <div class="range-wrap">
+        <input type="range" id="massA" min="0.01" max="10" step="0.01" value="1.0">
+        <span class="range-value" id="massA-val">1.00</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>物体 B 质量 (kg)</label>
+      <div class="range-wrap">
+        <input type="range" id="massB" min="0.001" max="10" step="0.001" value="0.005">
+        <span class="range-value" id="massB-val">0.005</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>下落高度 (m)</label>
+      <div class="range-wrap">
+        <input type="range" id="height" min="1" max="100" step="1" value="20">
+        <span class="range-value" id="height-val">20</span>
+      </div>
+    </div>
+
+    <div class="object-preview">
+      <div class="preview-item">
+        <div class="preview-icon" id="preview-a">&#9679;</div>
+        <div>物体 A</div>
+      </div>
+      <div class="preview-item">
+        <div class="preview-icon" id="preview-b">&#10038;</div>
+        <div>物体 B</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧实验区 -->
+  <div class="experiment-area">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div class="status" id="status">就绪</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot a"></span>物体 A</div>
+        <div class="legend-item"><span class="legend-dot b"></span>物体 B</div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <button class="btn btn-start" id="btn-start">开始实验</button>
+      <button class="btn btn-reset" id="btn-reset">重置</button>
+      <div class="results">
+        <div class="result-card a">
+          <div class="label">物体 A 落地时间</div>
+          <div class="value" id="time-a">— s</div>
+        </div>
+        <div class="result-card b">
+          <div class="label">物体 B 落地时间</div>
+          <div class="value" id="time-b">— s</div>
+        </div>
+        <div class="result-card conclusion">
+          <div class="label">实验结论</div>
+          <div class="value" id="conclusion">等待实验...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== DOM 元素 ======
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+const statusEl = document.getElementById('status');
+const btnStart = document.getElementById('btn-start');
+const btnReset = document.getElementById('btn-reset');
+
+// 控件
+const objATypeEl = document.getElementById('objA-type');
+const objBTypeEl = document.getElementById('objB-type');
+const vacuumEl = document.getElementById('vacuum');
+const dragEl = document.getElementById('drag');
+const gravityEl = document.getElementById('gravity');
+const massAEl = document.getElementById('massA');
+const massBEl = document.getElementById('massB');
+const heightEl = document.getElementById('height');
+
+// 显示值
+const dragValEl = document.getElementById('drag-val');
+const gravityValEl = document.getElementById('gravity-val');
+const massAValEl = document.getElementById('massA-val');
+const massBValEl = document.getElementById('massB-val');
+const heightValEl = document.getElementById('height-val');
+
+// 结果
+const timeAEl = document.getElementById('time-a');
+const timeBEl = document.getElementById('time-b');
+const conclusionEl = document.getElementById('conclusion');
+
+// 预览图标
+const previewA = document.getElementById('preview-a');
+const previewB = document.getElementById('preview-b');
+
+// ====== 状态 ======
+let running = false;
+let animId = null;
+let startTime = 0;
+let objA = null;
+let objB = null;
+let landedA = false;
+let landedB = false;
+let finalTimeA = 0;
+let finalTimeB = 0;
+
+// 物理常量
+const AIR_DENSITY = 1.225; // kg/m³
+const PIXELS_PER_METER = 15; // 缩放比例
+
+// ====== Canvas 尺寸 ======
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = wrap.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!running) drawScene();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ====== 获取参数 ======
+function getParams() {
+  return {
+    typeA: objATypeEl.value,
+    typeB: objBTypeEl.value,
+    vacuum: vacuumEl.checked,
+    drag: parseFloat(dragEl.value),
+    g: parseFloat(gravityEl.value),
+    massA: parseFloat(massAEl.value),
+    massB: parseFloat(massBEl.value),
+    heightM: parseFloat(heightEl.value),
+  };
+}
+
+// ====== 计算截面积 ======
+function getCrossSection(type) {
+  // 小球半径约 5cm, 羽毛约 10cm x 3cm
+  if (type === 'ball') return Math.PI * 0.05 * 0.05; // ~0.00785 m²
+  return 0.10 * 0.03; // 0.003 m² (羽毛)
+}
+
+// ====== 物体类 ======
+function createObject(type, mass, x) {
+  const params = getParams();
+  const area = getCrossSection(type);
+  return {
+    type,
+    mass,
+    x,
+    y: 0,               // 位移 (m)
+    vy: 0,              // 速度 (m/s)
+    area,
+    landed: false,
+    landTime: 0,
+  };
+}
+
+// ====== 物理步进 (半隐式欧拉) ======
+function stepPhysics(obj, dt, params) {
+  if (obj.landed) return;
+
+  // 重力
+  let Fg = obj.mass * params.g;
+
+  // 空气阻力: Fd = 0.5 * rho * v² * Cd * A
+  let Fd = 0;
+  if (!params.vacuum) {
+    Fd = 0.5 * AIR_DENSITY * obj.vy * obj.vy * params.drag * obj.area;
+  }
+
+  // 合力 (阻力方向与速度相反)
+  let Fnet = Fg - Fd;
+  let a = Fnet / obj.mass;
+
+  // 更新速度和位移
+  obj.vy += a * dt;
+  obj.y += obj.vy * dt;
+
+  // 检测落地
+  if (obj.y >= params.heightM) {
+    obj.y = params.heightM;
+    obj.landed = true;
+    obj.landTime = (performance.now() - startTime) / 1000;
+  }
+}
+
+// ====== 绘制 ======
+function drawScene() {
+  const params = getParams();
+  const W = canvas.width / (window.devicePixelRatio || 1);
+  const H = canvas.height / (window.devicePixelRatio || 1);
+
+  const groundY = H - 40;
+  const topY = 60;
+  const fallPixels = groundY - topY;
+  const scale = fallPixels / params.heightM;
+
+  // 清空
+  ctx.clearRect(0, 0, W, H);
+
+  // 背景渐变
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0c1222');
+  bgGrad.addColorStop(1, '#1a2340');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 绘制网格线
+  ctx.strokeStyle = 'rgba(71, 85, 105, 0.25)';
+  ctx.lineWidth = 0.5;
+  const gridStep = scale * (params.heightM / 10); // 10 等分
+  for (let i = 0; i <= 10; i++) {
+    const gy = topY + i * gridStep;
+    ctx.beginPath();
+    ctx.moveTo(40, gy);
+    ctx.lineTo(W - 20, gy);
+    ctx.stroke();
+    // 标尺刻度
+    const meterVal = (params.heightM / 10) * i;
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(meterVal.toFixed(1) + 'm', 35, gy + 4);
+  }
+
+  // 地面
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(0, groundY, W, H - groundY);
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(0, groundY, W, 3);
+
+  // 起始线
+  ctx.strokeStyle = 'rgba(96, 165, 250, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(40, topY);
+  ctx.lineTo(W - 20, topY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 绘制物体
+  if (objA) drawObject(objA, topY, scale, '#60a5fa', W * 0.35);
+  if (objB) drawObject(objB, topY, scale, '#f472b6', W * 0.65);
+
+  // 绘制轨迹线
+  if (objA && !objA.landed) {
+    ctx.strokeStyle = 'rgba(96, 165, 250, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.35, topY);
+    ctx.lineTo(W * 0.35, topY + objA.y * scale);
+    ctx.stroke();
+  }
+  if (objB && !objB.landed) {
+    ctx.strokeStyle = 'rgba(244, 114, 182, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.65, topY);
+    ctx.lineTo(W * 0.65, topY + objB.y * scale);
+    ctx.stroke();
+  }
+}
+
+function drawObject(obj, topY, scale, color, cx) {
+  const screenY = topY + obj.y * scale;
+
+  if (obj.type === 'ball') {
+    // 小球
+    const r = 18;
+    // 阴影
+    ctx.beginPath();
+    ctx.arc(cx + 3, screenY + 3, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+    // 球体渐变
+    const grad = ctx.createRadialGradient(cx - 6, screenY - 6, 2, cx, screenY, r);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.3, color);
+    grad.addColorStop(1, shadeColor(color, -40));
+    ctx.beginPath();
+    ctx.arc(cx, screenY, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // 高光
+    ctx.beginPath();
+    ctx.arc(cx - 5, screenY - 5, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fill();
+  } else {
+    // 羽毛
+    drawFeather(cx, screenY, color);
+  }
+
+  // 速度标注
+  if (!obj.landed && running) {
+    ctx.fillStyle = color;
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`v=${obj.vy.toFixed(1)} m/s`, cx, screenY - 26);
+  }
+}
+
+function drawFeather(x, y, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  // 简化的羽毛形状
+  ctx.beginPath();
+  ctx.moveTo(0, -20);
+  ctx.quadraticCurveTo(16, -5, 8, 18);
+  ctx.quadraticCurveTo(0, 12, -8, 18);
+  ctx.quadraticCurveTo(-16, -5, 0, -20);
+  ctx.closePath();
+  // 羽毛渐变
+  const grad = ctx.createLinearGradient(-16, 0, 16, 0);
+  grad.addColorStop(0, shadeColor(color, -30));
+  grad.addColorStop(0.5, color);
+  grad.addColorStop(1, shadeColor(color, -30));
+  ctx.fillStyle = grad;
+  ctx.fill();
+  // 羽轴
+  ctx.beginPath();
+  ctx.moveTo(0, -18);
+  ctx.lineTo(0, 16);
+  ctx.strokeStyle = shadeColor(color, -50);
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // 纹理线
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 0.5;
+  for (let i = -12; i <= 12; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(-Math.abs(i) * 0.8, i);
+    ctx.lineTo(Math.abs(i) * 0.8, i);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function shadeColor(color, percent) {
+  const num = parseInt(color.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+  const G = Math.max(0, Math.min(255, ((num >> 8) & 0xff) + amt));
+  const B = Math.max(0, Math.min(255, (num & 0xff) + amt));
+  return `rgb(${R},${G},${B})`;
+}
+
+// ====== 动画循环 ======
+function animate(timestamp) {
+  if (!running) return;
+
+  const params = getParams();
+  const dt = 1 / 60; // 固定时间步长
+
+  // 物理更新 (子步进提高精度)
+  const subSteps = 4;
+  const subDt = dt / subSteps;
+  for (let i = 0; i < subSteps; i++) {
+    if (objA && !objA.landed) stepPhysics(objA, subDt, params);
+    if (objB && !objB.landed) stepPhysics(objB, subDt, params);
+  }
+
+  drawScene();
+
+  // 检测全部落地
+  if (objA && objA.landed) landedA = true;
+  if (objB && objB.landed) landedB = true;
+
+  if (landedA && landedB) {
+    running = false;
+    finalTimeA = objA.landTime;
+    finalTimeB = objB.landTime;
+    showResults();
+    btnStart.disabled = false;
+    btnStart.textContent = '重新实验';
+    statusEl.textContent = '实验完成';
+    statusEl.classList.remove('running');
+    return;
+  }
+
+  animId = requestAnimationFrame(animate);
+}
+
+// ====== 结果展示 ======
+function showResults() {
+  const params = getParams();
+  timeAEl.textContent = finalTimeA.toFixed(3) + ' s';
+  timeBEl.textContent = finalTimeB.toFixed(3) + ' s';
+
+  const diff = Math.abs(finalTimeA - finalTimeB);
+  const diffPercent = (diff / Math.max(finalTimeA, finalTimeB) * 100).toFixed(1);
+
+  if (params.vacuum) {
+    conclusionEl.textContent = '真空中同时落地！(差值 < 0.1%)';
+  } else if (diff < 0.05) {
+    conclusionEl.textContent = '几乎同时落地 (差 ' + diffPercent + '%)';
+  } else if (finalTimeA < finalTimeB) {
+    conclusionEl.textContent = 'A 先落地，快 ' + (finalTimeB - finalTimeA).toFixed(3) + 's';
+  } else {
+    conclusionEl.textContent = 'B 先落地，快 ' + (finalTimeA - finalTimeB).toFixed(3) + 's';
+  }
+}
+
+// ====== 开始实验 ======
+function startExperiment() {
+  const params = getParams();
+
+  // 创建物体
+  const W = canvas.width / (window.devicePixelRatio || 1);
+  objA = createObject(params.typeA, params.massA, W * 0.35);
+  objB = createObject(params.typeB, params.massB, W * 0.65);
+
+  landedA = objA.type === 'feather' && !params.vacuum;
+  landedB = objB.type === 'feather' && !params.vacuum;
+  // 重置
+  landedA = false;
+  landedB = false;
+  finalTimeA = 0;
+  finalTimeB = 0;
+
+  // 重置结果显示
+  timeAEl.textContent = '— s';
+  timeBEl.textContent = '— s';
+  conclusionEl.textContent = '实验进行中...';
+
+  running = true;
+  startTime = performance.now();
+  btnStart.disabled = true;
+  btnReset.disabled = true;
+  statusEl.textContent = '实验中...';
+  statusEl.classList.add('running');
+
+  animId = requestAnimationFrame(animate);
+}
+
+// ====== 重置 ======
+function resetExperiment() {
+  running = false;
+  if (animId) cancelAnimationFrame(animId);
+  objA = null;
+  objB = null;
+  landedA = false;
+  landedB = false;
+  finalTimeA = 0;
+  finalTimeB = 0;
+
+  timeAEl.textContent = '— s';
+  timeBEl.textContent = '— s';
+  conclusionEl.textContent = '等待实验...';
+
+  btnStart.disabled = false;
+  btnStart.textContent = '开始实验';
+  btnReset.disabled = false;
+  statusEl.textContent = '就绪';
+  statusEl.classList.remove('running');
+
+  drawScene();
+}
+
+// ====== 控件事件绑定 ======
+dragEl.addEventListener('input', () => { dragValEl.textContent = dragEl.value; if (!running) drawScene(); });
+gravityEl.addEventListener('input', () => { gravityValEl.textContent = gravityEl.value; if (!running) drawScene(); });
+massAEl.addEventListener('input', () => { massAValEl.textContent = parseFloat(massAEl.value).toFixed(2); if (!running) drawScene(); });
+massBEl.addEventListener('input', () => { massBValEl.textContent = parseFloat(massBEl.value).toFixed(3); if (!running) drawScene(); });
+heightEl.addEventListener('input', () => { heightValEl.textContent = heightEl.value + ' m'; if (!running) drawScene(); });
+
+vacuumEl.addEventListener('change', () => {
+  dragEl.disabled = vacuumEl.checked;
+  dragEl.parentElement.style.opacity = vacuumEl.checked ? '0.4' : '1';
+  if (!running) drawScene();
+});
+
+objATypeEl.addEventListener('change', () => {
+  previewA.textContent = objATypeEl.value === 'ball' ? '\u25CF' : '\u2726';
+  if (objATypeEl.value === 'ball') {
+    massAEl.value = 1.0;
+    massAValEl.textContent = '1.00';
+  } else {
+    massAEl.value = 0.005;
+    massAValEl.textContent = '0.005';
+  }
+  if (!running) drawScene();
+});
+
+objBTypeEl.addEventListener('change', () => {
+  previewB.textContent = objBTypeEl.value === 'ball' ? '\u25CF' : '\u2726';
+  if (objBTypeEl.value === 'ball') {
+    massBEl.value = 1.0;
+    massBValEl.textContent = '1.00';
+  } else {
+    massBEl.value = 0.005;
+    massBValEl.textContent = '0.005';
+  }
+  if (!running) drawScene();
+});
+
+btnStart.addEventListener('click', startExperiment);
+btnReset.addEventListener('click', resetExperiment);
+
+// ====== 初始化 ======
+resizeCanvas();
+dragEl.disabled = vacuumEl.checked;
+dragEl.parentElement.style.opacity = vacuumEl.checked ? '0.4' : '1';
+drawScene();
+</script>
+
+</body>
+</html>
