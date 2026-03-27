@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>虚拟教室</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #4f46e5;
+  --primary-light: #818cf8;
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --bg-hover: #334155;
+  --text: #f1f5f9;
+  --text-dim: #94a3b8;
+  --border: #334155;
+  --red: #ef4444;
+  --green: #22c55e;
+  --yellow: #eab308;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top Bar ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.top-bar .room-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-bar .room-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+
+.top-bar .room-name { font-size: 15px; font-weight: 600; }
+.top-bar .room-id { font-size: 12px; color: var(--text-dim); }
+
+.top-bar .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { background: var(--bg-hover); }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.btn-active { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ── Recording Indicator ── */
+.rec-indicator {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rec-indicator .rec-dot {
+  width: 10px; height: 10px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: pulse-rec 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.rec-indicator.active { display: flex; }
+
+/* ── Main Layout ── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 320px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.sidebar-tab.active {
+  color: var(--primary-light);
+  border-bottom-color: var(--primary-light);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.sidebar-content::-webkit-scrollbar { width: 4px; }
+.sidebar-content::-webkit-scrollbar-track { background: transparent; }
+.sidebar-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── Participants ── */
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: default;
+  transition: background 0.15s;
+}
+
+.participant:hover { background: var(--bg-hover); }
+
+.participant-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.participant-info { flex: 1; min-width: 0; }
+.participant-name {
+  font-size: 13px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.participant-role {
+  font-size: 11px; color: var(--text-dim);
+}
+
+.participant-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.participant-status.online { background: var(--green); }
+.participant-status.offline { background: #64748b; }
+
+/* ── Chat ── */
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+  flex: 1;
+}
+
+.chat-msg {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-msg-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.chat-msg-body { flex: 1; min-width: 0; }
+.chat-msg-sender { font-size: 11px; font-weight: 600; color: var(--primary-light); }
+.chat-msg-time { font-size: 10px; color: var(--text-dim); margin-left: 4px; }
+.chat-msg-text { font-size: 13px; line-height: 1.4; word-break: break-word; }
+
+/* ── Chat Input ── */
+.chat-input-area {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13px;
+  resize: none;
+  max-height: 80px;
+  min-height: 40px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus { border-color: var(--primary-light); }
+
+.emoji-btn {
+  width: 40px; height: 40px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+
+.emoji-btn:hover { background: var(--bg-hover); border-color: var(--primary-light); }
+
+/* ── Emoji Picker ── */
+.emoji-picker {
+  display: none;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  padding: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  position: absolute;
+  bottom: 80px;
+  left: 12px;
+  width: calc(100% - 24px);
+  z-index: 50;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.emoji-picker.show { display: grid; }
+
+.emoji-picker button {
+  width: 100%; aspect-ratio: 1;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.emoji-picker button:hover { background: var(--bg-hover); }
+
+/* ── Whiteboard Area ── */
+.whiteboard-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+}
+
+.whiteboard-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-right: 1px solid var(--border);
+}
+
+.tool-group:last-child { border-right: none; }
+
+.tool-btn {
+  width: 34px; height: 34px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+
+.tool-btn:hover { background: var(--bg-hover); color: var(--text); }
+.tool-btn.active { background: var(--primary); color: #fff; }
+
+.color-btn {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.color-btn.active { border-color: #fff; transform: scale(1.15); }
+
+.size-slider {
+  width: 60px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+
+.size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  background: var(--primary-light);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.whiteboard-canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.whiteboard-canvas {
+  display: block;
+  cursor: crosshair;
+  background: #fff;
+  touch-action: none;
+}
+
+/* ── Screen Share Overlay ── */
+.screen-share-mode .whiteboard-canvas-wrap {
+  cursor: crosshair;
+}
+
+.share-rect {
+  position: absolute;
+  border: 2px dashed var(--yellow);
+  background: rgba(234, 179, 8, 0.08);
+  pointer-events: none;
+  display: none;
+}
+
+.share-rect.active { display: block; }
+
+.share-label {
+  position: absolute;
+  background: var(--yellow);
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  top: -22px;
+  left: 0;
+  white-space: nowrap;
+}
+
+/* ── Share Info ── */
+.share-info {
+  display: none;
+  position: absolute;
+  top: 12px; right: 12px;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--yellow);
+  z-index: 50;
+  gap: 8px;
+  align-items: center;
+}
+
+.share-info.show { display: flex; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    width: 100%;
+    height: 45vh;
+    min-width: 0;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+  .sidebar.open { transform: translateY(0); }
+  .sidebar-toggle {
+    display: flex;
+  }
+  .top-bar .actions {
+    gap: 4px;
+  }
+  .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .btn span { display: none; }
+  .whiteboard-toolbar {
+    padding: 6px 10px;
+    gap: 4px;
+  }
+  .tool-group {
+    padding: 0 4px;
+  }
+  .emoji-picker {
+    grid-template-columns: repeat(8, 1fr);
+    bottom: calc(45vh + 70px);
+  }
+}
+
+.mobile-toggle-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 48px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 16px;
+  z-index: 199;
+}
+
+.mobile-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.mobile-toggle-btn.active {
+  color: var(--primary-light);
+}
+
+.mobile-toggle-btn .icon { font-size: 18px; }
+
+@media (max-width: 768px) {
+  .mobile-toggle-bar { display: flex; }
+  .whiteboard-area { padding-bottom: 48px; }
+}
+
+.sidebar-toggle {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  align-items: center; justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .sidebar-toggle { display: flex; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="room-info">
+    <div class="room-icon">📚</div>
+    <div>
+      <div class="room-name">Web 开发入门课程</div>
+      <div class="room-id">房间号: VCL-2026-0327</div>
+    </div>
+  </div>
+
+  <div class="rec-indicator" id="recIndicator">
+    <div class="rec-dot"></div>
+    <span>正在录制中</span>
+  </div>
+
+  <div class="actions">
+    <button class="sidebar-toggle" id="sidebarToggle" title="侧边栏">☰</button>
+    <button class="btn btn-outline" id="screenShareBtn" title="屏幕共享">
+      <span>🖥</span><span>共享屏幕</span>
+    </button>
+    <button class="btn btn-outline" id="recordBtn" title="录制">
+      <span>⏺</span><span>录制</span>
+    </button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" data-tab="participants">参与者</button>
+      <button class="sidebar-tab" data-tab="chat">聊天</button>
+    </div>
+
+    <!-- Participants Tab -->
+    <div class="sidebar-content" id="participantsPanel">
+      <div id="participantsList"></div>
+    </div>
+
+    <!-- Chat Tab -->
+    <div class="sidebar-content" id="chatPanel" style="display:none;">
+      <div class="chat-messages" id="chatMessages"></div>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="chat-input-area" id="chatInputArea" style="display:none;">
+      <div class="chat-input-row" style="position:relative;">
+        <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
+        <button class="emoji-btn" id="emojiBtn" title="表情">😀</button>
+      </div>
+      <div class="emoji-picker" id="emojiPicker"></div>
+    </div>
+  </div>
+
+  <!-- Whiteboard Area -->
+  <div class="whiteboard-area" id="whiteboardArea">
+    <div class="whiteboard-toolbar">
+      <div class="tool-group">
+        <button class="tool-btn active" data-tool="pen" title="画笔">✏️</button>
+        <button class="tool-btn" data-tool="eraser" title="橡皮擦">🧹</button>
+        <button class="tool-btn" data-tool="line" title="直线">📏</button>
+        <button class="tool-btn" data-tool="rect" title="矩形">⬜</button>
+        <button class="tool-btn" data-tool="circle" title="圆形">⭕</button>
+        <button class="tool-btn" data-tool="text" title="文字">🔤</button>
+      </div>
+      <div class="tool-group">
+        <button class="color-btn active" data-color="#1a1a2e" style="background:#1a1a2e"></button>
+        <button class="color-btn" data-color="#e63946" style="background:#e63946"></button>
+        <button class="color-btn" data-color="#f4a261" style="background:#f4a261"></button>
+        <button class="color-btn" data-color="#2a9d8f" style="background:#2a9d8f"></button>
+        <button class="color-btn" data-color="#4361ee" style="background:#4361ee"></button>
+      </div>
+      <div class="tool-group">
+        <input type="range" class="size-slider" id="sizeSlider" min="1" max="20" value="3" title="画笔大小">
+      </div>
+      <div class="tool-group">
+        <button class="tool-btn" id="undoBtn" title="撤销">↩️</button>
+        <button class="tool-btn" id="clearBtn" title="清空">🗑️</button>
+      </div>
+    </div>
+    <div class="whiteboard-canvas-wrap" id="canvasWrap">
+      <canvas class="whiteboard-canvas" id="whiteboardCanvas"></canvas>
+      <div class="share-rect" id="shareRect">
+        <div class="share-label">共享区域</div>
+      </div>
+      <div class="share-info" id="shareInfo">
+        <span>🖥 正在共享: </span>
+        <span id="shareAreaText">白板</span>
+        <button class="btn btn-danger" id="stopShareBtn" style="padding:2px 8px;font-size:11px;">停止</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Toggle Bar -->
+<div class="mobile-toggle-bar" id="mobileToggleBar">
+  <button class="mobile-toggle-btn active" id="mobileTabCanvas">🎨 白板</button>
+  <button class="mobile-toggle-btn" id="mobileTabSidebar">💬 聊天/成员</button>
+</div>
+
+<script>
+// ── State Management ──
+const state = {
+  // Participants
+  participants: [
+    { id: 1, name: '李老师', role: '主持人', online: true, color: '#4f46e5' },
+    { id: 2, name: '张同学', role: '学生', online: true, color: '#22c55e' },
+    { id: 3, name: '王同学', role: '学生', online: true, color: '#f59e0b' },
+    { id: 4, name: '赵同学', role: '学生', online: false, color: '#ef4444' },
+    { id: 5, name: '孙同学', role: '学生', online: true, color: '#8b5cf6' },
+    { id: 6, name: '周同学', role: '学生', online: true, color: '#06b6d4' },
+  ],
+
+  // Chat
+  messages: [
+    { id: 1, sender: '李老师', avatar: '👨‍🏫', color: '#4f46e5', text: '大家好，欢迎来到今天的课程！🎉', time: '14:00' },
+    { id: 2, sender: '张同学', avatar: '👨‍🎓', color: '#22c55e', text: '老师好！', time: '14:01' },
+    { id: 3, sender: '李老师', avatar: '👨‍🏫', color: '#4f46e5', text: '今天我们学习 HTML5 Canvas 基础', time: '14:02' },
+  ],
+  nextMsgId: 4,
+
+  // Whiteboard
+  tool: 'pen',
+  color: '#1a1a2e',
+  size: 3,
+  history: [],
+  historyIndex: -1,
+
+  // Recording
+  recording: false,
+  recordingTimer: 0,
+
+  // Screen share
+  screenShareMode: false,
+  sharing: false,
+  shareArea: null,
+
+  // Drawing state
+  drawing: false,
+  startX: 0,
+  startY: 0,
+  lastX: 0,
+  lastY: 0,
+  shapeStart: null,
+
+  // UI
+  sidebarOpen: false,
+  mobileView: 'canvas',
+};
+
+// ── DOM References ──
+const canvas = document.getElementById('whiteboardCanvas');
+const ctx = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+const participantsList = document.getElementById('participantsList');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const chatPanel = document.getElementById('chatPanel');
+const participantsPanel = document.getElementById('participantsPanel');
+const chatInputArea = document.getElementById('chatInputArea');
+const emojiPicker = document.getElementById('emojiPicker');
+const emojiBtn = document.getElementById('emojiBtn');
+const recordBtn = document.getElementById('recordBtn');
+const recIndicator = document.getElementById('recIndicator');
+const screenShareBtn = document.getElementById('screenShareBtn');
+const shareRect = document.getElementById('shareRect');
+const shareInfo = document.getElementById('shareInfo');
+const shareAreaText = document.getElementById('shareAreaText');
+const stopShareBtn = document.getElementById('stopShareBtn');
+const sizeSlider = document.getElementById('sizeSlider');
+const whiteboardArea = document.getElementById('whiteboardArea');
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const mobileToggleBar = document.getElementById('mobileToggleBar');
+const mobileTabCanvas = document.getElementById('mobileTabCanvas');
+const mobileTabSidebar = document.getElementById('mobileTabSidebar');
+
+// ── Emoji List ──
+const emojis = ['😀','😃','😄','😁','😅','🤣','😊','😇','🙂','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','👍','👎','👏','🙌','🤝','👋','✌️','🤞','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👍','🤙','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🧠','🫀','🫁','🦷','🦴','👀','👁️','👅','👄','💋','🩸','👶','👧','🧒','👦','👩','🧑','👨','👩‍🦱','👨‍🦱','👩‍🦰','👨‍🦰','👱‍♀️','👱‍♂️','👩‍🦳','👨‍🦳','👩‍🦲','👨‍🦲','🧔','👵','👴','👲','👱','🧑‍🦰','👩‍🦱','👨‍🦱','🧑‍🦱','👩‍🦰','👨‍🦰','🧑‍🦰','👩‍🦳','👨‍🦳','🧑‍🦳','👩‍🦲','👨‍🦲','🧑‍🦲','👱‍♀️','👱‍♂️','🧑‍🦱','👩','🧑','👨','👩‍🦰','👨‍🦰','🧑‍🦰','👩‍🦱','👨‍🦱','🧑‍🦱','👩‍🦳','👨‍🦳','🧑‍🦳','👩‍🦲','👨‍🦲','🧑‍🦲','👱‍♀️','👱‍♂️','🧓','👴','👵','🙍','🙍‍♂️','🙍‍♀️','🙎','🙎‍♂️','🙎‍♀️','🙅','🙅‍♂️','🙅‍♀️','🙆','🙆‍♂️','🙆‍♀️','💁','💁‍♂️','💁‍♀️','🙋','🙋‍♂️','🙋‍♀️','🧏','🧏‍♂️','🧏‍♀️','🙇','🙇‍♂️','🙇‍♀️','🤦','🤦‍♂️','🤦‍♀️','🤷','🤷‍♂️','🤷‍♀️','👨‍👩','👩‍👧','👨‍👧','👩‍👧‍👦','👨‍👧‍👦','👩‍👦','👨‍👦','👩‍👧‍👧','👨‍👧‍👧','👩‍👦‍👦','👨‍👦‍👦','👨‍👩‍👧','👨‍👩‍👦','👨‍👩‍👧‍👦','👨‍👩‍👧‍👧','👨‍👩‍👦‍👦','🤝','💑','👨‍❤️‍💋‍👨','👩‍❤️‍💋‍👩','👨‍❤️‍👨','👩‍❤️‍👩','👨‍👩‍👧','👨‍👩‍👦','👨‍👩‍👧‍👦','👨‍👩‍👦‍👦','👨‍👩‍👧‍👧','👨‍👨‍👧','👨‍👨‍👦','👨‍👨‍👧‍👦','👨‍👨‍👦‍👦','👨‍👨‍👧‍👧','👩‍👩‍👧','👩‍👩‍👦','👩‍👩‍👧‍👦','👩‍👩‍👦‍👦','👩‍👩‍👧‍👧','💪','👏','🙌','👋','🤝','✌️','🤞','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️','✋','🤚','🖐','🖖','👍','🤙','💪','🦾','🦿','👂','🦻','👃','🧠','🫀','🫁','🦷','🦴','👀','👁','👅','👄','🦶','👃','🧠','🫀','🫁','💋','🦵','👤','👥','👣'];
+
+// ── Init ──
+function init() {
+  resizeCanvas();
+  renderParticipants();
+  renderChat();
+  renderEmojiPicker();
+  setupCanvasEvents();
+  setupToolbarEvents();
+  setupTabEvents();
+  setupChatEvents();
+  setupRecording();
+  setupScreenShare();
+  setupMobile();
+  setupUndo();
+
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    redrawCanvas();
+  });
+}
+
+// ── Canvas Setup ──
+function resizeCanvas() {
+  const rect = canvasWrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.scale(dpr, dpr);
+  redrawCanvas();
+}
+
+function saveState() {
+  state.historyIndex++;
+  state.history = state.history.slice(0, state.historyIndex);
+  state.history.push(canvas.toDataURL());
+}
+
+function undo() {
+  if (state.historyIndex > 0) {
+    state.historyIndex--;
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+    };
+    img.src = state.history[state.historyIndex];
+  }
+}
+
+function setupUndo() {
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    if (confirm('确定清空白板吗？')) {
+      ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+      saveState();
+    }
+  });
+}
+
+function redrawCanvas() {
+  if (state.history.length > 0 && state.history[state.historyIndex]) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+      ctx.drawImage(img, 0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+    };
+    img.src = state.history[state.historyIndex];
+  }
+}
+
+// ── Canvas Drawing ──
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
+}
+
+function startDraw(e) {
+  if (state.screenShareMode) return startShareSelection(e);
+  state.drawing = true;
+  const pos = getPos(e);
+  state.startX = pos.x;
+  state.startY = pos.y;
+  state.lastX = pos.x;
+  state.lastY = pos.y;
+  state.shapeStart = { img: ctx.getImageData(0, 0, canvas.width, canvas.height) };
+
+  if (state.tool === 'text') {
+    const text = prompt('请输入文字:');
+    if (text) {
+      ctx.font = `${Math.max(16, state.size * 5)}px sans-serif`;
+      ctx.fillStyle = state.color;
+      ctx.fillText(text, pos.x, pos.y);
+      saveState();
+    }
+    state.drawing = false;
+  }
+}
+
+function draw(e) {
+  if (!state.drawing) return;
+  e.preventDefault();
+  const pos = getPos(e);
+
+  if (state.tool === 'pen') {
+    ctx.strokeStyle = state.color;
+    ctx.lineWidth = state.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(state.lastX, state.lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    state.lastX = pos.x;
+    state.lastY = pos.y;
+  } else if (state.tool === 'eraser') {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = state.size * 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(state.lastX, state.lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    state.lastX = pos.x;
+    state.lastY = pos.y;
+  } else if (['line', 'rect', 'circle'].includes(state.tool)) {
+    if (state.shapeStart) {
+      ctx.putImageData(state.shapeStart.img, 0, 0);
+    }
+    ctx.strokeStyle = state.color;
+    ctx.lineWidth = state.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (state.tool === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(state.startX, state.startY);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (state.tool === 'rect') {
+      ctx.strokeRect(state.startX, state.startY, pos.x - state.startX, pos.y - state.startY);
+    } else if (state.tool === 'circle') {
+      const rx = Math.abs(pos.x - state.startX) / 2;
+      const ry = Math.abs(pos.y - state.startY) / 2;
+      const cx = state.startX + (pos.x - state.startX) / 2;
+      const cy = state.startY + (pos.y - state.startY) / 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+}
+
+function endDraw(e) {
+  if (!state.drawing) return;
+  state.drawing = false;
+  saveState();
+  state.shapeStart = null;
+}
+
+function setupCanvasEvents() {
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    startDraw(e);
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    draw(e);
+  }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    endDraw(e);
+  }, { passive: false });
+  canvas.addEventListener('touchcancel', endDraw);
+}
+
+// ── Toolbar Events ──
+function setupToolbarEvents() {
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.tool = btn.dataset.tool;
+    });
+  });
+
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.color = btn.dataset.color;
+    });
+  });
+
+  sizeSlider.addEventListener('input', (e) => {
+    state.size = parseInt(e.target.value);
+  });
+}
+
+// ── Sidebar Tabs ──
+function setupTabEvents() {
+  document.querySelectorAll('.sidebar-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      if (tab.dataset.tab === 'participants') {
+        participantsPanel.style.display = 'block';
+        chatPanel.style.display = 'none';
+        chatInputArea.style.display = 'none';
+      } else {
+        participantsPanel.style.display = 'none';
+        chatPanel.style.display = 'block';
+        chatInputArea.style.display = 'block';
+      }
+    });
+  });
+}
+
+// ── Participants ──
+function renderParticipants() {
+  participantsList.innerHTML = state.participants.map(p => `
+    <div class="participant">
+      <div class="participant-avatar" style="background:${p.color}">${p.name.charAt(0)}</div>
+      <div class="participant-info">
+        <div class="participant-name">${p.name}</div>
+        <div class="participant-role">${p.role}</div>
+      </div>
+      <div class="participant-status ${p.online ? 'online' : 'offline'}"></div>
+    </div>
+  `).join('');
+}
+
+// ── Chat ──
+function renderChat() {
+  chatMessages.innerHTML = state.messages.map(m => `
+    <div class="chat-msg">
+      <div class="chat-msg-avatar" style="background:${m.color}">${m.avatar}</div>
+      <div class="chat-msg-body">
+        <div><span class="chat-msg-sender">${m.sender}</span><span class="chat-msg-time">${m.time}</span></div>
+        <div class="chat-msg-text">${m.text}</div>
+      </div>
+    </div>
+  `).join('');
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addMessage(text) {
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  state.messages.push({
+    id: state.nextMsgId++,
+    sender: '我',
+    avatar: '👤',
+    color: '#06b6d4',
+    text,
+    time
+  });
+  renderChat();
+}
+
+function setupChatEvents() {
+  // Send on Enter (Shift+Enter for new line)
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Auto-resize textarea
+  chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 80) + 'px';
+  });
+
+  // Emoji picker toggle
+  emojiBtn.addEventListener('click', () => {
+    emojiPicker.classList.toggle('show');
+  });
+
+  // Close emoji picker when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.chat-input-area')) {
+      emojiPicker.classList.remove('show');
+    }
+  });
+
+  // Auto-scroll on new messages observer
+  const observer = new MutationObserver(() => {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
+  observer.observe(chatMessages, { childList: true });
+}
+
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  addMessage(text);
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+
+  // Simulate reply after 1-3s
+  setTimeout(() => {
+    const online = state.participants.filter(p => p.online && p.id !== 0);
+    if (online.length > 0) {
+      const replier = online[Math.floor(Math.random() * online.length)];
+      const replies = [
+        '好的，明白了！', '这个观点很棒', '我同意 👍', '讲得太好了', '有道理', '👍👍👍',
+        '继续讲！', '太棒了', '学到了', '感谢分享', '这个例子很好', '我记下来了 ✍️'
+      ];
+      state.messages.push({
+        id: state.nextMsgId++,
+        sender: replier.name,
+        avatar: replier.name.includes('老师') ? '👨‍🏫' : '👨‍🎓',
+        color: replier.color,
+        text: replies[Math.floor(Math.random() * replies.length)],
+        time: `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`
+      });
+      renderChat();
+    }
+  }, 1000 + Math.random() * 2000);
+}
+
+// ── Emoji Picker ──
+function renderEmojiPicker() {
+  emojiPicker.innerHTML = emojis.map(emoji =>
+    `<button type="button">${emoji}</button>`
+  ).join('');
+
+  emojiPicker.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      chatInput.value += btn.textContent;
+      chatInput.focus();
+      emojiPicker.classList.remove('show');
+    });
+  });
+}
+
+// ── Recording ──
+function setupRecording() {
+  recordBtn.addEventListener('click', () => {
+    state.recording = !state.recording;
+
+    if (state.recording) {
+      recordBtn.classList.remove('btn-outline');
+      recordBtn.classList.add('btn-danger');
+      recordBtn.innerHTML = '<span>⏹</span><span>停止录制</span>';
+      recIndicator.classList.add('active');
+      state.recordingTimer = 0;
+    } else {
+      recordBtn.classList.remove('btn-danger');
+      recordBtn.classList.add('btn-outline');
+      recordBtn.innerHTML = '<span>⏺</span><span>录制</span>';
+      recIndicator.classList.remove('active');
+      state.recordingTimer = 0;
+    }
+  });
+}
+
+// ── Screen Share Simulation ──
+function setupScreenShare() {
+  screenShareBtn.addEventListener('click', () => {
+    state.screenShareMode = !state.screenShareMode;
+
+    if (state.screenShareMode) {
+      screenShareBtn.classList.remove('btn-outline');
+      screenShareBtn.classList.add('btn-active');
+      whiteboardArea.classList.add('screen-share-mode');
+      canvas.style.cursor = 'crosshair';
+      screenShareBtn.innerHTML = '<span>✖</span><span>取消选择</span>';
+    } else {
+      stopShareMode();
+    }
+  });
+
+  stopShareBtn.addEventListener('click', () => {
+    stopSharing();
+  });
+}
+
+function startShareSelection(e) {
+  const pos = getPos(e);
+  state.drawing = true;
+  state.startX = pos.x;
+  state.startY = pos.y;
+}
+
+function updateShareSelection(e) {
+  if (!state.drawing || !state.screenShareMode) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  const x = Math.min(state.startX, pos.x);
+  const y = Math.min(state.startY, pos.y);
+  const w = Math.abs(pos.x - state.startX);
+  const h = Math.abs(pos.y - state.startY);
+
+  shareRect.style.left = x + 'px';
+  shareRect.style.top = y + 'px';
+  shareRect.style.width = w + 'px';
+  shareRect.style.height = h + 'px';
+  shareRect.classList.add('active');
+}
+
+function endShareSelection(e) {
+  if (!state.drawing || !state.screenShareMode) return;
+  state.drawing = false;
+
+  const rect = canvasWrap.getBoundingClientRect();
+  const pos = getPos(e);
+  const x = Math.min(state.startX, pos.x);
+  const y = Math.min(state.startY, pos.y);
+  const w = Math.abs(pos.x - state.startX);
+  const h = Math.abs(pos.y - state.startY);
+
+  if (w > 20 && h > 20) {
+    // Start sharing this area
+    state.sharing = true;
+    state.shareArea = { x, y, w, h };
+
+    // Keep the highlight visible
+    shareRect.style.left = x + 'px';
+    shareRect.style.top = y + 'px';
+    shareRect.style.width = w + 'px';
+    shareRect.style.height = h + 'px';
+    shareRect.classList.add('active');
+
+    // Show share info
+    shareAreaText.textContent = `白板区域 (${Math.round(w)}×${Math.round(h)}px)`;
+    shareInfo.classList.add('show');
+
+    // Exit selection mode
+    stopShareMode();
+
+    // Add a notification in chat
+    addMessage('🖥 已开始共享屏幕区域');
+  } else {
+    shareRect.classList.remove('active');
+  }
+}
+
+function stopShareMode() {
+  state.screenShareMode = false;
+  screenShareBtn.classList.remove('btn-active');
+  screenShareBtn.classList.add('btn-outline');
+  screenShareBtn.innerHTML = '<span>🖥</span><span>共享屏幕</span>';
+  whiteboardArea.classList.remove('screen-share-mode');
+  canvas.style.cursor = 'crosshair';
+}
+
+function stopSharing() {
+  state.sharing = false;
+  state.shareArea = null;
+  shareRect.classList.remove('active');
+  shareInfo.classList.remove('show');
+  addMessage('🖥 已停止共享屏幕');
+}
+
+// Override canvas events for screen share selection
+canvas.addEventListener('mousedown', (e) => {
+  if (state.screenShareMode) startShareSelection(e);
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (state.screenShareMode) updateShareSelection(e);
+});
+canvas.addEventListener('mouseup', (e) => {
+  if (state.screenShareMode) endShareSelection(e);
+});
+canvas.addEventListener('touchstart', (e) => {
+  if (state.screenShareMode) { e.preventDefault(); startShareSelection(e); }
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  if (state.screenShareMode) { e.preventDefault(); updateShareSelection(e); }
+}, { passive: false });
+canvas.addEventListener('touchend', (e) => {
+  if (state.screenShareMode) endShareSelection(e);
+});
+
+// ── Mobile ──
+function setupMobile() {
+  sidebarToggle.addEventListener('click', () => {
+    state.sidebarOpen = !state.sidebarOpen;
+    sidebar.classList.toggle('open', state.sidebarOpen);
+  });
+
+  mobileTabCanvas.addEventListener('click', () => {
+    state.mobileView = 'canvas';
+    mobileTabCanvas.classList.add('active');
+    mobileTabSidebar.classList.remove('active');
+    sidebar.classList.remove('open');
+    state.sidebarOpen = false;
+  });
+
+  mobileTabSidebar.addEventListener('click', () => {
+    state.mobileView = 'sidebar';
+    mobileTabSidebar.classList.add('active');
+    mobileTabCanvas.classList.remove('active');
+    sidebar.classList.add('open');
+    state.sidebarOpen = true;
+  });
+}
+
+// ── Start ──
+init();
+</script>
+
+</body>
+</html>
