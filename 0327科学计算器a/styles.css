@@ -1,0 +1,585 @@
+/* === Base & Reset === */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --transition: 0.2s ease;
+    --radius: 8px;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    transition: background var(--transition), color var(--transition);
+}
+
+/* === Theme Variables === */
+[data-theme="light"] {
+    --bg: #f0f2f5;
+    --bg-card: #ffffff;
+    --bg-input: #eef0f3;
+    --text: #1a1a2e;
+    --text-secondary: #555;
+    --text-muted: #999;
+    --border: #ddd;
+    --accent: #4a6cf7;
+    --accent-hover: #3b5ce4;
+    --accent-light: rgba(74, 108, 247, 0.1);
+    --danger: #e74c3c;
+    --success: #27ae60;
+    --btn-bg: #f5f6fa;
+    --btn-hover: #e8eaf0;
+    --btn-op-bg: #e8eaf0;
+    --btn-func-bg: #dce4ff;
+    --btn-func-hover: #c8d4f0;
+    --display-bg: #1a1a2e;
+    --display-text: #e8f0fe;
+    --graph-bg: #fafbfc;
+    --graph-grid: #e0e0e0;
+    --graph-axis: #bbb;
+    --graph-line: #4a6cf7;
+    --scrollbar-track: #f0f0f0;
+    --scrollbar-thumb: #ccc;
+}
+
+[data-theme="dark"] {
+    --bg: #0f0f23;
+    --bg-card: #1a1a3e;
+    --bg-input: #252550;
+    --text: #e0e0f0;
+    --text-secondary: #a0a0c0;
+    --text-muted: #666;
+    --border: #333;
+    --accent: #7c8cff;
+    --accent-hover: #9aa3ff;
+    --accent-light: rgba(124, 140, 255, 0.15);
+    --danger: #ff6b6b;
+    --success: #51cf66;
+    --btn-bg: #252550;
+    --btn-hover: #303068;
+    --btn-op-bg: #2a2a5a;
+    --btn-func-bg: #1e1e4a;
+    --btn-func-hover: #2e2e6a;
+    --display-bg: #0a0a1a;
+    --display-text: #c0d0ff;
+    --graph-bg: #0d0d20;
+    --graph-grid: #2a2a5a;
+    --graph-axis: #4a4a7a;
+    --graph-line: #7c8cff;
+    --scrollbar-track: #1a1a3e;
+    --scrollbar-thumb: #3a3a6a;
+}
+
+[data-theme="retro"] {
+    --bg: #2b2b2b;
+    --bg-card: #3a3a3a;
+    --bg-input: #222;
+    --text: #33ff33;
+    --text-secondary: #00cc00;
+    --text-muted: #006600;
+    --border: #555;
+    --accent: #ffff33;
+    --accent-hover: #cccc00;
+    --accent-light: rgba(255, 255, 51, 0.1);
+    --danger: #ff3333;
+    --success: #33ff33;
+    --btn-bg: #222;
+    --btn-hover: #333;
+    --btn-op-bg: #333;
+    --btn-func-bg: #1a1a1a;
+    --btn-func-hover: #2a2a2a;
+    --display-bg: #000;
+    --display-text: #33ff33;
+    --graph-bg: #111;
+    --graph-grid: #333;
+    --graph-axis: #00aa00;
+    --graph-line: #ffff33;
+    --scrollbar-track: #222;
+    --scrollbar-thumb: #444;
+}
+
+/* === App Layout === */
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+/* === Header === */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    color: var(--text);
+    letter-spacing: 1px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-controls select,
+.header-controls button {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.header-controls select:hover,
+.header-controls button:hover {
+    background: var(--btn-hover);
+}
+
+/* === Main Content === */
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+/* === Calculator Section === */
+.calculator-section {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+/* === Display === */
+.display-container {
+    background: var(--display-bg);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+}
+
+.expression {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    min-height: 20px;
+    word-break: break-all;
+    text-align: right;
+    opacity: 0.7;
+}
+
+.result {
+    color: var(--display-text);
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 600;
+    word-break: break-all;
+    text-align: right;
+    transition: color 0.3s;
+}
+
+.result.error {
+    color: var(--danger);
+    font-size: 1.2rem;
+}
+
+/* === Button Grid === */
+.btn-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.func-row {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.bottom-row {
+    grid-template-columns: 1fr 1fr;
+}
+
+.btn {
+    height: 50px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--btn-bg);
+    color: var(--text);
+    font-size: 1.1rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all var(--transition);
+    user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn:hover {
+    background: var(--btn-hover);
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn.op-btn {
+    background: var(--btn-op-bg);
+    font-weight: 600;
+}
+
+.btn.func-btn {
+    background: var(--btn-func-bg);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.btn.func-btn:hover {
+    background: var(--btn-func-hover);
+}
+
+.btn.accent {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.btn.accent:hover {
+    background: var(--accent-hover);
+}
+
+.btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.btn.primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn.small {
+    height: 36px;
+    font-size: 0.85rem;
+    padding: 0 12px;
+}
+
+/* === Side Panel === */
+.side-panel {
+    background: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 140px);
+}
+
+/* === Tabs === */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    position: relative;
+}
+
+.tab.active {
+    color: var(--accent);
+}
+
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+.tab:hover {
+    color: var(--text);
+}
+
+/* === Panel Content === */
+.panel {
+    display: none;
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.panel.active {
+    display: block;
+}
+
+/* === History === */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px 0;
+    font-size: 0.9rem;
+}
+
+.history-item {
+    background: var(--bg-input);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all var(--transition);
+    border: 1px solid transparent;
+}
+
+.history-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.history-expr {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.history-result {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 2px;
+}
+
+.history-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* === Grapher === */
+.grapher-input-group {
+    margin-bottom: 12px;
+}
+
+.grapher-input-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.graph-input-row {
+    display: flex;
+    gap: 6px;
+}
+
+#graph-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+}
+
+#graph-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+.graph-container {
+    position: relative;
+    background: var(--graph-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+#graph-canvas {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+}
+
+.graph-overlay {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.graph-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.graph-controls label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.graph-range-input {
+    width: 56px;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-input);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.graph-controls span {
+    color: var(--text-muted);
+}
+
+/* === Scrollbar === */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+    .app-container {
+        padding: 12px;
+    }
+
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+
+    .calculator-section {
+        padding: 12px;
+    }
+
+    .btn {
+        height: 44px;
+        font-size: 1rem;
+    }
+
+    .btn.func-btn {
+        font-size: 0.75rem;
+        height: 40px;
+    }
+
+    .result {
+        font-size: 1.5rem;
+    }
+
+    .header h1 {
+        font-size: 1.2rem;
+    }
+
+    .side-panel {
+        max-height: 400px;
+    }
+
+    .graph-controls {
+        justify-content: center;
+    }
+
+    .graph-range-input {
+        width: 48px;
+    }
+}
+
+@media (max-width: 400px) {
+    .func-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .btn-row:not(.func-row):not(.bottom-row) {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* === Animations === */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.history-item {
+    animation: fadeIn 0.2s ease;
+}
+
+/* === Focus styles for accessibility === */
+.btn:focus-visible,
+#graph-input:focus-visible,
+select:focus-visible,
+.graph-range-input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
