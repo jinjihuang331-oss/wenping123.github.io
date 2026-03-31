@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>虚拟教室平台</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-light: #818cf8;
+    --danger: #ef4444;
+    --danger-pulse: #fca5a5;
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --text: #1e293b;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --sidebar-width: 320px;
+    --header-height: 56px;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    height: var(--header-height);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-logo {
+    width: 32px; height: 32px;
+    background: var(--primary);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+  }
+
+  .header-title {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:active { transform: scale(0.96); }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+  }
+  .btn-primary:hover { background: #4338ca; }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1.5px solid var(--border);
+  }
+  .btn-outline:hover { background: var(--bg); }
+
+  .btn-danger {
+    background: var(--danger);
+    color: white;
+  }
+  .btn-danger:hover { background: #dc2626; }
+
+  .btn-icon {
+    padding: 8px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .btn-icon:hover { background: var(--bg); color: var(--text); }
+
+  /* Recording indicator */
+  .recording-indicator {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--danger);
+    color: white;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    animation: recPulse 1.5s ease-in-out infinite;
+  }
+
+  .recording-indicator.active { display: flex; }
+
+  .rec-dot {
+    width: 8px; height: 8px;
+    background: white;
+    border-radius: 50%;
+  }
+
+  @keyframes recPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  @keyframes recDotBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ===== Main layout ===== */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ===== Whiteboard area ===== */
+  .whiteboard-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .canvas-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+  }
+
+  #whiteboard {
+    display: block;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  /* Screen share overlay */
+  .screen-share-overlay {
+    position: absolute;
+    inset: 16px;
+    border: 3px dashed var(--primary);
+    border-radius: var(--radius);
+    background: rgba(79, 70, 229, 0.03);
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+  }
+
+  .screen-share-overlay.active { display: block; }
+
+  .screen-share-label {
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background: var(--primary);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* Whiteboard toolbar */
+  .toolbar {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tool-btn {
+    width: 36px; height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .tool-btn:hover { background: var(--bg); }
+  .tool-btn.active { background: var(--primary); color: white; }
+
+  .tool-separator {
+    width: 1px;
+    background: var(--border);
+    margin: 4px 4px;
+    flex-shrink: 0;
+  }
+
+  .color-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .color-btn:hover, .color-btn.active {
+    border-color: var(--text);
+    transform: scale(1.1);
+  }
+
+  .size-slider {
+    width: 80px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    flex-shrink: 0;
+    align-self: center;
+  }
+  .size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(100%);
+    width: 0;
+    border: none;
+    overflow: hidden;
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .sidebar-tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar-tab:hover { color: var(--text); }
+  .sidebar-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tab-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .tab-panel.active { display: flex; }
+
+  /* Participants */
+  .participant-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .participant {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .participant:hover { background: var(--bg); }
+
+  .participant-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .participant-info { flex: 1; min-width: 0; }
+  .participant-name { font-size: 14px; font-weight: 600; }
+  .participant-role { font-size: 11px; color: var(--text-secondary); }
+
+  .participant-status {
+    font-size: 14px;
+    opacity: 0.7;
+  }
+
+  /* Chat */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chat-msg {
+    display: flex;
+    gap: 8px;
+    max-width: 90%;
+    animation: msgSlide 0.2s ease;
+  }
+
+  .chat-msg.self { align-self: flex-end; flex-direction: row-reverse; }
+
+  @keyframes msgSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .chat-msg-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .chat-msg-bubble {
+    background: var(--bg);
+    padding: 8px 12px;
+    border-radius: 12px;
+    border-top-left-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .chat-msg.self .chat-msg-bubble {
+    background: var(--primary);
+    color: white;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 4px;
+  }
+
+  .chat-msg-name {
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    color: var(--text-secondary);
+  }
+
+  .chat-msg.self .chat-msg-name { color: rgba(255,255,255,0.8); }
+
+  .chat-msg-time {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    opacity: 0.7;
+  }
+
+  .chat-msg.self .chat-msg-time { color: rgba(255,255,255,0.6); }
+
+  .chat-input-area {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .chat-input-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .chat-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    max-height: 80px;
+    min-height: 40px;
+  }
+  .chat-input:focus { border-color: var(--primary); }
+
+  .emoji-picker-trigger {
+    font-size: 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  .send-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .send-btn:hover { background: #4338ca; }
+  .send-btn:active { transform: scale(0.92); }
+
+  /* Emoji picker */
+  .emoji-picker {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .emoji-picker.active { display: block; }
+
+  .emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+  }
+
+  .emoji-btn {
+    width: 32px; height: 32px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 18px;
+    transition: all 0.1s;
+  }
+  .emoji-btn:hover { background: var(--bg); transform: scale(1.2); }
+
+  /* Screen share selector */
+  .screen-share-selector {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    z-index: 200;
+    display: none;
+    text-align: center;
+    max-width: 340px;
+    width: 90%;
+  }
+  .screen-share-selector.active { display: block; }
+
+  .screen-share-selector h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .screen-share-selector p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  .share-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .share-option {
+    padding: 14px 10px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .share-option:hover { border-color: var(--primary); background: rgba(79,70,229,0.05); }
+  .share-option.selected { border-color: var(--primary); background: rgba(79,70,229,0.08); }
+
+  .share-option-icon { font-size: 24px; margin-bottom: 6px; }
+
+  /* Mobile sidebar toggle */
+  .sidebar-toggle {
+    display: none;
+  }
+
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 199;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      top: var(--header-height);
+      right: 0;
+      bottom: 0;
+      width: 85vw;
+      max-width: 360px;
+      z-index: 200;
+      transform: translateX(100%);
+      box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+    }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .sidebar.collapsed { transform: translateX(100%); }
+
+    .mobile-overlay.active { display: block; }
+
+    .sidebar-toggle { display: flex; }
+
+    .btn span.btn-label { display: none; }
+    .btn { padding: 8px 10px; }
+
+    .header-title { font-size: 14px; }
+  }
+
+  @media (max-width: 480px) {
+    .header { padding: 0 10px; }
+    .toolbar { padding: 6px 8px; }
+    .tool-btn { width: 32px; height: 32px; font-size: 14px; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">📚</div>
+    <span class="header-title">虚拟教室</span>
+    <div class="recording-indicator" id="recordingIndicator">
+      <div class="rec-dot"></div>
+      <span>录制中 <span id="recordingTime">00:00</span></span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-outline" id="screenShareBtn" title="屏幕共享">
+      🖥️ <span class="btn-label">共享屏幕</span>
+    </button>
+    <button class="btn btn-danger" id="recordBtn" title="录制">
+      ⏺ <span class="btn-label">录制</span>
+    </button>
+    <button class="btn-icon sidebar-toggle" id="sidebarToggle" title="侧栏">
+      💬
+    </button>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="main">
+  <!-- Whiteboard -->
+  <div class="whiteboard-area">
+    <div class="canvas-wrapper" id="canvasWrapper">
+      <canvas id="whiteboard"></canvas>
+      <div class="screen-share-overlay" id="screenShareOverlay">
+        <span class="screen-share-label">📌 屏幕共享中 - <span id="shareAreaLabel">整个屏幕</span></span>
+      </div>
+      <!-- Screen share selector -->
+      <div class="screen-share-selector" id="shareSelector">
+        <h3>选择共享区域</h3>
+        <p>选择一个要共享给其他参与者的区域</p>
+        <div class="share-options">
+          <button class="share-option" data-area="entire">
+            <div class="share-option-icon">🖥️</div>
+            整个屏幕
+          </button>
+          <button class="share-option" data-area="whiteboard">
+            <div class="share-option-icon">🎨</div>
+            仅白板
+          </button>
+          <button class="share-option" data-area="browser">
+            <div class="share-option-icon">🌐</div>
+            浏览器标签
+          </button>
+          <button class="share-option" data-area="window">
+            <div class="share-option-icon">📄</div>
+            应用窗口
+          </button>
+        </div>
+        <button class="btn btn-primary" id="startShareBtn" style="width:100%">开始共享</button>
+      </div>
+    </div>
+    <!-- Toolbar -->
+    <div class="toolbar" id="toolbar">
+      <button class="tool-btn active" data-tool="pen" title="画笔">✏️</button>
+      <button class="tool-btn" data-tool="eraser" title="橡皮擦">🧹</button>
+      <button class="tool-btn" data-tool="line" title="直线">📏</button>
+      <button class="tool-btn" data-tool="rect" title="矩形">⬜</button>
+      <button class="tool-btn" data-tool="circle" title="圆形">⭕</button>
+      <div class="tool-separator"></div>
+      <button class="color-btn active" data-color="#1e293b" style="background:#1e293b" title="黑色"></button>
+      <button class="color-btn" data-color="#ef4444" style="background:#ef4444" title="红色"></button>
+      <button class="color-btn" data-color="#3b82f6" style="background:#3b82f6" title="蓝色"></button>
+      <button class="color-btn" data-color="#22c55e" style="background:#22c55e" title="绿色"></button>
+      <button class="color-btn" data-color="#f59e0b" style="background:#f59e0b" title="橙色"></button>
+      <button class="color-btn" data-color="#8b5cf6" style="background:#8b5cf6" title="紫色"></button>
+      <div class="tool-separator"></div>
+      <input type="range" class="size-slider" id="sizeSlider" min="1" max="20" value="3" title="笔刷大小">
+      <div class="tool-separator"></div>
+      <button class="tool-btn" id="undoBtn" title="撤销">↩️</button>
+      <button class="tool-btn" id="clearBtn" title="清空">🗑️</button>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar collapsed" id="sidebar">
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" data-tab="chat">💬 聊天</button>
+      <button class="sidebar-tab" data-tab="participants">👥 参与者</button>
+    </div>
+    <div class="sidebar-content">
+      <!-- Chat panel -->
+      <div class="tab-panel active" id="chatPanel">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+          <div class="emoji-picker" id="emojiPicker">
+            <div class="emoji-grid" id="emojiGrid"></div>
+          </div>
+          <div class="chat-input-row">
+            <div class="chat-input-wrapper">
+              <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
+            </div>
+            <button class="emoji-picker-trigger" id="emojiTrigger">😊</button>
+            <button class="send-btn" id="sendBtn">➤</button>
+          </div>
+        </div>
+      </div>
+      <!-- Participants panel -->
+      <div class="tab-panel" id="participantsPanel">
+        <div class="participant-list" id="participantList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile overlay -->
+<div class="mobile-overlay" id="mobileOverlay"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===== State =====
+  const state = {
+    currentTool: 'pen',
+    currentColor: '#1e293b',
+    brushSize: 3,
+    isDrawing: false,
+    strokes: [],
+    currentStroke: null,
+    startX: 0,
+    startY: 0,
+    chatMessages: [],
+    isRecording: false,
+    recordingStart: 0,
+    recordingInterval: null,
+    isSharing: false,
+    sidebarOpen: false,
+    currentTab: 'chat',
+  };
+
+  // ===== Participants data =====
+  const participants = [
+    { name: '张老师', role: '教师（你）', color: '#4f46e5', status: '🎤', self: true },
+    { name: '李明', role: '学生', color: '#22c55e', status: '🎤' },
+    { name: '王小红', role: '学生', color: '#f59e0b', status: '🔇' },
+    { name: '刘华', role: '学生', color: '#ef4444', status: '🎤' },
+    { name: '陈思', role: '学生', color: '#8b5cf6', status: '🔇' },
+    { name: '赵强', role: '学生', color: '#3b82f6', status: '🎤' },
+  ];
+
+  // ===== Emoji list =====
+  const emojis = [
+    '😀','😂','😍','🥰','😎','🤔','😱','😴',
+    '👍','👏','🙌','💪','🎉','🔥','❤️','⭐',
+    '✅','❓','💡','📚','🎓','✏️','🖥️','👀',
+    '🙋','👋','🤝','💬','⚡','🌟','🎯','📝'
+  ];
+
+  // ===== DOM =====
+  const canvas = document.getElementById('whiteboard');
+  const ctx = canvas.getContext('2d');
+  const canvasWrapper = document.getElementById('canvasWrapper');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInput = document.getElementById('chatInput');
+  const emojiPicker = document.getElementById('emojiPicker');
+  const emojiGrid = document.getElementById('emojiGrid');
+  const sidebar = document.getElementById('sidebar');
+  const recordingIndicator = document.getElementById('recordingIndicator');
+  const recordingTime = document.getElementById('recordingTime');
+  const screenShareOverlay = document.getElementById('screenShareOverlay');
+  const shareSelector = document.getElementById('shareSelector');
+
+  // ===== Init =====
+  function init() {
+    resizeCanvas();
+    renderParticipants();
+    initEmojiPicker();
+    initEvents();
+    addSystemMessage('欢迎来到虚拟教室！');
+    window.addEventListener('resize', resizeCanvas);
+  }
+
+  // ===== Canvas =====
+  function resizeCanvas() {
+    const rect = canvasWrapper.getBoundingClientRect();
+    // Save current content
+    const imageData = canvas.width > 0 && canvas.height > 0
+      ? ctx.getImageData(0, 0, canvas.width, canvas.height)
+      : null;
+
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    redrawAll();
+  }
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+  }
+
+  function startStroke(e) {
+    e.preventDefault();
+    const pos = getPos(e);
+    state.isDrawing = true;
+    state.startX = pos.x;
+    state.startY = pos.y;
+    state.currentStroke = {
+      tool: state.currentTool,
+      color: state.currentColor,
+      size: state.currentTool === 'eraser' ? state.brushSize * 4 : state.brushSize,
+      points: [pos],
+    };
+  }
+
+  function continueStroke(e) {
+    if (!state.isDrawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    state.currentStroke.points.push(pos);
+
+    if (state.currentTool === 'pen' || state.currentTool === 'eraser') {
+      const pts = state.currentStroke.points;
+      const prev = pts[pts.length - 2];
+      ctx.beginPath();
+      ctx.strokeStyle = state.currentTool === 'eraser' ? '#ffffff' : state.currentStroke.color;
+      ctx.lineWidth = state.currentStroke.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.moveTo(prev.x, prev.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }
+  }
+
+  function endStroke(e) {
+    if (!state.isDrawing) return;
+    state.isDrawing = false;
+
+    // For shape tools, draw the final shape
+    if (['line', 'rect', 'circle'].includes(state.currentStroke.tool)) {
+      const pos = e.changedTouches
+        ? { x: e.changedTouches[0].clientX - canvas.getBoundingClientRect().left,
+            y: e.changedTouches[0].clientY - canvas.getBoundingClientRect().top }
+        : getPos(e);
+      state.currentStroke.endPos = pos;
+    }
+
+    state.strokes.push(state.currentStroke);
+    state.currentStroke = null;
+    redrawAll();
+  }
+
+  function redrawAll() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (const stroke of state.strokes) {
+      drawStroke(stroke);
+    }
+
+    // Draw current stroke (in progress)
+    if (state.currentStroke && state.isDrawing) {
+      const tool = state.currentStroke.tool;
+      if (['line', 'rect', 'circle'].includes(tool)) {
+        const last = state.currentStroke.points[0];
+        const current = state.currentStroke.points[state.currentStroke.points.length - 1];
+        drawShape(tool, last, current, state.currentStroke.color, state.currentStroke.size);
+      }
+    }
+  }
+
+  function drawStroke(stroke) {
+    if (stroke.points.length === 0) return;
+
+    if (['line', 'rect', 'circle'].includes(stroke.tool) && stroke.endPos) {
+      drawShape(stroke.tool, stroke.points[0], stroke.endPos, stroke.color, stroke.size);
+    } else {
+      ctx.beginPath();
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawShape(tool, start, end, color, size) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (tool === 'line') {
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+    } else if (tool === 'rect') {
+      ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
+      ctx.stroke();
+    } else if (tool === 'circle') {
+      const rx = Math.abs(end.x - start.x) / 2;
+      const ry = Math.abs(end.y - start.y) / 2;
+      const cx = start.x + (end.x - start.x) / 2;
+      const cy = start.y + (end.y - start.y) / 2;
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // ===== Participants =====
+  function renderParticipants() {
+    const list = document.getElementById('participantList');
+    list.innerHTML = participants.map(p => `
+      <div class="participant">
+        <div class="participant-avatar" style="background:${p.color}">${p.name[0]}</div>
+        <div class="participant-info">
+          <div class="participant-name">${p.name}${p.self ? ' (我)' : ''}</div>
+          <div class="participant-role">${p.role}</div>
+        </div>
+        <div class="participant-status">${p.status}</div>
+      </div>
+    `).join('');
+  }
+
+  // ===== Chat =====
+  function addMessage(name, text, self = false, color = '#4f46e5') {
+    const msg = { name, text, self, color, time: new Date() };
+    state.chatMessages.push(msg);
+    renderMessage(msg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function addSystemMessage(text) {
+    const msg = {
+      name: '系统',
+      text,
+      self: false,
+      color: '#64748b',
+      time: new Date(),
+      system: true
+    };
+    state.chatMessages.push(msg);
+    renderMessage(msg);
+  }
+
+  function renderMessage(msg) {
+    const time = msg.time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const div = document.createElement('div');
+    div.className = 'chat-msg' + (msg.self ? ' self' : '');
+    div.innerHTML = `
+      <div class="chat-msg-avatar" style="background:${msg.color}">${msg.name[0]}</div>
+      <div>
+        ${!msg.self ? `<div class="chat-msg-name">${msg.name}</div>` : ''}
+        <div class="chat-msg-bubble">${escapeHtml(msg.text)}</div>
+        <div class="chat-msg-time">${time}</div>
+      </div>
+    `;
+    chatMessages.appendChild(div);
+  }
+
+  function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    addMessage('张老师', text, true, '#4f46e5');
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    emojiPicker.classList.remove('active');
+
+    // Simulate response
+    setTimeout(() => simulateResponse(text), 1000 + Math.random() * 2000);
+  }
+
+  function simulateResponse(originalMsg) {
+    const responses = [
+      '明白了，谢谢老师！',
+      '收到 👍',
+      '好的，我试试',
+      '老师，这个地方不太懂 😅',
+      '学到了！',
+      '好的！',
+      '没问题！',
+      '我理解了，感谢讲解 🙏',
+    ];
+    const responders = participants.filter(p => !p.self);
+    const p = responders[Math.floor(Math.random() * responders.length)];
+    const response = responses[Math.floor(Math.random() * responses.length)];
+    addMessage(p.name, response, false, p.color);
+  }
+
+  // ===== Emoji picker =====
+  function initEmojiPicker() {
+    emojiGrid.innerHTML = emojis.map(e =>
+      `<button class="emoji-btn" data-emoji="${e}">${e}</button>`
+    ).join('');
+
+    emojiGrid.addEventListener('click', (e) => {
+      const btn = e.target.closest('.emoji-btn');
+      if (!btn) return;
+      chatInput.value += btn.dataset.emoji;
+      chatInput.focus();
+    });
+  }
+
+  // ===== Events =====
+  function initEvents() {
+    // Canvas - mouse
+    canvas.addEventListener('mousedown', startStroke);
+    canvas.addEventListener('mousemove', continueStroke);
+    canvas.addEventListener('mouseup', endStroke);
+    canvas.addEventListener('mouseleave', endStroke);
+
+    // Canvas - touch
+    canvas.addEventListener('touchstart', startStroke, { passive: false });
+    canvas.addEventListener('touchmove', continueStroke, { passive: false });
+    canvas.addEventListener('touchend', endStroke);
+    canvas.addEventListener('touchcancel', endStroke);
+
+    // Tools
+    document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.currentTool = btn.dataset.tool;
+        canvas.style.cursor = state.currentTool === 'eraser' ? 'cell' : 'crosshair';
+      });
+    });
+
+    // Colors
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.currentColor = btn.dataset.color;
+      });
+    });
+
+    // Size
+    document.getElementById('sizeSlider').addEventListener('input', (e) => {
+      state.brushSize = parseInt(e.target.value);
+    });
+
+    // Undo
+    document.getElementById('undoBtn').addEventListener('click', () => {
+      state.strokes.pop();
+      redrawAll();
+    });
+
+    // Clear
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (state.strokes.length === 0) return;
+      state.strokes = [];
+      redrawAll();
+    });
+
+    // Chat
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Auto-resize textarea
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 80) + 'px';
+    });
+
+    // Emoji
+    document.getElementById('emojiTrigger').addEventListener('click', (e) => {
+      e.stopPropagation();
+      emojiPicker.classList.toggle('active');
+    });
+    document.addEventListener('click', (e) => {
+      if (!emojiPicker.contains(e.target) && e.target.id !== 'emojiTrigger') {
+        emojiPicker.classList.remove('active');
+      }
+    });
+
+    // Sidebar tabs
+    document.querySelectorAll('.sidebar-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        state.currentTab = tab.dataset.tab;
+        document.getElementById(tab.dataset.tab + 'Panel').classList.add('active');
+      });
+    });
+
+    // Sidebar toggle (mobile)
+    document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+    document.getElementById('mobileOverlay').addEventListener('click', closeSidebar);
+
+    // Recording
+    document.getElementById('recordBtn').addEventListener('click', toggleRecording);
+
+    // Screen sharing
+    document.getElementById('screenShareBtn').addEventListener('click', openShareSelector);
+    document.getElementById('startShareBtn').addEventListener('click', startSharing);
+
+    // Share option selection
+    document.querySelectorAll('.share-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.share-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+  }
+
+  // ===== Sidebar =====
+  function toggleSidebar() {
+    state.sidebarOpen = !state.sidebarOpen;
+    if (state.sidebarOpen) {
+      sidebar.classList.remove('collapsed');
+      sidebar.classList.add('mobile-open');
+      document.getElementById('mobileOverlay').classList.add('active');
+      // Auto switch to chat on first open
+      if (!state.chatMessages.some(m => m.self)) {
+        document.querySelector('[data-tab="chat"]').click();
+      }
+    } else {
+      closeSidebar();
+    }
+  }
+
+  function closeSidebar() {
+    state.sidebarOpen = false;
+    sidebar.classList.add('collapsed');
+    sidebar.classList.remove('mobile-open');
+    document.getElementById('mobileOverlay').classList.remove('active');
+  }
+
+  // ===== Recording =====
+  function toggleRecording() {
+    if (state.isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }
+
+  function startRecording() {
+    state.isRecording = true;
+    state.recordingStart = Date.now();
+    recordingIndicator.classList.add('active');
+    document.getElementById('recordBtn').innerHTML = '⏹ <span class="btn-label">停止</span>';
+    document.getElementById('recordBtn').classList.remove('btn-danger');
+    document.getElementById('recordBtn').classList.add('btn-outline');
+
+    state.recordingInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - state.recordingStart) / 1000);
+      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const secs = String(elapsed % 60).padStart(2, '0');
+      recordingTime.textContent = `${mins}:${secs}`;
+    }, 1000);
+
+    addSystemMessage('🔴 录制已开始');
+  }
+
+  function stopRecording() {
+    state.isRecording = false;
+    recordingIndicator.classList.remove('active');
+    clearInterval(state.recordingInterval);
+    document.getElementById('recordBtn').innerHTML = '⏺ <span class="btn-label">录制</span>';
+    document.getElementById('recordBtn').classList.remove('btn-outline');
+    document.getElementById('recordBtn').classList.add('btn-danger');
+
+    const elapsed = Math.floor((Date.now() - state.recordingStart) / 1000);
+    addSystemMessage(`⏹ 录制已停止（时长 ${Math.floor(elapsed / 60)} 分 ${elapsed % 60} 秒）`);
+  }
+
+  // ===== Screen sharing =====
+  function openShareSelector() {
+    if (state.isSharing) {
+      stopSharing();
+      return;
+    }
+    shareSelector.classList.add('active');
+    // Default selection
+    document.querySelector('.share-option[data-area="entire"]').classList.add('selected');
+  }
+
+  function startSharing() {
+    const selected = document.querySelector('.share-option.selected');
+    const area = selected ? selected.textContent.trim() : '整个屏幕';
+    state.isSharing = true;
+    shareSelector.classList.remove('active');
+    screenShareOverlay.classList.add('active');
+    document.getElementById('shareAreaLabel').textContent = area;
+    document.getElementById('screenShareBtn').innerHTML = '🛑 <span class="btn-label">停止共享</span>';
+    document.getElementById('screenShareBtn').classList.remove('btn-outline');
+    document.getElementById('screenShareBtn').classList.add('btn-primary');
+    addSystemMessage('🖥️ 屏幕共享已开始（' + area + '）');
+
+    if (!state.sidebarOpen) {
+      toggleSidebar();
+    }
+  }
+
+  function stopSharing() {
+    state.isSharing = false;
+    screenShareOverlay.classList.remove('active');
+    shareSelector.classList.remove('active');
+    document.getElementById('screenShareBtn').innerHTML = '🖥️ <span class="btn-label">共享屏幕</span>';
+    document.getElementById('screenShareBtn').classList.add('btn-outline');
+    document.getElementById('screenShareBtn').classList.remove('btn-primary');
+    addSystemMessage('🖥️ 屏幕共享已停止');
+  }
+
+  // ===== Start =====
+  // Open sidebar by default on desktop
+  if (window.innerWidth > 768) {
+    sidebar.classList.remove('collapsed');
+    state.sidebarOpen = true;
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
