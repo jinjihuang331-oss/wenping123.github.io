@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberNexus // J4ck 1n</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green: #00ff41;
+      --green-dim: #00cc33;
+      --green-dark: #006618;
+      --cyan: #00f0ff;
+      --magenta: #ff00ff;
+      --bg-deep: #050805;
+      --bg-card: rgba(8, 18, 8, 0.88);
+      --border: #1a2e1a;
+      --text: #b8b8b0;
+      --text-dim: #5a5a5a;
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg-deep);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== MATRIX CANVAS ===== */
+    #matrix-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      opacity: 0.08;
+    }
+
+    /* ===== NOISE TEXTURE OVERLAY ===== */
+    .noise {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 128px 128px;
+    }
+
+    /* ===== SCANLINE OVERLAY ===== */
+    .scanlines {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0, 0, 0, 0.04) 3px,
+        rgba(0, 0, 0, 0.04) 6px
+      );
+    }
+
+    /* ===== LAYOUT ===== */
+    .content { position: relative; z-index: 2; }
+    .container { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+    section { padding: 110px 0; }
+
+    /* ===== NAVIGATION ===== */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 20px 0;
+      background: rgba(5, 8, 5, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(0, 255, 65, 0.06);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: var(--mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--green);
+      text-decoration: none;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .logo span.b { color: #333; }
+    .logo span.s { color: var(--magenta); margin: 0 1px; }
+
+    nav ul { display: flex; list-style: none; gap: 36px; }
+
+    nav ul li a {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      transition: color 0.25s;
+    }
+
+    nav ul li a:hover { color: var(--green); }
+
+    /* ===== HERO ===== */
+    .hero { min-height: 100vh; display: flex; align-items: center; padding-top: 80px; }
+    .hero .container { text-align: center; }
+
+    .hero-tag {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      margin-bottom: 28px;
+      letter-spacing: 0.5px;
+    }
+
+    .hero-tag .pm { color: var(--green); }
+
+    .cursor {
+      display: inline-block;
+      width: 9px;
+      height: 1.1em;
+      background: var(--green);
+      vertical-align: text-bottom;
+      animation: blink 1s steps(1) infinite;
+      margin-left: 2px;
+    }
+
+    .hero h1 {
+      font-family: var(--mono);
+      font-size: clamp(3.5rem, 9vw, 8rem);
+      line-height: 0.95;
+      color: var(--green);
+      margin-bottom: 28px;
+      letter-spacing: 4px;
+    }
+
+    .hero h1 .ac { color: var(--cyan); }
+    .hero h1 .lt { color: var(--magenta); }
+
+    .hero-sub {
+      font-size: clamp(0.95rem, 2.5vw, 1.25rem);
+      color: var(--text);
+      max-width: 580px;
+      margin: 0 auto 48px;
+      line-height: 1.75;
+    }
+
+    .hero-sub strong {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      padding: 15px 34px;
+      border: 1px solid var(--green);
+      color: var(--green);
+      background: transparent;
+      cursor: pointer;
+      text-decoration: none;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transition: all 0.25s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover { background: var(--green); color: #050805; }
+    .btn-primary { background: rgba(0, 255, 65, 0.08); }
+    .btn--secondary { border-color: #333; color: var(--text-dim); }
+    .btn--secondary:hover { background: #333; color: #050805; }
+
+    /* ===== GLOW ===== */
+    .glow { text-shadow: 0 0 20px rgba(0,255,65,0.4), 0 0 60px rgba(0,255,65,0.15); }
+
+    /* ===== SECTION HEADERS ===== */
+    .sec-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 10px;
+    }
+
+    .sec-title {
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      color: #e4e4e0;
+      margin-bottom: 14px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .sec-desc {
+      color: var(--text-dim);
+      font-size: 1rem;
+      max-width: 540px;
+      margin-bottom: 56px;
+      line-height: 1.7;
+    }
+
+    /* ===== FEATURES GRID ===== */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1px;
+      background: rgba(0,255,65,0.06);
+      border: 1px solid rgba(0,255,65,0.06);
+    }
+
+    .feat-card {
+      background: var(--bg-card);
+      padding: 42px 34px;
+      transition: background 0.3s;
+      position: relative;
+    }
+
+    .feat-card:hover { background: rgba(0,255,65,0.04); }
+
+    .feat-card::after {
+      content: '';
+      position: absolute;
+      left: 0; top: 0;
+      width: 2px; height: 100%;
+      background: linear-gradient(180deg, var(--green) 0%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feat-card:hover::after { opacity: 1; }
+
+    .feat-addr {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--green-dark);
+      letter-spacing: 2px;
+      margin-bottom: 18px;
+    }
+
+    .feat-card h3 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      color: #d8d8d0;
+      margin-bottom: 12px;
+      letter-spacing: 0.3px;
+      font-weight: 600;
+    }
+
+    .feat-card p { font-size: 0.92rem; color: var(--text-dim); line-height: 1.7; }
+
+    .feat-sym {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 1.3rem;
+      color: var(--green);
+      margin-bottom: 16px;
+      width: 40px; height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+    }
+
+    /* ===== ASCII DIVIDER ===== */
+    .ascii-div {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      line-height: 1.3;
+      color: rgba(0,255,65,0.15);
+      text-align: center;
+      white-space: pre;
+      overflow-x: auto;
+      padding: 30px 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ===== STATS ===== */
+    .stats-bar {
+      background: rgba(8,18,8,0.7);
+      border-top: 1px solid rgba(0,255,65,0.06);
+      border-bottom: 1px solid rgba(0,255,65,0.06);
+      padding: 52px 0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      text-align: center;
+    }
+
+    .st-num {
+      font-family: var(--mono);
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      color: var(--green);
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .st-lbl {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 6px;
+    }
+
+    /* ===== TERMINAL ===== */
+    .t-sec { background: rgba(5,5,5,0.97); }
+
+    .terminal {
+      max-width: 680px;
+      background: var(--bg-deep);
+      border: 1px solid rgba(0,255,65,0.08);
+      overflow: hidden;
+      margin-top: 48px;
+    }
+
+    .t-hdr {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(0,255,65,0.06);
+      background: #0a0a0a;
+    }
+
+    .t-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .t-dot.r { background: #ff5f56; }
+    .t-dot.y { background: #ffbd2e; }
+    .t-dot.g { background: #27c93f; }
+
+    .t-ttl {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-left: 10px;
+    }
+
+    .t-body {
+      padding: 24px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 2;
+    }
+
+    .t-body .c { color: #444; }
+    .t-body .$ { color: var(--green); }
+    .t-body .o { color: var(--text-dim); }
+    .t-body .ok { color: var(--green); }
+    .t-body .hl { color: var(--cyan); }
+
+    /* ===== TESTIMONIALS ===== */
+    .tst-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 28px;
+    }
+
+    .tst-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(0,255,65,0.05);
+      padding: 34px 30px;
+      position: relative;
+    }
+
+    .tst-num {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--border);
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+    }
+
+    .tst-q {
+      font-family: var(--mono);
+      font-size: 0.84rem;
+      color: var(--text);
+      line-height: 1.75;
+      margin-bottom: 20px;
+    }
+
+    .tst-q::before { content: '> '; color: var(--green); }
+
+    .tst-a { font-family: var(--mono); font-size: 0.78rem; color: var(--green); }
+    .tst-r { font-family: var(--mono); font-size: 0.68rem; color: var(--text-dim); margin-left: 8px; }
+
+    /* ===== CTA ===== */
+    .cta { text-align: center; padding: 130px 0; }
+
+    .cta h2 {
+      font-family: var(--mono);
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      color: var(--green);
+      margin-bottom: 14px;
+      letter-spacing: 3px;
+    }
+
+    .cta p { color: var(--text-dim); margin-bottom: 40px; font-size: 1.05rem; }
+
+    .cta .hint {
+      font-family: var(--mono);
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      margin-top: 44px;
+      opacity: 0.4;
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      border-top: 1px solid rgba(0,255,65,0.06);
+      padding: 36px 0;
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    footer p {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    footer ul {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    footer ul li a {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-decoration: none;
+      letter-spacing: 1px;
+      transition: color 0.25s;
+    }
+
+    footer ul li a:hover { color: var(--green); }
+
+    /* ===== GLITCH ===== */
+    .glitch { animation: glitch 0.35s ease-in-out forwards; }
+
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    @keyframes glitch {
+      0%   { text-shadow: 3px 0 var(--magenta), -3px 0 var(--cyan); }
+      20%  { text-shadow: -3px 2px var(--magenta), 3px -2px var(--cyan); }
+      40%  { text-shadow: 3px -2px var(--magenta), -3px 2px var(--cyan); }
+      60%  { text-shadow: -3px 0 var(--magenta), 3px 0 var(--cyan); }
+      80%  { text-shadow: 2px 2px var(--magenta), -2px -2px var(--cyan); }
+      100% { text-shadow: none; }
+    }
+
+    /* ===== REVEAL ===== */
+    .rev {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+    }
+
+    .rev.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== VERTICAL DIVIDER ===== */
+    .vd {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,255,65,0.15), transparent);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      nav ul { gap: 18px; }
+      section { padding: 76px 0; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .feat-grid,
+      .tst-grid { grid-template-columns: 1fr; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .terminal { max-width: 100%; }
+    }
+
+    @media (max-width: 580px) {
+      nav ul { display: none; }
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+      .hero h1 { letter-spacing: 1px; }
+      .feat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="matrix-canvas"></canvas>
+  <div class="scanlines"></div>
+  <div class="noise"></div>
+
+  <div class="content">
+
+    <!-- ===== NAV ===== -->
+    <nav>
+      <div class="container">
+        <a href="#" class="logo"><span class="b">[</span>CyberNexus<span class="s">/</span><span class="b">]</span></a>
+        <ul>
+          <li><a href="#features">_SysT3m</a></li>
+          <li><a href="#protocol">_Protocol</a></li>
+          <li><a href="#community">_N3xus</a></li>
+          <li><a href="#access">_Acc3ss</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero">
+      <div class="container">
+        <p class="hero-tag"><span class="pm">$</span> cybernexus --init --mode=phantom<span class="cursor"></span></p>
+        <h1 id="title" class="glow">CYB<span class="ac">@</span>RN<span class="lt">3</span>X<span class="lt">U</span>S</h1>
+        <p class="hero-sub">
+          Decentralized infrastructure for those who operate beyond the
+          <strong>visible network</strong>. Encrypted channels. Zero-knowledge auth. The mesh is you.
+        </p>
+        <div class="hero-actions">
+          <a href="#access" class="btn btn-primary">&#9654; In1t14l1z3</a>
+          <a href="#protocol" class="btn btn--secondary">$ R3AD —DOC5</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ASCII BRIDGE ===== -->
+    <div class="container">
+      <div class="ascii-div" aria-hidden="true">
+  ▄█▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█▄
+  █  ╔═══╗ ╔═══╗ ╔═══╗ ╔═══╗ ╔═══╗  █
+  █  ║ C ║ ║ Y ║ ║ B ║ ║ E ║ ║ R ║  █
+  █  ╚═══╝ ╚═══╝ ╚═══╝ ╚═══╝ ╚═══╝  █
+  █  ╔═══╗ ╔═══╗ ╔═══╗ ╔═══╗ ╔═══╗  █
+  █  ║ N ║ ║ E ║ ║ X ║ ║ U ║ ║ S ║  █
+  █  ╚═══╝ ╚═══╝ ╚═══╝ ╚═══╝ ╚═══╝  █
+  ▀█▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█▀
+        [ STATUS: ACTIVE  //  NODES: 1.3M+  //  UPTIME: 99.97% ]</div>
+    </div>
+
+    <div class="container"><div class="vd"></div></div>
+
+    <!-- ===== FEATURES ===== -->
+    <section id="features">
+      <div class="container">
+        <div class="rev">
+          <p class="sec-label">// 001 — SysT3m</p>
+          <h2 class="sec-title">The Architecture Beneath</h2>
+          <p class="sec-desc">
+            CyberNexus is a decentralized platform for secure digital operations.
+            Think Signal meets Tor, with the collaborative power of a distributed org OS.
+          </p>
+        </div>
+
+        <div class="feat-grid rev">
+          <div class="feat-card">
+            <p class="feat-addr">0x01</p>
+            <div class="feat-sym">&#9943;</div>
+            <h3>3ncrypt3d Ch4nn3ls</h3>
+            <p>End-to-end encrypted messaging with perfect forward secrecy. No metadata. No logs. No backdoors. Your conversations are mathematically yours alone.</p>
+          </div>
+          <div class="feat-card">
+            <p class="feat-addr">0x02</p>
+            <div class="feat-sym">&#9999;</div>
+            <h3>Ph4nt0m N3t</h3>
+            <p>An overlay network that routes through the Nexus mesh, masking identities and endpoints. Your position on the network is an illusion you control.</p>
+          </div>
+          <div class="feat-card">
+            <p class="feat-addr">0x03</p>
+            <div class="feat-sym">&#9883;</div>
+            <h3>Z3r0 Kn0wl3dg3 Auth</h3>
+            <p>Prove your identity without revealing your identity. Our authentication system uses zero-knowledge proofs so the network never knows who you are.</p>
+          </div>
+          <div class="feat-card">
+            <p class="feat-addr">0x04</p>
+            <div class="feat-sym">&#9830;</div>
+            <h3>D3c3ntr4l1z3d Mesh</h3>
+            <p>No central server. No single point of failure. No one to subpoena. The network is its users, distributed across the globe like the web it replaced.</p>
+          </div>
+          <div class="feat-card">
+            <p class="feat-addr">0x05</p>
+            <div class="feat-sym">&#9738;</div>
+            <h3>C0ll4b Sp4c3</h3>
+            <p>Secure workspaces for teams: encrypted document sharing, versioned code repos, and ephemeral whiteboards. Everything encrypted. Nothing permanent unless you want.</p>
+          </div>
+          <div class="feat-card">
+            <p class="feat-addr">0x06</p>
+            <div class="feat-sym "&#9733";</div>
+            <h3>Sp3ctrum D4shb0ard</h3>
+            <p>Real-time visibility into your network's health, threat landscape, and communication topology. See everything. Expose nothing.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STATS ===== -->
+    <div class="stats-bar">
+      <div class="container">
+        <div class="stats-grid rev">
+          <div>
+            <p class="st-num">1.3M+</p>
+            <p class="st-lbl">N3xus N0d3s</p>
+          </div>
+          <div>
+            <p class="st-num">256-bit</p>
+            <p class="st-lbl">3ncrypt10n</p>
+          </div>
+          <div>
+            <p class="st-num">&lt;12ms</p>
+            <p class="st-lbl">L4t3ncy</p>
+          </div>
+          <div>
+            <p class="st-num">99.97%</p>
+            <p class="st-lbl">Upt1m3</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TERMINAL ===== -->
+    <section id="protocol" class="t-sec">
+      <div class="container">
+        <div class="rev">
+          <p class="sec-label">// 002 — Protocol</p>
+          <h2 class="sec-title">How It Works</h2>
+          <p class="sec-desc">
+            Three steps. Minimal friction. Maximum security.
+          </p>
+        </div>
+
+        <div class="terminal rev">
+          <div class="t-hdr">
+            <div class="t-dot r"></div>
+            <div class="t-dot y"></div>
+            <div class="t-dot g"></div>
+            <span class="t-ttl">cybernexus-cli ─ zsh - 80×24</span>
+          </div>
+          <div class="t-body" id="tBody"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TESTIMONIALS ===== -->
+    <section id="community">
+      <div class="container">
+        <div class="rev">
+          <p class="sec-label">// 003 — Th3 N3xus</p>
+          <h2 class="sec-title">Voices from the Network</h2>
+          <p class="sec-desc">
+            CyberNexus is built by its community. Here's what some operators say.
+          </p>
+        </div>
+
+        <div class="tst-grid rev">
+          <div class="tst-card">
+            <p class="tst-num">_LOG_001 — 2025-11-23 — BERLIN_NODE</p>
+            <p class="tst-q">Switched our entire team's communication to Nexus. No more worrying about whether our messages could be read. It's like having a private network that no one knows exists.</p>
+            <p><span class="tst-a">ph4nt0m_c0d3r</span><span class="tst-r">// Sec Researcher</span></p>
+          </div>
+          <div class="tst-card">
+            <p class="tst-num">_LOG_002 — 2025-09-15 — TOKYO_NODE</p>
+            <p class="tst-q">The Phantom Network routing is incredible. I've tested it against every commercial solution — none of them can match the latency and anonymity profile. This is the future.</p>
+            <p><span class="tst-a">n3t_wr41th</span><span class="tst-r">// Network Engineer</span></p>
+          </div>
+          <div class="tst-card">
+            <p class="tst-num">_LOG_003 — 2025-12-01 — CLASSIFIED</p>
+            <p class="tst-q">We use the Collab Space for sensitive projects. Documents, code, whiteboards — all invisible to the outside world. When the job's done, everything burns. Perfect.</p>
+            <p><span class="tst-a">d3c4y_f4c70r</span><span class="tst-r">// Investigative Journalist</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ASCII STATUS BOX ===== -->
+    <div class="container">
+      <div class="ascii-div" aria-hidden="true">
+  ┌─────────────────────────────────────────────────────┐
+  │ ACCESS_TOKEN : ████████████████████████████████████ │
+  │ STATUS       : PENDING_ACTIVATION                   │
+  │ NEXT_ACTION  : INITIALIZE_CONNECTION                │
+  └─────────────────────────────────────────────────────┘</div>
+    </div>
+
+    <div class="container"><div class="vd"></div></div>
+
+    <!-- ===== CTA ===== -->
+    <section id="access" class="cta">
+      <div class="container rev">
+        <p class="sec-label">// 004 — Acc3ss</p>
+        <h2 class="glow">R3ady T0 Plu6 In?</h2>
+        <p>The network is waiting. The mesh extends.</p>
+        <div class="hero-actions">
+          <a href="#" class="btn btn-primary">&#9654; G3T _ACC3SS_K3Y</a>
+          <a href="#" class="btn btn--secondary">D0WNL04D_CL13NT</a>
+        </div>
+        <p class="hint">h1nt: th3 r34l p455w0rd w45 n3v3r 4 p455w0rd - 1t'5 4 cr4pt0gr4ph1c k3y p41r</p>
+      </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer>
+      <div class="container">
+        <p>2025 CyberNexus // All rights reserved</p>
+        <ul>
+          <li><a href="#">Source</a></li>
+          <li><a href="#">Docs</a></li>
+          <li><a href="#">PGP</a></li>
+          <li><a href="#">.Onion</a></li>
+        </ul>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    /* ===== MATRIX RAIN ===== */
+    (() => {
+      const c = document.getElementById('matrix-canvas');
+      const ctx = c.getContext('2d');
+      let cols, drops;
+
+      const resize = () => {
+        c.width = innerWidth;
+        c.height = innerHeight;
+        const fs = 14;
+        cols = Math.floor(c.width / fs);
+        drops = Array.from({ length: cols }, () => Math.random() * -100 | 0);
+      };
+
+      resize();
+      addEventListener('resize', resize);
+
+      const chars = 'ABCDEF0123456789@#$%<>{}[]|/\\!^~アイウエオカキクケコサシスセソタチツテト';
+
+      const draw = () => {
+        ctx.fillStyle = 'rgba(5, 8, 5, 0.06)';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.font = '14px monospace';
+
+        for (let i = 0; i < cols; i++) {
+          const ch = chars[Math.random() * chars.length | 0];
+          const x = i * 14;
+          const y = drops[i] * 14;
+
+          // Head of stream bright white-green
+          if (Math.random() > 0.97) {
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+          } else {
+            // Some chars green, some dimmer
+            ctx.fillStyle = `rgba(0,${140 + (Math.random() * 115 | 0)},${50 + (Math.random() * 15 | 0)},${0.5 + Math.random() * 0.5})`;
+          }
+
+          ctx.fillText(ch, x, y);
+
+          if (y > c.height && Math.random() > 0.972) drops[i] = 0;
+          drops[i]++;
+        }
+      };
+
+      setInterval(draw, 48);
+    })();
+
+    /* ===== SCROLL REVEALS ===== */
+    (() => {
+      const els = document.querySelectorAll('.rev');
+      const obs = new IntersectionObserver(
+        entries => entries.forEach(e => e.isIntersecting && e.target.classList.add('visible')),
+        { threshold: 0.12 }
+      );
+      els.forEach(el => obs.observe(el));
+    })();
+
+    /* ===== TITLE GLITCH ===== */
+    (() => {
+      const t = document.getElementById('title');
+      t.addEventListener('mouseenter', () => {
+        t.classList.add('glitch');
+        setTimeout(() => t.classList.remove('glitch'), 350);
+      });
+    })();
+
+    /* ===== TERMINAL TYPING ===== */
+    (() => {
+      const body = document.getElementById('tBody');
+      let started = false;
+
+      const lines = [
+        { t: 'c', s: '# ─ Step 1: Install the Nexus client ─' },
+        { t: '$', s: '$ npm install -g @cybernexus/cli' },
+        { t: 'o', s: '  ✔ Installed @cybernexus/cli@3.7.1 (0.8s)' },
+        { blank: 1 },
+
+        { t: 'c', s: '# ─ Step 2: Generate your keypair ─' },
+        { t: '$', s: '$ nexus init --keypair' },
+        { t: 'o', s: '  Generating Ed25519 key pair...' },
+        { t: 'ok', s: '  ✔ Key pair: 0xab3f..e892' },
+        { t: 'hl', s: '  ▸ Your identity is your key. Guard it.' },
+        { blank: 1 },
+
+        { t: 'c', s: '# ─ Step 3: Connect to the Phantom Network ─' },
+        { t: '$', s: '$ nexus connect' },
+        { t: 'o', s: '  Routing through 7 Phantom nodes...' },
+        { t: 'o', s: '  Establishing encrypted tunnel...' },
+        { t: 'ok', s: '  ✔ CONNECTED — Welcome to the Nexus, operator.' },
+      ];
+
+      const obs = new IntersectionObserver(
+        entries => { if (entries[0].isIntersecting && !started) { started = true; type(0); }},
+        { threshold: 0.25 }
+      );
+      obs.observe(body);
+
+      function type(idx) {
+        if (idx >= lines.length) return;
+        const line = lines[idx];
+        if (line.blank) {
+          const d = document.createElement('div');
+          d.style.height = '1em';
+          body.appendChild(d);
+          setTimeout(() => type(idx + 1), 80);
+          return;
+        }
+
+        const div = document.createElement('div');
+        div.className = line.t;
+        body.appendChild(div);
+
+        const txt = line.s;
+        let ci = 0;
+
+        function next() {
+          if (ci < txt.length) {
+            div.textContent += txt[ci++];
+            setTimeout(next, line.t === '$' ? 45 + Math.random() * 30 : 10);
+          } else {
+            setTimeout(() => type(idx + 1), line.t === 'c' ? 80 : line.t === '$' ? 150 : 60);
+          }
+        }
+        next();
+      }
+    })();
+  </script>
+</body>
+</html>
