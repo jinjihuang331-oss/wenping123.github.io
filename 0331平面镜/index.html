@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平面镜成像实验模拟器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 200, 100, 0.5);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        canvas {
+            border-radius: 12px;
+            cursor: default;
+            display: block;
+        }
+
+        .info-panel {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 15px 25px;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .info-card .label {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .info-card .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .info-card .unit {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .object-color { color: #ff9800; }
+        .image-color { color: #00bcd4; }
+        .mirror-color { color: #9e9e9e; }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔬 平面镜成像实验模拟器</h1>
+    <p class="subtitle">拖动蜡烛改变位置，观察虚像的变化规律</p>
+
+    <div class="container">
+        <canvas id="canvas" width="900" height="500"></canvas>
+
+        <div class="info-panel">
+            <div class="info-card">
+                <div class="label">物距 (u)</div>
+                <div class="value object-color"><span id="objectDist">0</span> <span class="unit">cm</span></div>
+            </div>
+            <div class="info-card">
+                <div class="label">像距 (v)</div>
+                <div class="value image-color"><span id="imageDist">0</span> <span class="unit">cm</span></div>
+            </div>
+            <div class="info-card">
+                <div class="label">像的性质</div>
+                <div class="value" style="font-size: 16px; color: #4caf50;">正立 · 等大 · 虚像</div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #ff9800;"></div>
+                <span>实物（蜡烛）</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #00bcd4;"></div>
+                <span>虚像</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #9e9e9e;"></div>
+                <span>平面镜</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="resetPosition()">重置位置</button>
+            <button onclick="toggleGrid()">显示/隐藏网格</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const SCALE = 5;
+        const MIRROR_X = canvas.width / 2;
+        const GROUND_Y = canvas.height - 80;
+        const CANDLE_BASE_Y = GROUND_Y;
+        const CANDLE_HEIGHT = 100;
+        const CANDLE_WIDTH = 20;
+
+        let objectX = MIRROR_X - 150;
+        let isDragging = false;
+        let showGrid = true;
+        let dragOffsetX = 0;
+
+        function drawGrid() {
+            if (!showGrid) return;
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+
+            for (let x = 0; x <= canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            for (let y = 0; y <= canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawGround() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, GROUND_Y);
+            ctx.lineTo(canvas.width, GROUND_Y);
+            ctx.stroke();
+        }
+
+        function drawMirror() {
+            const mirrorTop = GROUND_Y - CANDLE_HEIGHT - 40;
+            const mirrorBottom = GROUND_Y + 10;
+
+            ctx.strokeStyle = '#9e9e9e';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(MIRROR_X, mirrorTop);
+            ctx.lineTo(MIRROR_X, mirrorBottom);
+            ctx.stroke();
+
+            for (let y = mirrorTop; y < mirrorBottom; y += 12) {
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(MIRROR_X, y);
+                ctx.lineTo(MIRROR_X - 10, y + 8);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#9e9e9e';
+            ctx.font = 'bold 14px "PingFang SC", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('平面镜', MIRROR_X, mirrorTop - 15);
+        }
+
+        function drawCandle(x, baseY, height, width, isVirtual) {
+            const flameY = baseY - height;
+
+            if (isVirtual) {
+                ctx.globalAlpha = 0.4;
+                ctx.setLineDash([5, 5]);
+            }
+
+            ctx.fillStyle = isVirtual ? '#00bcd4' : '#ff9800';
+            ctx.fillRect(x - width / 2, baseY - height * 0.6, width, height * 0.6);
+
+            ctx.fillStyle = isVirtual ? '#00e5ff' : '#ffeb3b';
+            ctx.beginPath();
+            ctx.ellipse(x, flameY + 15, 6, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = isVirtual ? '#80deea' : '#ff5722';
+            ctx.beginPath();
+            ctx.ellipse(x, flameY + 20, 3, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (isVirtual) {
+                ctx.setLineDash([]);
+                ctx.globalAlpha = 1;
+            }
+
+            ctx.fillStyle = isVirtual ? '#00bcd4' : '#ff9800';
+            ctx.font = '12px "PingFang SC", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(isVirtual ? '虚像' : '蜡烛', x, baseY + 20);
+        }
+
+        function drawLightRays() {
+            const flameY = CANDLE_BASE_Y - CANDLE_HEIGHT;
+            const imageX = MIRROR_X + (MIRROR_X - objectX);
+
+            ctx.strokeStyle = 'rgba(255, 235, 59, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+
+            const rayPoints = [
+                { y: flameY + 15 },
+                { y: flameY + 40 },
+                { y: flameY + 65 }
+            ];
+
+            rayPoints.forEach(point => {
+                ctx.beginPath();
+                ctx.moveTo(objectX, point.y);
+                ctx.lineTo(MIRROR_X, point.y);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(MIRROR_X, point.y);
+                ctx.lineTo(imageX, point.y);
+                ctx.stroke();
+            });
+
+            ctx.setLineDash([]);
+        }
+
+        function drawDistanceLines() {
+            const imageX = MIRROR_X + (MIRROR_X - objectX);
+            const flameY = CANDLE_BASE_Y - CANDLE_HEIGHT;
+            const lineY = GROUND_Y + 40;
+
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(objectX, lineY);
+            ctx.lineTo(MIRROR_X, lineY);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#00bcd4';
+            ctx.beginPath();
+            ctx.moveTo(MIRROR_X, lineY);
+            ctx.lineTo(imageX, lineY);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+
+            [objectX, MIRROR_X, imageX].forEach(x => {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, lineY - 10);
+                ctx.lineTo(x, lineY + 10);
+                ctx.stroke();
+            });
+
+            const objectDist = ((MIRROR_X - objectX) / SCALE).toFixed(1);
+            const imageDist = ((imageX - MIRROR_X) / SCALE).toFixed(1);
+
+            ctx.fillStyle = '#ff9800';
+            ctx.font = 'bold 14px "PingFang SC", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`u = ${objectDist} cm`, (objectX + MIRROR_X) / 2, lineY + 25);
+
+            ctx.fillStyle = '#00bcd4';
+            ctx.fillText(`v = ${imageDist} cm`, (MIRROR_X + imageX) / 2, lineY + 25);
+
+            document.getElementById('objectDist').textContent = objectDist;
+            document.getElementById('imageDist').textContent = imageDist;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid();
+            drawGround();
+            drawLightRays();
+            drawMirror();
+
+            const imageX = MIRROR_X + (MIRROR_X - objectX);
+
+            drawCandle(imageX, CANDLE_BASE_Y, CANDLE_HEIGHT, CANDLE_WIDTH, true);
+            drawCandle(objectX, CANDLE_BASE_Y, CANDLE_HEIGHT, CANDLE_WIDTH, false);
+
+            drawDistanceLines();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (Math.abs(mouseX - objectX) < 30 && mouseY > GROUND_Y - CANDLE_HEIGHT - 30 && mouseY < GROUND_Y + 30) {
+                isDragging = true;
+                dragOffsetX = mouseX - objectX;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isDragging) {
+                const newX = mouseX - dragOffsetX;
+                if (newX > 50 && newX < MIRROR_X - 30) {
+                    objectX = newX;
+                    draw();
+                }
+            } else {
+                if (Math.abs(mouseX - objectX) < 30 && mouseY > GROUND_Y - CANDLE_HEIGHT - 30 && mouseY < GROUND_Y + 30) {
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            canvas.style.cursor = 'default';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            canvas.style.cursor = 'default';
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const mouseX = touch.clientX - rect.left;
+            const mouseY = touch.clientY - rect.top;
+
+            if (Math.abs(mouseX - objectX) < 40 && mouseY > GROUND_Y - CANDLE_HEIGHT - 40 && mouseY < GROUND_Y + 40) {
+                isDragging = true;
+                dragOffsetX = mouseX - objectX;
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                const mouseX = touch.clientX - rect.left;
+                const newX = mouseX - dragOffsetX;
+                if (newX > 50 && newX < MIRROR_X - 30) {
+                    objectX = newX;
+                    draw();
+                }
+            }
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        function resetPosition() {
+            objectX = MIRROR_X - 150;
+            draw();
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            draw();
+        }
+
+        draw();
+    </script>
+</body>
+</html>
