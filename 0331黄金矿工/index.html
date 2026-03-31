@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>黄金矿工</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Microsoft YaHei', Arial, sans-serif;
+    overflow: hidden;
+  }
+  #menu {
+    text-align: center;
+    color: #ffd700;
+  }
+  #menu h1 {
+    font-size: 64px;
+    margin-bottom: 50px;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  }
+  #menu h1 .emoji { font-size: 56px; }
+  .btn {
+    display: inline-block;
+    padding: 18px 50px;
+    margin: 15px;
+    font-size: 24px;
+    color: #fff;
+    background: linear-gradient(145deg, #e6a800, #cc8800);
+    border: 3px solid #ffd700;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn:hover {
+    transform: scale(1.08);
+    background: linear-gradient(145deg, #ffd700, #e6a800);
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+  }
+  #gameContainer { display: none; }
+  canvas { display: block; border-radius: 8px; }
+  #victory {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.75);
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 100;
+  }
+  #victory.show { display: flex; }
+  #victory h1 {
+    font-size: 72px;
+    color: #ffd700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.8);
+    animation: pulse 1s ease-in-out infinite alternate;
+  }
+  #victory p { color: #fff; font-size: 28px; margin: 20px 0; }
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.1); }
+  }
+  #fireworks {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 99;
+  }
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h1><span class="emoji">⛏️</span> 黄金矿工 <span class="emoji">💰</span></h1>
+  <div>
+    <button class="btn" onclick="startGame(1)">单人模式</button>
+    <button class="btn" onclick="startGame(2)">双人模式</button>
+  </div>
+  <p style="color:#aaa; margin-top:30px; font-size:16px;">
+    玩家A：按 S 键放出钩子 &nbsp;|&nbsp; 玩家B：按 ↓ 键放出钩子
+  </p>
+</div>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<div id="victory">
+  <canvas id="fireworks"></canvas>
+  <h1>🎉 恭喜通关！🎉</h1>
+  <p id="victoryScore"></p>
+  <button class="btn" onclick="location.reload()" style="margin-top:20px;">再来一局</button>
+</div>
+
+<script>
+const W = 900, H = 700;
+const SURFACE_H = 70;
+const WIN_SCORE = 800;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = W;
+canvas.height = H;
+
+let gameMode = 1;
+let players = [];
+let items = [];
+let gameOver = false;
+let gameWon = false;
+let scoreA = 0, scoreB = 0;
+let explosions = [];
+let scorePopups = [];
+
+// === ITEM DEFINITIONS ===
+function createItems() {
+  const list = [];
+
+  // Diamonds (value 800, light, at least 3)
+  for (let i = 0; i < 3; i++) {
+    list.push({
+      type: 'diamond', x: 120 + Math.random() * (W - 240), y: SURFACE_H + 100 + Math.random() * (H - SURFACE_H - 200),
+      value: 800, weight: 1, radius: 16,
+      color: '#00e5ff'
+    });
+  }
+
+  // Bombs (value 2)
+  for (let i = 0; i < 3; i++) {
+    list.push({
+      type: 'bomb', x: 100 + Math.random() * (W - 200), y: SURFACE_H + 80 + Math.random() * (H - SURFACE_H - 160),
+      value: 2, weight: 2, radius: 18,
+      color: '#333'
+    });
+  }
+
+  // Pigs (value 3, light, moves horizontally)
+  for (let i = 0; i < 2; i++) {
+    list.push({
+      type: 'pig', x: 150 + Math.random() * (W - 300), y: SURFACE_H + 200 + Math.random() * (H - SURFACE_H - 300),
+      value: 3, weight: 1, radius: 20,
+      color: '#ff9999', speed: 0.6 + Math.random() * 0.4, dir: Math.random() > 0.5 ? 1 : -1
+    });
+  }
+
+  // Small gold (value ~300, medium weight)
+  for (let i = 0; i < 3; i++) {
+    list.push({
+      type: 'gold', size: 'small', x: 80 + Math.random() * (W - 160), y: SURFACE_H + 100 + Math.random() * (H - SURFACE_H - 200),
+      value: 300, weight: 3, radius: 20,
+      color: '#ffd700'
+    });
+  }
+
+  // Medium gold (value ~500, heavier)
+  for (let i = 0; i < 2; i++) {
+    list.push({
+      type: 'gold', size: 'medium', x: 80 + Math.random() * (W - 160), y: SURFACE_H + 150 + Math.random() * (H - SURFACE_H - 250),
+      value: 500, weight: 5, radius: 28,
+      color: '#daa520'
+    });
+  }
+
+  // Large gold (value ~700, very heavy)
+  for (let i = 0; i < 2; i++) {
+    list.push({
+      type: 'gold', size: 'large', x: 100 + Math.random() * (W - 200), y: SURFACE_H + 200 + Math.random() * (H - SURFACE_H - 300),
+      value: 700, weight: 7, radius: 38,
+      color: '#b8860b'
+    });
+  }
+
+  // Small stone (heavy, low value)
+  for (let i = 0; i < 3; i++) {
+    list.push({
+      type: 'stone', size: 'small', x: 60 + Math.random() * (W - 120), y: SURFACE_H + 80 + Math.random() * (H - SURFACE_H - 160),
+      value: 20, weight: 6, radius: 20,
+      color: '#888'
+    });
+  }
+
+  // Large stone (very heavy, very low value)
+  for (let i = 0; i < 2; i++) {
+    list.push({
+      type: 'stone', size: 'large', x: 80 + Math.random() * (W - 160), y: SURFACE_H + 150 + Math.random() * (H - SURFACE_H - 250),
+      value: 11, weight: 8, radius: 34,
+      color: '#666'
+    });
+  }
+
+  return list;
+}
+
+// === PLAYER / HOOK ===
+function createPlayer(anchorX, anchorY, hookColor, controls) {
+  return {
+    x: anchorX, y: anchorY,
+    hookColor, controls,
+    angle: Math.PI / 2, // straight down = 90 degrees
+    angleDir: 1,
+    angleSpeed: 0.025,
+    state: 'swinging', // swinging, extending, retracting
+    hookLength: 30,
+    hookSpeed: 6,
+    grabbedItem: null,
+    score: 0
+  };
+}
+
+function drawHook(p) {
+  ctx.save();
+  ctx.strokeStyle = p.hookColor;
+  ctx.lineWidth = 3;
+
+  const endX = p.x + Math.cos(p.angle) * p.hookLength;
+  const endY = p.y + Math.sin(p.angle) * p.hookLength;
+
+  // Draw rope
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+
+  // Draw hook tip
+  ctx.beginPath();
+  ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+  ctx.fillStyle = p.hookColor;
+  ctx.fill();
+
+  // Draw claw
+  const clawLen = 10;
+  const clawAngle = 0.4;
+  for (let sign of [-1, 1]) {
+    const a = p.angle + sign * clawAngle;
+    ctx.beginPath();
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(endX + Math.cos(a) * clawLen, endY + Math.sin(a) * clawLen);
+    ctx.stroke();
+  }
+
+  // Draw the player character on surface
+  drawMiner(p.x, p.y - 10);
+
+  ctx.restore();
+}
+
+function drawMiner(x, y) {
+  // Simple miner character
+  ctx.save();
+  // Head
+  ctx.beginPath();
+  ctx.arc(x, y - 18, 10, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffcc99';
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Hat
+  ctx.beginPath();
+  ctx.ellipse(x, y - 28, 12, 4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffd700';
+  ctx.fill();
+  ctx.fillRect(x - 6, y - 34, 12, 8);
+  ctx.strokeRect(x - 6, y - 34, 12, 8);
+  // Body
+  ctx.fillStyle = '#4466aa';
+  ctx.fillRect(x - 6, y - 8, 12, 12);
+  ctx.restore();
+}
+
+function updatePlayer(p, dt) {
+  if (p.state === 'swinging') {
+    p.angle += p.angleSpeed * p.angleDir;
+    if (p.angle < Math.PI * 0.15 || p.angle > Math.PI * 0.85) {
+      p.angleDir *= -1;
+      p.angle = Math.max(Math.PI * 0.15, Math.min(Math.PI * 0.85, p.angle));
+    }
+  } else if (p.state === 'extending') {
+    p.hookLength += p.hookSpeed;
+
+    const hookX = p.x + Math.cos(p.angle) * p.hookLength;
+    const hookY = p.y + Math.sin(p.angle) * p.hookLength;
+
+    // Check bounds - if hook goes off screen, retract
+    if (hookX < -20 || hookX > W + 20 || hookY > H + 20) {
+      p.state = 'retracting';
+      return;
+    }
+
+    // Check collision with items
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item.caught) {
+        const dx = hookX - item.x;
+        const dy = hookY - item.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < item.radius + 5) {
+          p.grabbedItem = item;
+          item.caught = true;
+          p.state = 'retracting';
+          return;
+        }
+      }
+    }
+  } else if (p.state === 'retracting') {
+    let retractSpeed = 8;
+    if (p.grabbedItem) {
+      // Heavier = slower
+      retractSpeed = 12 / p.grabbedItem.weight;
+      retractSpeed = Math.max(0.5, Math.min(retractSpeed, 10));
+      if (p.grabbedItem.type === 'bomb') {
+        retractSpeed = 12; // bomb retracts fast
+      }
+    }
+    p.hookLength -= retractSpeed;
+
+    if (p.hookLength <= 30) {
+      p.hookLength = 30;
+      p.state = 'swinging';
+
+      if (p.grabbedItem) {
+        // Handle bomb explosion
+        if (p.grabbedItem.type === 'bomb') {
+          const hx = p.x + Math.cos(p.angle) * 30;
+          const hy = p.y + Math.sin(p.angle) * 30;
+          explosions.push({ x: hx, y: hy, frame: 0, maxFrame: 30 });
+        }
+
+        const item = p.grabbedItem;
+        const pts = item.value;
+        p.score += pts;
+
+        if (gameMode === 1) {
+          scoreA += pts;
+        }
+
+        scorePopups.push({
+          x: p.x, y: p.y - 50,
+          text: item.type === 'bomb' ? '💥' : `+${pts}`,
+          frame: 0, maxFrame: 60
+        });
+
+        items.splice(items.indexOf(item), 1);
+        p.grabbedItem = null;
+
+        // Check win
+        checkWin();
+      }
+    }
+  }
+}
+
+function launchHook(p) {
+  if (p.state === 'swinging') {
+    p.state = 'extending';
+  }
+}
+
+// === DRAWING ===
+function drawSurface() {
+  // Sky
+  ctx.fillStyle = '#87CEEB';
+  ctx.fillRect(0, 0, W, 30);
+
+  // Ground surface
+  const gradient = ctx.createLinearGradient(0, SURFACE_H - 10, 0, SURFACE_H + 15);
+  gradient.addColorStop(0, '#8B4513');
+  gradient.addColorStop(0.3, '#654321');
+  gradient.addColorStop(1, '#4a3520');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, SURFACE_H - 10, W, 25);
+
+  // Grass on top
+  ctx.fillStyle = '#4CAF50';
+  ctx.fillRect(0, SURFACE_H - 14, W, 6);
+
+  // Underground
+  const ug = ctx.createLinearGradient(0, SURFACE_H + 15, 0, H);
+  ug.addColorStop(0, '#5c4033');
+  ug.addColorStop(1, '#3a2518');
+  ctx.fillStyle = ug;
+  ctx.fillRect(0, SURFACE_H + 15, W, H - SURFACE_H - 15);
+}
+
+function drawItem(item) {
+  ctx.save();
+  const { x, y, type, radius, color } = item;
+
+  if (type === 'diamond') {
+    // Diamond shape
+    ctx.beginPath();
+    ctx.moveTo(x, y - radius);
+    ctx.lineTo(x + radius, y);
+    ctx.lineTo(x, y + radius);
+    ctx.lineTo(x - radius, y);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#0088aa';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Sparkle
+    ctx.beginPath();
+    ctx.arc(x - 4, y - 4, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fill();
+  } else if (type === 'bomb') {
+    // Bomb circle
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#222';
+    ctx.fill();
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Fuse
+    ctx.beginPath();
+    ctx.moveTo(x, y - radius);
+    ctx.quadraticCurveTo(x + 5, y - radius - 8, x + 3, y - radius - 12);
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Spark on fuse
+    ctx.beginPath();
+    ctx.arc(x + 3, y - radius - 12, 3, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${Date.now() % 360}, 100%, 60%)`;
+    ctx.fill();
+    // Skull mark
+    ctx.fillStyle = '#ff4444';
+    ctx.font = `${radius}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💣', x, y);
+  } else if (type === 'pig') {
+    // Pig body
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffaaaa';
+    ctx.fill();
+    ctx.strokeStyle = '#dd7777';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Snout
+    ctx.beginPath();
+    ctx.ellipse(x + radius * 0.5, y + 2, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff8888';
+    ctx.fill();
+    // Eyes
+    ctx.beginPath();
+    ctx.arc(x + 4, y - 6, 3, 0, Math.PI * 2);
+    ctx.arc(x - 4, y - 6, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    // Ears
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y - radius + 2);
+    ctx.lineTo(x - 12, y - radius - 8);
+    ctx.lineTo(x - 2, y - radius + 2);
+    ctx.fillStyle = '#ff9999';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y - radius + 2);
+    ctx.lineTo(x + 12, y - radius - 8);
+    ctx.lineTo(x + 2, y - radius + 2);
+    ctx.fill();
+    // Legs
+    const legH = 6;
+    ctx.fillStyle = '#ddaaaa';
+    ctx.fillRect(x - 10, y + radius, 4, legH);
+    ctx.fillRect(x + 6, y + radius, 4, legH);
+  } else if (type === 'gold') {
+    // Gold nugget
+    ctx.beginPath();
+    const r = radius;
+    const pts = 6;
+    for (let i = 0; i < pts; i++) {
+      const a = (Math.PI * 2 / pts) * i - Math.PI / 2;
+      const rr = r * (0.85 + 0.15 * Math.sin(a * 3));
+      const px = x + Math.cos(a) * rr;
+      const py = y + Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    const goldGrad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+    goldGrad.addColorStop(0, '#fff4a0');
+    goldGrad.addColorStop(0.5, color);
+    goldGrad.addColorStop(1, '#886600');
+    ctx.fillStyle = goldGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#665500';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Label value
+    ctx.fillStyle = '#443300';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$' + item.value, x, y);
+  } else if (type === 'stone') {
+    // Stone
+    ctx.beginPath();
+    const r = radius;
+    const pts = 7;
+    for (let i = 0; i < pts; i++) {
+      const a = (Math.PI * 2 / pts) * i;
+      const rr = r * (0.8 + 0.2 * Math.sin(a * 3 + 1));
+      const px = x + Math.cos(a) * rr;
+      const py = y + Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Crack lines
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.3, y - r * 0.2);
+    ctx.lineTo(x + r * 0.1, y + r * 0.1);
+    ctx.lineTo(x + r * 0.3, y - r * 0.3);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function updatePigs(dt) {
+  for (const item of items) {
+    if (item.type === 'pig') {
+      item.x += item.speed * item.dir;
+      if (item.x < 30 || item.x > W - 30) {
+        item.dir *= -1;
+      }
+    }
+  }
+}
+
+// === EXPLOSION ===
+function drawExplosion(e) {
+  const progress = e.frame / e.maxFrame;
+  const maxR = 60;
+  const r = maxR * progress;
+  const alpha = 1 - progress;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Outer glow
+  const grad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, r);
+  grad.addColorStop(0, '#fff');
+  grad.addColorStop(0.3, '#ffaa00');
+  grad.addColorStop(0.6, '#ff4400');
+  grad.addColorStop(1, '#330000');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Particles
+  if (e.frame < 15) {
+    for (let i = 0; i < 12; i++) {
+      const a = (Math.PI * 2 / 12) * i + e.frame * 0.1;
+      const d = r * 0.8;
+      ctx.fillStyle = `hsl(${30 + Math.random() * 30}, 100%, ${50 + Math.random() * 30}%)`;
+      ctx.beginPath();
+      ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, 2 + Math.random() * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+  e.frame++;
+}
+
+function drawScorePopup(s) {
+  ctx.save();
+  const progress = s.frame / s.maxFrame;
+  ctx.globalAlpha = 1 - progress;
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 28px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(s.text, s.x, s.y - progress * 40);
+  ctx.restore();
+  s.frame++;
+}
+
+// === UI ===
+function drawUI() {
+  ctx.save();
+  // Score bar
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, W, SURFACE_H - 14);
+
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 22px Microsoft YaHei';
+  ctx.textAlign = 'left';
+  ctx.fillText(`💰 总得分: ${getTotalScore()}`, 15, 30);
+
+  // Target
+  ctx.fillStyle = '#ff9999';
+  ctx.textAlign = 'center';
+  ctx.fillText(`目标: ${WIN_SCORE}分`, W / 2, 30);
+
+  if (gameMode === 2) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#66ccff';
+    ctx.fillText(`玩家A: ${players[0].score}`, W / 2 - 40, 55);
+    ctx.fillStyle = '#ff9966';
+    ctx.fillText(`玩家B: ${players[1].score}`, W / 2 + 40, 55);
+  }
+
+  // Progress bar
+  const barW = 200;
+  const barH = 10;
+  const barX = W / 2 - barW / 2;
+  const barY = 40;
+  ctx.fillStyle = '#333';
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#ffd700';
+  const fill = Math.min(1, getTotalScore() / WIN_SCORE);
+  ctx.fillRect(barX, barY, barW * fill, barH);
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, barY, barW, barH);
+
+  ctx.restore();
+}
+
+function getTotalScore() {
+  let total = 0;
+  for (const p of players) total += p.score;
+  return total;
+}
+
+function checkWin() {
+  if (getTotalScore() >= WIN_SCORE && !gameWon) {
+    gameWon = true;
+    setTimeout(showVictory, 500);
+  }
+}
+
+// === DRAW GRABBED ITEM ===
+function drawGrabbedItem(p) {
+  if (!p.grabbedItem) return;
+  const hookX = p.x + Math.cos(p.angle) * p.hookLength;
+  const hookY = p.y + Math.sin(p.angle) * p.hookLength;
+  const item = { ...p.grabbedItem, x: hookX, y: hookY + p.grabbedItem.radius + 5 };
+  drawItem(item);
+}
+
+// === GAME LOOP ===
+function gameLoop() {
+  if (gameWon) return;
+
+  ctx.clearRect(0, 0, W, H);
+
+  drawSurface();
+
+  updatePigs();
+
+  // Draw underground items
+  for (const item of items) {
+    drawItem(item);
+  }
+
+  // Update and draw players
+  for (const p of players) {
+    updatePlayer(p);
+    drawHook(p);
+    drawGrabbedItem(p);
+  }
+
+  // Draw effects
+  explosions = explosions.filter(e => e.frame < e.maxFrame);
+  for (const e of explosions) drawExplosion(e);
+
+  scorePopups = scorePopups.filter(s => s.frame < s.maxFrame);
+  for (const s of scorePopups) drawScorePopup(s);
+
+  drawUI();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// === VICTORY ===
+function showVictory() {
+  document.getElementById('victoryScore').textContent = `最终得分: ${getTotalScore()}分`;
+  document.getElementById('victory').classList.add('show');
+  startFireworks();
+}
+
+function startFireworks() {
+  const fc = document.getElementById('fireworks');
+  fc.width = window.innerWidth;
+  fc.height = window.innerHeight;
+  const fctx = fc.getContext('2d');
+  const particles = [];
+
+  function spawnFirework() {
+    const cx = Math.random() * fc.width;
+    const cy = Math.random() * fc.height * 0.5;
+    const hue = Math.random() * 360;
+    for (let i = 0; i < 40; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const spd = 1 + Math.random() * 4;
+      particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+        life: 60 + Math.random() * 30,
+        hue: hue + Math.random() * 30,
+        size: 2 + Math.random() * 2
+      });
+    }
+  }
+
+  function animFire() {
+    fctx.fillStyle = 'rgba(0,0,0,0.15)';
+    fctx.fillRect(0, 0, fc.width, fc.height);
+
+    if (Math.random() < 0.08) spawnFirework();
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.03;
+      p.life--;
+      fctx.beginPath();
+      fctx.arc(p.x, p.y, p.size * (p.life / 60), 0, Math.PI * 2);
+      fctx.fillStyle = `hsl(${p.hue}, 100%, 60%)`;
+      fctx.fill();
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    requestAnimationFrame(animFire);
+  }
+  animFire();
+}
+
+// === INPUT ===
+document.addEventListener('keydown', (e) => {
+  if (gameWon) return;
+
+  if (players.length >= 1) {
+    if (e.key === 's' || e.key === 'S') {
+      launchHook(players[0]);
+    }
+  }
+  if (players.length >= 2) {
+    if (e.key === 'ArrowDown') {
+      launchHook(players[1]);
+      e.preventDefault();
+    }
+  }
+});
+
+// === START ===
+function startGame(mode) {
+  gameMode = mode;
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('gameContainer').style.display = 'block';
+
+  items = createItems();
+
+  if (mode === 1) {
+    players = [createPlayer(W / 2, SURFACE_H - 5, '#66ccff')];
+  } else {
+    players = [
+      createPlayer(W / 3, SURFACE_H - 5, '#66ccff'),
+      createPlayer(W * 2 / 3, SURFACE_H - 5, '#ff9966')
+    ];
+  }
+
+  explosions = [];
+  scorePopups = [];
+  gameWon = false;
+
+  gameLoop();
+}
+</script>
+</body>
+</html>
