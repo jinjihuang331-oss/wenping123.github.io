@@ -3,1040 +3,423 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>虚拟教室</title>
+<title>平面镜成像实验模拟器</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-:root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --bg: #0f172a;
-  --bg-card: #1e293b;
-  --bg-card-hover: #263348;
-  --border: #334155;
-  --text: #e2e8f0;
-  --text-dim: #94a3b8;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --radius: 12px;
-}
-
-body {
-  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  overflow: hidden;
-}
-
-/* === Top Bar === */
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  z-index: 10;
-}
-.top-bar h1 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.top-bar .rec-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--danger);
-  display: none;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
-}
-.top-bar .rec-dot.active { display: inline-block; }
-.rec-time {
-  font-size: 0.8rem;
-  color: var(--danger);
-  margin-left: 6px;
-  display: none;
-}
-.rec-time.active { display: inline-block; font-variant-numeric: tabular-nums; }
-
-.top-bar .session-info {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-}
-.top-bar .controls {
-  display: flex;
-  gap: 8px;
-}
-.top-bar button {
-  padding: 6px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.top-bar button:hover { background: var(--bg-card-hover); }
-.top-bar button.recording {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: white;
-}
-.top-bar button.recording:hover { background: #dc2626; }
-
-/* === Main Layout === */
-.main {
-  display: grid;
-  grid-template-columns: 260px 1fr 280px;
-  height: calc(100vh - 52px);
-}
-
-/* === Sidebar === */
-.sidebar {
-  background: var(--bg-card);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.sidebar-header {
-  padding: 14px 16px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.sidebar-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-/* === Participants === */
-.participant-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  margin-bottom: 4px;
-  transition: background 0.15s;
-}
-.participant-item:hover { background: var(--bg-card-hover); }
-.participant-item.active {
-  background: rgba(79, 70, 229, 0.12);
-  border-left: 3px solid var(--primary);
-}
-.participant-avatar {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-}
-.participant-info { flex: 1; min-width: 0; }
-.participant-name {
-  font-size: 0.85rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.participant-role {
-  font-size: 0.72rem;
-  color: var(--text-dim);
-}
-.participant-status {
-  font-size: 0.65rem;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  white-space: nowrap;
-}
-.participant-status.sharing {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--success);
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-/* === Canvas Area === */
-.canvas-area {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-.canvas-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-.canvas-toolbar .divider {
-  width: 1px; height: 24px;
-  background: var(--border);
-  margin: 0 6px;
-}
-.canvas-toolbar button {
-  width: 34px; height: 34px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-  font-size: 1rem;
-}
-.canvas-toolbar button:hover { background: var(--bg-card-hover); }
-.canvas-toolbar button.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-}
-.canvas-toolbar button:disabled { opacity: 0.35; cursor: not-allowed; }
-.canvas-toolbar .color-picker-wrap {
-  position: relative;
-  width: 34px; height: 34px;
-}
-.canvas-toolbar .color-picker-wrap input[type="color"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0; cursor: pointer;
-}
-.canvas-toolbar .color-preview {
-  width: 100%; height: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-}
-.canvas-toolbar .slider-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-}
-.canvas-toolbar .slider-wrap label {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-.canvas-toolbar input[type="range"] {
-  width: 80px;
-  accent-color: var(--primary);
-}
-
-.canvas-container {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: #fafafa;
-}
-#whiteboard {
-  width: 100%;
-  height: 100%;
-  cursor: crosshair;
-  touch-action: none;
-}
-.canvas-container .share-overlay {
-  position: absolute;
-  border: 3px dashed var(--success);
-  border-radius: 8px;
-  background: rgba(34, 197, 94, 0.08);
-  pointer-events: none;
-  display: none;
-  z-index: 5;
-}
-.canvas-container .share-overlay.active { display: block; }
-.canvas-container .share-overlay::after {
-  content: "正在共享此区域";
-  position: absolute;
-  top: -24px; left: 50%;
-  transform: translateX(-50%);
-  background: var(--success);
-  color: white;
-  font-size: 0.7rem;
-  padding: 2px 10px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-.canvas-container .select-hint {
-  position: absolute;
-  bottom: 10px; left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.7);
-  color: white;
-  font-size: 0.75rem;
-  padding: 6px 14px;
-  border-radius: 6px;
-  pointer-events: none;
-  display: none;
-  z-index: 6;
-}
-.canvas-container .select-hint.active { display: block; }
-
-/* === Chat === */
-.chat-panel {
-  background: var(--bg-card);
-  border-left: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.chat-msg {
-  padding: 8px 12px;
-  border-radius: 10px;
-  max-width: 85%;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  word-break: break-word;
-}
-.chat-msg.self {
-  align-self: flex-end;
-  background: var(--primary);
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-.chat-msg.other {
-  align-self: flex-start;
-  background: var(--bg-card-hover);
-  border-bottom-left-radius: 4px;
-}
-.chat-msg .msg-author {
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  margin-bottom: 2px;
-}
-.chat-msg.self .msg-author { color: rgba(255,255,255,0.7); }
-.chat-msg .msg-time {
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  margin-top: 4px;
-  text-align: right;
-}
-.chat-msg.self .msg-time { color: rgba(255,255,255,0.5); }
-.chat-input-area {
-  padding: 12px;
-  border-top: 1px solid var(--border);
-}
-.chat-input-area .emoji-bar {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-.chat-input-area .emoji-bar button {
-  background: none;
-  border: none;
-  font-size: 1.3rem;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 6px;
-  transition: background 0.15s;
-}
-.chat-input-area .emoji-bar button:hover { background: var(--bg-card-hover); }
-.chat-input-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-}
-.chat-input-row textarea {
-  flex: 1;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  resize: none;
-  max-height: 100px;
-  font-family: inherit;
-}
-.chat-input-row textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-.chat-input-row button.send {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: none;
-  background: var(--primary);
-  color: white;
-  cursor: pointer;
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-.chat-input-row button.send:hover { background: var(--primary-hover); }
-
-/* === Mobile Responsive === */
-@media (max-width: 768px) {
-  .main {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
-  }
-  .sidebar {
-    display: none;
-  }
-  .sidebar.open {
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
     display: flex;
-    position: absolute;
-    top: 52px; left: 0;
-    width: 260px;
-    height: calc(100% - 52px);
-    z-index: 20;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    user-select: none;
   }
-  .chat-panel {
-    display: none;
+  header {
+    color: #e0e0e0;
+    font-size: 22px;
+    padding: 14px 0 6px;
+    letter-spacing: 4px;
   }
-  .chat-panel.open {
+  .info-bar {
     display: flex;
-    position: absolute;
-    top: 52px; right: 0;
-    width: 100%;
-    height: calc(100% - 52px);
-    z-index: 20;
+    gap: 32px;
+    padding: 6px 0 8px;
+    font-size: 15px;
+    color: #aaa;
   }
-  .mobile-nav {
-    display: flex;
+  .info-bar span { color: #f0c040; font-weight: bold; }
+  canvas {
+    border-radius: 12px;
+    cursor: default;
+    background: #16213e;
   }
-  .top-bar button.sidebar-toggle {
-    display: flex;
+  .hint {
+    color: #666;
+    font-size: 13px;
+    margin-top: 8px;
+    letter-spacing: 1px;
   }
-}
-@media (min-width: 769px) {
-  .sidebar-toggle { display: none !important; }
-  .mobile-tab-bar { display: none !important; }
-}
-
-.mobile-tab-bar {
-  display: flex;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--bg-card);
-  border-top: 1px solid var(--border);
-  z-index: 30;
-  padding: 8px 0;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
-}
-.mobile-tab-bar button {
-  flex: 1;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 0.7rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-.mobile-tab-bar button.active { color: var(--primary); }
-.mobile-tab-bar button span { font-size: 1.2rem; }
-.sidebar-toggle {
-  display: none;
-  padding: 6px 12px;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
 </style>
 </head>
 <body>
-
-<!-- Top Bar -->
-<div class="top-bar">
-  <h1>
-    <span>&#127979;</span> 虚拟教室
-    <span class="rec-dot" id="recDot"></span>
-    <span class="rec-time" id="recTime">00:00</span>
-  </h1>
-  <span class="session-info">课程: Web前端开发 | 2026-03-23</span>
-  <div class="controls">
-    <button class="sidebar-toggle" id="sidebarToggle">&#128100; 成员</button>
-    <button id="btnRecord">&#9679; 录制</button>
-    <button id="btnShare">&#128225; 共享区域</button>
-  </div>
+<header>平面镜成像实验</header>
+<div class="info-bar">
+  <div>物距 u = <span id="val-u">0</span> cm</div>
+  <div>像距 v = <span id="val-v">0</span> cm</div>
+  <div>像与物等大 · 像距等于物距</div>
 </div>
-
-<!-- Main -->
-<div class="main">
-  <!-- Participants -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">&#128101; 参与者 (5)</div>
-    <div class="sidebar-body" id="participantList"></div>
-  </aside>
-
-  <!-- Whiteboard -->
-  <section class="canvas-area">
-    <div class="canvas-toolbar" id="toolbar">
-      <button id="toolPen" class="active" title="画笔">&#9998;</button>
-      <button id="toolEraser" title="橡皮">&#9723;</button>
-      <button id="toolLine" title="直线">&#175;</button>
-      <button id="toolRect" title="矩形">&#9633;</button>
-      <button id="toolCircle" title="圆形">&#9675;</button>
-      <button id="toolText" title="文字">T</button>
-      <div class="divider"></div>
-      <div class="color-picker-wrap">
-        <input type="color" id="colorPicker" value="#1a1a2e">
-        <div class="color-preview" id="colorPreview" style="background:#1a1a2e"></div>
-      </div>
-      <div class="divider"></div>
-      <div class="slider-wrap">
-        <label>粗细</label>
-        <input type="range" id="brushSize" min="1" max="20" value="3">
-      </div>
-      <div class="divider"></div>
-      <button id="btnUndo" title="撤销">&#8634;</button>
-      <button id="btnClear" title="清空">&#128465;</button>
-    </div>
-    <div class="canvas-container">
-      <canvas id="whiteboard"></canvas>
-      <div class="share-overlay" id="shareOverlay"></div>
-      <div class="select-hint" id="selectHint">拖动鼠标选择要共享的区域，点击确认</div>
-      <div class="share-hint-bar" id="shareHintBar" style="
-        position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-        background:rgba(0,0,0,0.75); color:#fff; padding:6px 16px;
-        border-radius:6px; font-size:0.75rem; display:none; z-index:6;">
-        正在共享屏幕区域
-      </div>
-    </div>
-  </section>
-
-  <!-- Chat -->
-  <aside class="chat-panel" id="chatPanel">
-    <div class="sidebar-header">&#128172; 聊天</div>
-    <div class="chat-messages" id="chatMessages"></div>
-    <div class="chat-input-area">
-      <div class="emoji-bar" id="emojiBar"></div>
-      <div class="chat-input-row">
-        <textarea id="chatInput" rows="1" placeholder="输入消息..."></textarea>
-        <button class="send" id="btnSend">&#10148;</button>
-      </div>
-    </div>
-  </aside>
-</div>
-
-<!-- Mobile Tab Bar -->
-<div class="mobile-tab-bar" id="mobileTabBar">
-  <button class="active" data-tab="whiteboard"><span>&#127912;</span>白板</button>
-  <button data-tab="chat"><span>&#128172;</span>聊天</button>
-  <button data-tab="participants"><span>&#128101;</span>成员</button>
-</div>
+<canvas id="cv"></canvas>
+<div class="hint">拖动蜡烛改变位置 · 平面镜始终成等大虚像</div>
 
 <script>
-// ========================
-// State
-// ========================
-const state = {
-  participants: [
-    { id: 1, name: "张老师", role: "讲师", color: "#4f46e5", online: true, sharing: false },
-    { id: 2, name: "李明", role: "学生", color: "#059669", online: true, sharing: false },
-    { id: 3, name: "王芳", role: "学生", color: "#dc2626", online: true, sharing: false },
-    { id: 4, name: "陈浩", role: "学生", color: "#d97706", online: false, sharing: false },
-    { id: 5, name: "刘婷", role: "学生", color: "#7c3aed", online: true, sharing: false },
-  ],
-  chatMessages: [
-    { id: 1, author: "张老师", self: false, text: "大家好，今天我们学习 Canvas 绘图。", time: "14:00" },
-    { id: 2, author: "李明", self: false, text: "老师好！\ud83d\ude0a", time: "14:01" },
-    { id: 3, author: "王芳", self: true, text: "收到，开始吧！\ud83d\udc4d", time: "14:01" },
-  ],
-  tool: "pen",
-  color: "#1a1a2e",
-  brushSize: 3,
-  isDrawing: false,
-  lastX: 0, lastY: 0,
-  history: [],
-  historyIndex: -1,
-  shapeStart: null,
-  recording: false,
-  recStartTime: 0,
-  shareSelecting: false,
-  shareRect: null,
-  shareOverlay: null,
-  selectionRect: { x1: 0, y1: 0, x2: 0, y2: 0 },
-  selecting: false,
-  textInput: null,
-};
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
 
-// ========================
-// Canvas Setup
-// ========================
-const canvas = document.getElementById("whiteboard");
-const ctx = canvas.getContext("2d");
-let canvasRect;
+/* ---------- 尺寸适配 ---------- */
+function resize() {
+  const w = Math.min(window.innerWidth - 32, 1200);
+  const h = Math.min(window.innerHeight - 140, 640);
+  cv.width = w * devicePixelRatio;
+  cv.height = h * devicePixelRatio;
+  cv.style.width = w + 'px';
+  cv.style.height = h + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  W = w; H = h;
+  mirrorX = W * 0.48;
+  baseY = H * 0.82;
+  if (!inited) { candle.x = mirrorX - 180; inited = true; }
+  draw();
+}
+let W, H, mirrorX, baseY, inited = false;
 
-function resizeCanvas() {
-  const container = canvas.parentElement;
-  canvas.width = container.clientWidth;
-  canvas.height = container.clientHeight;
-  canvasRect = canvas.getBoundingClientRect();
-  redrawCanvas();
+/* ---------- 状态 ---------- */
+const SCALE = 5; // 1px = 0.5cm
+const candle = { x: 0, w: 18, h: 90, dragging: false, offsetX: 0 };
+const flame = { w: 14, h: 32 };
+
+/* ---------- 蜡烛绘制 ---------- */
+function drawCandle(x, y, alpha, dashed) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // 底座
+  const bw = candle.w + 16, bh = 8;
+  roundRect(x - bw/2, y - bh, bw, bh, 3, '#8B7355', dashed);
+
+  // 蜡烛体
+  const grad = ctx.createLinearGradient(x - candle.w/2, 0, x + candle.w/2, 0);
+  grad.addColorStop(0, '#FFF8DC');
+  grad.addColorStop(0.4, '#FFFFF0');
+  grad.addColorStop(1, '#F5DEB3');
+  const bodyTop = y - bh - candle.h;
+  roundRect(x - candle.w/2, bodyTop, candle.w, candle.h, 3, grad, dashed);
+
+  // 烛芯
+  const wickBot = bodyTop;
+  const wickTop = wickBot - 8;
+  ctx.beginPath();
+  ctx.moveTo(x, wickBot);
+  ctx.lineTo(x, wickTop);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1.5;
+  if (dashed) ctx.setLineDash([3, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 火焰
+  drawFlame(x, wickTop, alpha, dashed);
+
+  ctx.restore();
 }
 
-function saveState() {
-  state.historyIndex++;
-  state.history = state.history.slice(0, state.historyIndex);
-  state.history.push(canvas.toDataURL());
-}
+function drawFlame(x, top, alpha, dashed) {
+  const time = Date.now() / 300;
+  const flicker = Math.sin(time) * 1.5 + Math.cos(time * 1.7) * 1;
 
-function redrawCanvas() {
-  ctx.fillStyle = "#fafafa";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  if (state.history.length > 0 && state.historyIndex >= 0) {
-    const img = new Image();
-    img.onload = () => ctx.drawImage(img, 0, 0);
-    img.src = state.history[state.historyIndex];
+  // 外焰
+  ctx.beginPath();
+  ctx.ellipse(x + flicker * 0.5, top - flame.h * 0.45, flame.w * 0.55, flame.h * 0.55, 0, 0, Math.PI * 2);
+  ctx.fillStyle = dashed ? 'rgba(255,160,40,0.5)' : 'rgba(255,160,40,0.85)';
+  ctx.fill();
+
+  // 内焰
+  ctx.beginPath();
+  ctx.ellipse(x + flicker * 0.3, top - flame.h * 0.35, flame.w * 0.3, flame.h * 0.35, 0, 0, Math.PI * 2);
+  ctx.fillStyle = dashed ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,120,0.9)';
+  ctx.fill();
+
+  // 光晕
+  if (!dashed) {
+    const glow = ctx.createRadialGradient(x, top - flame.h * 0.3, 2, x, top - flame.h * 0.3, 50);
+    glow.addColorStop(0, 'rgba(255,200,60,0.18)');
+    glow.addColorStop(1, 'rgba(255,200,60,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - 60, top - flame.h - 30, 120, 80);
   }
 }
 
-function getPos(e) {
-  const r = canvas.getBoundingClientRect();
-  const touch = e.touches ? e.touches[0] : null;
+function roundRect(x, y, w, h, r, fill, dashed) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  if (dashed) {
+    ctx.strokeStyle = typeof fill === 'string' ? fill : '#ccc';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(200,200,200,0.08)';
+    ctx.fill();
+  } else {
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+  ctx.setLineDash([]);
+}
+
+/* ---------- 平面镜绘制 ---------- */
+function drawMirror() {
+  const mH = H * 0.6;
+  const mTop = baseY - mH - 10;
+
+  // 镜面主体
+  const grad = ctx.createLinearGradient(mirrorX - 4, 0, mirrorX + 4, 0);
+  grad.addColorStop(0, '#a8d8ea');
+  grad.addColorStop(0.5, '#e8f4f8');
+  grad.addColorStop(1, '#a8d8ea');
+  ctx.fillStyle = grad;
+  ctx.fillRect(mirrorX - 4, mTop, 8, mH);
+
+  // 反光条纹
+  for (let i = 0; i < mH; i += 12) {
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(mirrorX - 3, mTop + i, 6, 6);
+  }
+
+  // 镜面边框高光
+  ctx.strokeStyle = '#c0e0f0';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mirrorX - 4, mTop, 8, mH);
+
+  // 背面斜线（表示镜面背面）
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(mirrorX + 4, mTop, 10, mH);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(160,190,210,0.4)';
+  ctx.lineWidth = 1;
+  for (let i = -mH; i < mH + 20; i += 8) {
+    ctx.beginPath();
+    ctx.moveTo(mirrorX + 4, mTop + i);
+    ctx.lineTo(mirrorX + 14, mTop + i - 14);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 标签
+  ctx.fillStyle = '#a0c8e0';
+  ctx.font = '13px PingFang SC, Microsoft YaHei, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('平面镜', mirrorX, mTop - 10);
+}
+
+/* ---------- 距离标注 ---------- */
+function drawDistance() {
+  const dist = mirrorX - candle.x;
+  const imgX = mirrorX + dist;
+  const arrowY = baseY + 30;
+
+  // 物距线
+  drawDimLine(candle.x, arrowY, mirrorX, arrowY, '#f0c040', `物距 u = ${(dist / SCALE).toFixed(1)} cm`);
+  // 像距线
+  drawDimLine(mirrorX, arrowY, imgX, arrowY, '#60d0a0', `像距 v = ${(dist / SCALE).toFixed(1)} cm`);
+
+  // 更新顶部数值
+  const cm = (dist / SCALE).toFixed(1);
+  document.getElementById('val-u').textContent = cm;
+  document.getElementById('val-v').textContent = cm;
+}
+
+function drawDimLine(x1, y1, x2, y2, color, label) {
+  const arrowSize = 6;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.2;
+
+  // 线段
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  // 左箭头
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 + arrowSize, y1 - arrowSize/2);
+  ctx.lineTo(x1 + arrowSize, y1 + arrowSize/2);
+  ctx.fill();
+  // 右箭头
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - arrowSize, y2 - arrowSize/2);
+  ctx.lineTo(x2 - arrowSize, y2 + arrowSize/2);
+  ctx.fill();
+
+  // 标注文字
+  ctx.font = '13px PingFang SC, Microsoft YaHei, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, (x1 + x2) / 2, y1 - 6);
+  ctx.restore();
+}
+
+/* ---------- 辅助线（像物连线） ---------- */
+function drawHelperLines() {
+  const dist = mirrorX - candle.x;
+  const imgX = mirrorX + dist;
+  const candleTop = baseY - 8 - candle.h - 8 - flame.h;
+  const imgTop = candleTop;
+
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+
+  // 物到像的连线
+  ctx.beginPath();
+  ctx.moveTo(candle.x, candleTop);
+  ctx.lineTo(imgX, imgTop);
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/* ---------- 地面 / 光具座 ---------- */
+function drawBase() {
+  // 光具座
+  const grad = ctx.createLinearGradient(0, baseY, 0, baseY + 6);
+  grad.addColorStop(0, '#4a4a6a');
+  grad.addColorStop(1, '#3a3a5a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(20, baseY, W - 40, 6);
+
+  // 刻度
+  ctx.fillStyle = '#555';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  for (let x = 30; x < W - 30; x += 25) {
+    const cm = Math.abs(((x - mirrorX) / SCALE)).toFixed(0);
+    ctx.fillRect(x, baseY + 6, 1, 5);
+    if (x % 50 === 0 % 50 && Math.abs(x - mirrorX) > 10) {
+      ctx.fillText(cm, x, baseY + 20);
+    }
+  }
+
+  // 零点
+  ctx.fillStyle = '#a0c8e0';
+  ctx.fillText('0', mirrorX, baseY + 20);
+}
+
+/* ---------- 标注文字 ---------- */
+function drawLabels() {
+  const dist = mirrorX - candle.x;
+  const imgX = mirrorX + dist;
+
+  ctx.save();
+  ctx.font = '14px PingFang SC, Microsoft YaHei, sans-serif';
+  ctx.textAlign = 'center';
+
+  // 物
+  ctx.fillStyle = '#FFF8DC';
+  ctx.fillText('物（蜡烛）', candle.x, baseY + 50);
+
+  // 虚像
+  ctx.fillStyle = 'rgba(200,200,255,0.7)';
+  ctx.fillText('虚像', imgX, baseY + 50);
+
+  // 虚像说明
+  ctx.font = '12px PingFang SC, Microsoft YaHei, sans-serif';
+  ctx.fillStyle = 'rgba(180,180,220,0.5)';
+  ctx.fillText('（等大 · 等距 · 虚像）', imgX, baseY + 68);
+
+  ctx.restore();
+}
+
+/* ---------- 主绘制 ---------- */
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // 背景网格
+  ctx.strokeStyle = 'rgba(100,120,160,0.06)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  drawBase();
+  drawHelperLines();
+  drawMirror();
+
+  // 虚像（先画，在镜后）
+  const dist = mirrorX - candle.x;
+  const imgX = mirrorX + dist;
+  drawCandle(imgX, baseY, 0.45, true);
+
+  // 实物
+  drawCandle(candle.x, baseY, 1, false);
+
+  drawDistance();
+  drawLabels();
+}
+
+/* ---------- 拖拽交互 ---------- */
+function getCandleBounds() {
+  const totalH = 8 + candle.h + 8 + flame.h;
   return {
-    x: (touch ? touch.clientX : e.clientX) - r.left,
-    y: (touch ? touch.clientY : e.clientY) - r.top,
+    left: candle.x - candle.w/2 - 20,
+    right: candle.x + candle.w/2 + 20,
+    top: baseY - totalH - 10,
+    bottom: baseY
   };
 }
 
-// ========================
-// Drawing
-// ========================
-function startDraw(e) {
-  e.preventDefault();
-  if (state.shareSelecting) return;
-  state.isDrawing = true;
-  const pos = getPos(e);
-  state.lastX = pos.x;
-  state.lastY = pos.y;
-  if (state.tool === "line" || state.tool === "rect" || state.tool === "circle") {
-    state.shapeStart = pos;
-  }
-  if (state.tool === "text") {
-    const text = prompt("输入文字:");
-    if (text) {
-      ctx.font = state.brushSize * 5 + "px sans-serif";
-      ctx.fillStyle = state.color;
-      ctx.fillText(text, pos.x, pos.y);
-      saveState();
-    }
-    state.isDrawing = false;
-  }
+function isInsideCandle(px, py) {
+  if (px >= mirrorX - 10) return false; // 不能拖到镜面右边
+  const b = getCandleBounds();
+  return px >= b.left && px <= b.right && py >= b.top && py <= b.bottom;
 }
 
-function draw(e) {
-  if (!state.isDrawing || state.shareSelecting) return;
-  e.preventDefault();
-  const pos = getPos(e);
-  if (state.tool === "pen") {
-    ctx.beginPath();
-    ctx.moveTo(state.lastX, state.lastY);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = state.color;
-    ctx.lineWidth = state.brushSize;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.stroke();
-    state.lastX = pos.x;
-    state.lastY = pos.y;
-  } else if (state.tool === "eraser") {
-    ctx.beginPath();
-    ctx.moveTo(state.lastX, state.lastY);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = "#fafafa";
-    ctx.lineWidth = state.brushSize * 3;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.stroke();
-    state.lastX = pos.x;
-    state.lastY = pos.y;
-  } else if (state.shapeStart) {
-    redrawCanvas();
-    ctx.strokeStyle = state.color;
-    ctx.lineWidth = state.brushSize;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    if (state.tool === "line") {
-      ctx.beginPath();
-      ctx.moveTo(state.shapeStart.x, state.shapeStart.y);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-    } else if (state.tool === "rect") {
-      ctx.strokeRect(
-        state.shapeStart.x, state.shapeStart.y,
-        pos.x - state.shapeStart.x, pos.y - state.shapeStart.y
-      );
-    } else if (state.tool === "circle") {
-      const rx = Math.abs(pos.x - state.shapeStart.x);
-      const ry = Math.abs(pos.y - state.shapeStart.y);
-      ctx.beginPath();
-      ctx.ellipse(
-        state.shapeStart.x + (pos.x > state.shapeStart.x ? rx / 2 : -rx / 2),
-        state.shapeStart.y + (pos.y > state.shapeStart.y ? ry / 2 : -ry / 2),
-        rx / 2, ry / 2, 0, 0, Math.PI * 2
-      );
-      ctx.stroke();
-    }
-  }
-}
-
-function endDraw() {
-  if (!state.isDrawing) return;
-  state.isDrawing = false;
-  if (state.shapeStart) {
-    state.shapeStart = null;
-  }
-  saveState();
-}
-
-canvas.addEventListener("mousedown", startDraw);
-canvas.addEventListener("mousemove", draw);
-canvas.addEventListener("mouseup", endDraw);
-canvas.addEventListener("mouseleave", endDraw);
-canvas.addEventListener("touchstart", startDraw, { passive: false });
-canvas.addEventListener("touchmove", draw, { passive: false });
-canvas.addEventListener("touchend", endDraw);
-
-// ========================
-// Toolbar
-// ========================
-const toolBtns = ["toolPen", "toolEraser", "toolLine", "toolRect", "toolCircle", "toolText"];
-toolBtns.forEach(id => {
-  document.getElementById(id).addEventListener("click", () => {
-    state.tool = id.replace("tool", "").toLowerCase();
-    toolBtns.forEach(b => document.getElementById(b).classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-  });
-});
-
-document.getElementById("colorPicker").addEventListener("input", e => {
-  state.color = e.target.value;
-  document.getElementById("colorPreview").style.background = e.target.value;
-});
-document.getElementById("brushSize").addEventListener("input", e => {
-  state.brushSize = parseInt(e.target.value);
-});
-document.getElementById("btnUndo").addEventListener("click", () => {
-  if (state.historyIndex > 0) {
-    state.historyIndex--;
-    redrawCanvas();
-  }
-});
-document.getElementById("btnClear").addEventListener("click", () => {
-  if (confirm("确定清空白板？")) {
-    ctx.fillStyle = "#fafafa";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    saveState();
+cv.addEventListener('pointerdown', e => {
+  const rect = cv.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  if (isInsideCandle(px, py)) {
+    candle.dragging = true;
+    candle.offsetX = px - candle.x;
+    cv.style.cursor = 'grabbing';
+    cv.setPointerCapture(e.pointerId);
   }
 });
 
-// ========================
-// Recording
-// ========================
-const btnRecord = document.getElementById("btnRecord");
-const recDot = document.getElementById("recDot");
-const recTime = document.getElementById("recTime");
-let recTimer;
+cv.addEventListener('pointermove', e => {
+  const rect = cv.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
 
-btnRecord.addEventListener("click", () => {
-  state.recording = !state.recording;
-  if (state.recording) {
-    btnRecord.classList.add("recording");
-    btnRecord.textContent = "\u25a0 停止录制";
-    recDot.classList.add("active");
-    recTime.classList.add("active");
-    state.recStartTime = Date.now();
-    recTimer = setInterval(() => {
-      const s = Math.floor((Date.now() - state.recStartTime) / 1000);
-      const m = String(Math.floor(s / 60)).padStart(2, "0");
-      const sec = String(s % 60).padStart(2, "0");
-      recTime.textContent = m + ":" + sec;
-    }, 1000);
+  if (candle.dragging) {
+    const minX = 40;
+    const maxX = mirrorX - 30;
+    candle.x = Math.max(minX, Math.min(maxX, px - candle.offsetX));
+    draw();
   } else {
-    btnRecord.classList.remove("recording");
-    btnRecord.textContent = "\u25cf 录制";
-    recDot.classList.remove("active");
-    recTime.classList.remove("active");
-    clearInterval(recTimer);
-    recTime.textContent = "00:00";
+    cv.style.cursor = isInsideCandle(px, py) ? 'grab' : 'default';
   }
 });
 
-// ========================
-// Screen Share Selection
-// ========================
-const btnShare = document.getElementById("btnShare");
-const shareOverlay = document.getElementById("shareOverlay");
-const selectHint = document.getElementById("selectHint");
-
-function getCanvasPos(e) {
-  const r = canvas.parentElement.getBoundingClientRect();
-  const touch = e.touches ? e.touches[0] : null;
-  return {
-    x: (touch ? touch.clientX : e.clientX) - r.left,
-    y: (touch ? touch.clientY : e.clientY) - r.top,
-  };
-}
-
-function startSelection(e) {
-  if (!state.shareSelecting) return;
-  e.preventDefault();
-  const pos = getCanvasPos(e);
-  state.selecting = true;
-  state.selectionRect.x1 = pos.x;
-  state.selectionRect.y1 = pos.y;
-  state.selectionRect.x2 = pos.x;
-  state.selectionRect.y2 = pos.y;
-  updateSelectionBox();
-}
-
-function moveSelection(e) {
-  if (!state.selecting || !state.shareSelecting) return;
-  e.preventDefault();
-  const pos = getCanvasPos(e);
-  state.selectionRect.x2 = pos.x;
-  state.selectionRect.y2 = pos.y;
-  updateSelectionBox();
-}
-
-function updateSelectionBox() {
-  const r = state.selectionRect;
-  const left = Math.min(r.x1, r.x2);
-  const top = Math.min(r.y1, r.y2);
-  const w = Math.abs(r.x2 - r.x1);
-  const h = Math.abs(r.y2 - r.y1);
-  shareOverlay.style.left = left + "px";
-  shareOverlay.style.top = top + "px";
-  shareOverlay.style.width = w + "px";
-  shareOverlay.style.height = h + "px";
-  shareOverlay.classList.add("active");
-}
-
-function endSelection() {
-  if (!state.selecting) return;
-  state.selecting = false;
-  // Auto confirm if selection is large enough
-  const w = Math.abs(state.selectionRect.x2 - state.selectionRect.x1);
-  const h = Math.abs(state.selectionRect.y2 - state.selectionRect.y1);
-  if (w > 20 && h > 20) {
-    confirmShare();
-  } else {
-    cancelShare();
-  }
-}
-
-function confirmShare() {
-  state.shareRect = { ...state.selectionRect };
-  const left = Math.min(state.shareRect.x1, state.shareRect.x2);
-  const top = Math.min(state.shareRect.y1, state.shareRect.y2);
-  const w = Math.abs(state.shareRect.x2 - state.shareRect.x1);
-  const h = Math.abs(state.shareRect.y2 - state.shareRect.y1);
-  shareOverlay.style.left = left + "px";
-  shareOverlay.style.top = top + "px";
-  shareOverlay.style.width = w + "px";
-  shareOverlay.style.height = h + "px";
-  shareOverlay.classList.add("active");
-  selectHint.classList.remove("active");
-  document.getElementById("shareHintBar").style.display = "block";
-  btnShare.textContent = "\u25cf 停止共享";
-  // Mark a participant as sharing
-  state.participants[0].sharing = true;
-  renderParticipants();
-  addChatMessage("系统", false, "\ud83d\udcf8 张老师 开始共享屏幕区域");
-}
-
-function cancelShare() {
-  state.shareSelecting = false;
-  state.selecting = false;
-  shareOverlay.classList.remove("active");
-  selectHint.classList.remove("active");
-  document.getElementById("shareHintBar").style.display = "none";
-  btnShare.textContent = "\ud83d\udcf8 共享区域";
-  state.participants[0].sharing = false;
-  renderParticipants();
-}
-
-btnShare.addEventListener("click", () => {
-  if (state.shareSelecting || state.shareRect) {
-    cancelShare();
-    return;
-  }
-  state.shareSelecting = true;
-  selectHint.classList.add("active");
-  addChatMessage("系统", false, "\u23f0 请在白板上拖动选择要共享的区域...");
+cv.addEventListener('pointerup', () => {
+  candle.dragging = false;
+  cv.style.cursor = 'default';
 });
 
-canvas.parentElement.addEventListener("mousedown", startSelection);
-canvas.parentElement.addEventListener("mousemove", moveSelection);
-canvas.parentElement.addEventListener("mouseup", endSelection);
-canvas.parentElement.addEventListener("touchstart", startSelection, { passive: false });
-canvas.parentElement.addEventListener("touchmove", moveSelection, { passive: false });
-canvas.parentElement.addEventListener("touchend", endSelection);
-
-// ========================
-// Participants
-// ========================
-function renderParticipants() {
-  const list = document.getElementById("participantList");
-  list.innerHTML = state.participants.map(p => `
-    <div class="participant-item ${p.sharing ? 'active' : ''}">
-      <div class="participant-avatar" style="background:${p.color}20;color:${p.color}">
-        ${p.name[0]}
-      </div>
-      <div class="participant-info">
-        <div class="participant-name">${p.name}</div>
-        <div class="participant-role">${p.role} ${!p.online ? '(离线)' : ''}</div>
-      </div>
-      <div class="participant-status ${p.sharing ? 'sharing' : ''}">
-        ${p.sharing ? '共享中' : (p.online ? '在线' : '离线')}
-      </div>
-    </div>
-  `).join("");
-  document.querySelector(".sidebar-header").textContent =
-    `\ud83d\udc65 参与者 (${state.participants.filter(p => p.online).length}/${state.participants.length})`;
-}
-renderParticipants();
-
-// ========================
-// Chat
-// ========================
-const EMOJIS = ["\ud83d\ude00","\ud83d\ude03","\ud83d\ude04","\ud83d\ude09","\ud83d\ude0a","\ud83d\ude02","\ud83d\ude06",
-  "\ud83d\udc4d","\ud83d\udc4e","\ud83d\udc40","\ud83d\udc4f","\ud83d\udcaa","\ud83d\ude80","\u2728","\ud83c\udf89","\ud83d\udc68",
-  "\ud83d\udc69","\ud83d\ude4f","\ud83d\udeab","\ud83d\udc95","\ud83d\udc96","\ud83d\ude31","\ud83d\ude2d","\ud83d\ude22",
-  "\u2705","\u274c","\u2753","\u2757","\u203c","\ud83d\udca1","\u2600","\u2601","\u26c5","\u26a1",
-  "\ud83c\udf1f","\ud83c\udf08","\ud83d\udc83","\ud83c\udf93","\ud83d\udcdc","\u2709","\ud83d\udce7","\ud83d\udcf1"];
-
-function renderEmojiBar() {
-  document.getElementById("emojiBar").innerHTML = EMOJIS.map(e =>
-    `<button data-emoji="${e}">${e}</button>`
-  ).join("");
-}
-renderEmojiBar();
-
-document.getElementById("emojiBar").addEventListener("click", e => {
-  const btn = e.target.closest("button[data-emoji]");
-  if (!btn) return;
-  const ta = document.getElementById("chatInput");
-  ta.value += btn.dataset.emoji;
-  ta.focus();
-});
-
-function renderChat() {
-  const el = document.getElementById("chatMessages");
-  el.innerHTML = state.chatMessages.map(m => `
-    <div class="chat-msg ${m.self ? 'self' : 'other'}">
-      ${!m.self ? `<div class="msg-author">${m.author}</div>` : ""}
-      <div>${m.text}</div>
-      <div class="msg-time">${m.time}</div>
-    </div>
-  `).join("");
-  el.scrollTop = el.scrollHeight;
-}
-renderChat();
-
-function addChatMessage(author, self, text) {
-  const now = new Date();
-  const time = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
-  state.chatMessages.push({ id: Date.now(), author, self, text, time });
-  renderChat();
+/* ---------- 火焰动画 ---------- */
+function animate() {
+  draw();
+  requestAnimationFrame(animate);
 }
 
-document.getElementById("btnSend").addEventListener("click", sendMessage);
-document.getElementById("chatInput").addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
-
-function sendMessage() {
-  const ta = document.getElementById("chatInput");
-  const text = ta.value.trim();
-  if (!text) return;
-  addChatMessage("王芳", true, text);
-  ta.value = "";
-  ta.style.height = "auto";
-  // Simulate a reply after 1-3s
-  if (Math.random() > 0.5) {
-    setTimeout(() => {
-      const replies = ["收到！", "好的~", "明白了", "这个问题很好！", "\ud83d\udc4d", "继续！", "不错"];
-      const author = state.participants.filter(p => p.online && p.name !== "王芳")
-        .sort(() => Math.random() - 0.5)[0]?.name || "张老师";
-      addChatMessage(author, false, replies[Math.floor(Math.random() * replies.length)]);
-    }, 1000 + Math.random() * 2000);
-  }
-}
-
-// Auto-resize textarea
-document.getElementById("chatInput").addEventListener("input", e => {
-  e.target.style.height = "auto";
-  e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
-});
-
-// ========================
-// Mobile
-// ========================
-document.getElementById("sidebarToggle").addEventListener("click", () => {
-  document.getElementById("sidebar").classList.toggle("open");
-  document.getElementById("chatPanel").classList.remove("open");
-  document.getElementById("sidebar").classList.toggle("open");
-});
-
-document.getElementById("mobileTabBar").addEventListener("click", e => {
-  const btn = e.target.closest("button[data-tab]");
-  if (!btn) return;
-  document.querySelectorAll("#mobileTabBar button").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-  const tab = btn.dataset.tab;
-  document.getElementById("sidebar").classList.toggle("open", tab === "participants");
-  document.getElementById("chatPanel").classList.toggle("open", tab === "chat");
-  if (tab === "whiteboard") {
-    document.getElementById("sidebar").classList.remove("open");
-    document.getElementById("chatPanel").classList.remove("open");
-  }
-});
-
-// ========================
-// Init
-// ========================
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-saveState(); // save initial blank state
+/* ---------- 启动 ---------- */
+window.addEventListener('resize', resize);
+resize();
+animate();
 </script>
 </body>
 </html>
