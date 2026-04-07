@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多步骤引导表单</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="form-container">
+    <!-- 进度条 -->
+    <div class="progress-bar">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="step-indicators" id="stepIndicators"></div>
+    </div>
+
+    <!-- 表单主体 -->
+    <form id="multiStepForm" novalidate>
+      <!-- 步骤1: 基本信息 -->
+      <div class="step active" data-step="1">
+        <div class="step-header">
+          <h2>基本信息</h2>
+          <p>请填写您的基本联系信息</p>
+        </div>
+        <div class="form-group">
+          <label for="fullName">姓名 <span class="required">*</span></label>
+          <input type="text" id="fullName" name="fullName" placeholder="请输入您的姓名" data-validate="required|minLength:2|maxLength:50">
+          <span class="error-message" id="fullName-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="email">电子邮箱 <span class="required">*</span></label>
+          <input type="email" id="email" name="email" placeholder="example@domain.com" data-validate="required|email">
+          <span class="error-message" id="email-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="phone">手机号码 <span class="required">*</span></label>
+          <input type="tel" id="phone" name="phone" placeholder="请输入11位手机号" data-validate="required|phone">
+          <span class="error-message" id="phone-error"></span>
+        </div>
+      </div>
+
+      <!-- 步骤2: 详细信息 -->
+      <div class="step" data-step="2">
+        <div class="step-header">
+          <h2>详细信息</h2>
+          <p>告诉我们更多关于您的情况</p>
+        </div>
+        <div class="form-group">
+          <label for="occupation">职业 <span class="required">*</span></label>
+          <select id="occupation" name="occupation" data-validate="required" data-conditional-trigger="occupation">
+            <option value="">请选择您的职业</option>
+            <option value="engineer">工程师</option>
+            <option value="designer">设计师</option>
+            <option value="product">产品经理</option>
+            <option value="marketing">市场营销</option>
+            <option value="student">学生</option>
+            <option value="other">其他</option>
+          </select>
+          <span class="error-message" id="occupation-error"></span>
+        </div>
+        <div class="form-group conditional-field" data-condition="occupation=other">
+          <label for="occupationOther">请具体说明您的职业 <span class="required">*</span></label>
+          <input type="text" id="occupationOther" name="occupationOther" placeholder="请输入您的职业" data-validate="required|minLength:2" data-conditional="true">
+          <span class="error-message" id="occupationOther-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="company">公司/学校 <span class="required">*</span></label>
+          <input type="text" id="company" name="company" placeholder="请输入您所在的公司或学校" data-validate="required|minLength:2">
+          <span class="error-message" id="company-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="experience">工作经验（年）</label>
+          <select id="experience" name="experience" data-conditional-trigger="experience">
+            <option value="">请选择</option>
+            <option value="0-1">0-1年</option>
+            <option value="1-3">1-3年</option>
+            <option value="3-5">3-5年</option>
+            <option value="5-10">5-10年</option>
+            <option value="10+">10年以上</option>
+            <option value="student_experience">在校学生</option>
+          </select>
+          <span class="error-message" id="experience-error"></span>
+        </div>
+        <div class="form-group conditional-field" data-condition="experience=student_experience">
+          <label for="graduationYear">预计毕业年份 <span class="required">*</span></label>
+          <input type="number" id="graduationYear" name="graduationYear" placeholder="例如：2027" data-validate="required|graduationYear" data-conditional="true">
+          <span class="error-message" id="graduationYear-error"></span>
+        </div>
+      </div>
+
+      <!-- 步骤3: 偏好与上传 -->
+      <div class="step" data-step="3">
+        <div class="step-header">
+          <h2>偏好与上传</h2>
+          <p>设置您的偏好并上传头像</p>
+        </div>
+        <div class="form-group">
+          <label for="interests">感兴趣的领域 <span class="required">*</span></label>
+          <select id="interests" name="interests" data-validate="required" data-conditional-trigger="interests">
+            <option value="">请选择</option>
+            <option value="frontend">前端开发</option>
+            <option value="backend">后端开发</option>
+            <option value="mobile">移动开发</option>
+            <option value="ai">人工智能</option>
+            <option value="data">数据科学</option>
+            <option value="other_interest">其他</option>
+          </select>
+          <span class="error-message" id="interests-error"></span>
+        </div>
+        <div class="form-group conditional-field" data-condition="interests=other_interest">
+          <label for="interestsOther">请具体说明您感兴趣的领域 <span class="required">*</span></label>
+          <input type="text" id="interestsOther" name="interestsOther" placeholder="请输入您感兴趣的领域" data-validate="required|minLength:2" data-conditional="true">
+          <span class="error-message" id="interestsOther-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="bio">个人简介 <span class="required">*</span></label>
+          <textarea id="bio" name="bio" rows="4" placeholder="请简要介绍您自己（20-500字）" data-validate="required|minLength:20|maxLength:500"></textarea>
+          <div class="char-count"><span id="bioCount">0</span>/500</div>
+          <span class="error-message" id="bio-error"></span>
+        </div>
+        <div class="form-group">
+          <label>上传头像（支持 JPG、PNG，最大 5MB）</label>
+          <div class="file-upload" id="fileUpload">
+            <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png" hidden>
+            <div class="upload-area" id="uploadArea">
+              <div class="upload-placeholder" id="uploadPlaceholder">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p>点击或拖拽图片到此处</p>
+                <span class="upload-hint">JPG、PNG 格式，不超过 5MB</span>
+              </div>
+              <div class="image-preview" id="imagePreview" style="display:none;">
+                <img id="previewImg" alt="预览">
+                <button type="button" class="remove-image" id="removeImage" aria-label="移除图片">&times;</button>
+              </div>
+            </div>
+          </div>
+          <span class="error-message" id="avatar-error"></span>
+        </div>
+      </div>
+
+      <!-- 步骤4: 确认 -->
+      <div class="step" data-step="4">
+        <div class="step-header">
+          <h2>确认信息</h2>
+          <p>请仔细核对您填写的信息</p>
+        </div>
+        <div class="summary" id="summary"></div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="agreeTerms" name="agreeTerms" data-validate="checked">
+            <span class="checkmark"></span>
+            我确认以上信息真实有效，并同意相关条款 <span class="required">*</span>
+          </label>
+          <span class="error-message" id="agreeTerms-error"></span>
+        </div>
+      </div>
+    </form>
+
+    <!-- 导航按钮 -->
+    <div class="form-navigation">
+      <button type="button" class="btn btn-secondary" id="prevBtn" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        上一步
+      </button>
+      <div class="nav-spacer"></div>
+      <button type="button" class="btn btn-primary" id="nextBtn">
+        下一步
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 6 15 12 9 18"/>
+        </svg>
+      </button>
+      <button type="button" class="btn btn-success" id="submitBtn" style="display:none;">
+        提交
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 成功弹窗 -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal">
+      <div class="modal-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <h3>提交成功！</h3>
+      <p>您的信息已保存，感谢您的填写。</p>
+      <button type="button" class="btn btn-primary" id="resetBtn">重新填写</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
