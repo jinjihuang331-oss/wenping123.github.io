@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音乐音频可视化</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --text: #e0e0e0;
+    --accent: #7c3aed;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ===== Top Bar ===== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .file-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px dashed rgba(255,255,255,0.25);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .file-label:hover { border-color: var(--accent); background: rgba(124,58,237,0.08); }
+  .file-label.playing { border-style: solid; border-color: var(--accent); }
+  #fileInput { display: none; }
+
+  .file-name {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: #999;
+  }
+
+  .style-group {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .style-btn {
+    padding: 7px 18px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .style-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .style-btn:hover:not(.active) { color: #ccc; }
+
+  .spacer { flex: 1; }
+
+  .vol-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #666;
+  }
+  .vol-bar {
+    width: 60px;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .vol-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+    border-radius: 2px;
+    transition: width 0.08s;
+  }
+
+  .play-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s;
+  }
+  .play-btn:hover { transform: scale(1.08); }
+  .play-btn:active { transform: scale(0.95); }
+
+  /* ===== Canvas ===== */
+  #canvas {
+    flex: 1;
+    width: 100%;
+    display: block;
+    cursor: default;
+  }
+
+  /* ===== Drop hint ===== */
+  .drop-hint {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,15,0.85);
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .drop-hint.show { opacity: 1; }
+  .drop-hint-inner {
+    padding: 48px 72px;
+    border: 2px dashed rgba(255,255,255,0.3);
+    border-radius: 16px;
+    font-size: 20px;
+    color: #ccc;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">♪ AudioViz</span>
+
+  <label class="file-label" id="fileLabel" for="fileInput">
+    <span>📁</span> 选择音频
+  </label>
+  <input type="file" id="fileInput" accept="audio/*">
+  <span class="file-name" id="fileName"></span>
+
+  <div class="style-group" id="styleGroup">
+    <button class="style-btn active" data-style="ring">环形</button>
+    <button class="style-btn" data-style="wave">波浪</button>
+    <button class="style-btn" data-style="particle">粒子雨</button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="vol-indicator">
+    <span>VOL</span>
+    <div class="vol-bar"><div class="vol-bar-fill" id="volFill" style="width:0%"></div></div>
+  </div>
+
+  <button class="play-btn" id="playBtn" disabled>▶</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div class="drop-hint" id="dropHint">
+  <div class="drop-hint-inner">释放文件以播放</div>
+</div>
+
+<script>
+// ============================================================
+//  Audio Engine
+// ============================================================
+const fileInput   = document.getElementById('fileInput');
+const fileLabel   = document.getElementById('fileLabel');
+const fileNameEl  = document.getElementById('fileName');
+const playBtn     = document.getElementById('playBtn');
+const volFill     = document.getElementById('volFill');
+const styleGroup  = document.getElementById('styleGroup');
+const canvas      = document.getElementById('canvas');
+const ctx         = canvas.getContext('2d');
+const dropHint    = document.getElementById('dropHint');
+
+let audioCtx      = null;
+let analyser      = null;
+let source        = null;
+let audioBuffer   = null;
+let isPlaying     = false;
+let startTime     = 0;
+let pausedAt      = 0;
+let animId        = null;
+let currentStyle  = 'ring';
+
+// Frequency data
+const FFT_SIZE = 512;
+let freqData   = null;
+let timeData   = null;
+let smoothedVol = 0;
+
+// ============================================================
+//  File Handling
+// ============================================================
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  await loadAudio(file);
+});
+
+// Drag & drop
+document.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropHint.classList.add('show');
+});
+document.addEventListener('dragleave', (e) => {
+  if (e.relatedTarget === null) dropHint.classList.remove('show');
+});
+document.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dropHint.classList.remove('show');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('audio/')) {
+    await loadAudio(file);
+  }
+});
+
+async function loadAudio(file) {
+  // Clean up previous
+  stopPlayback();
+
+  const arrayBuffer = await file.arrayBuffer();
+
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = FFT_SIZE;
+  analyser.smoothingTimeConstant = 0.75;
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  timeData = new Uint8Array(analyser.frequencyBinCount);
+
+  fileNameEl.textContent = file.name;
+  fileLabel.classList.add('playing');
+  playBtn.disabled = false;
+
+  // Auto-play
+  startPlayback();
+}
+
+// ============================================================
+//  Playback Control
+// ============================================================
+playBtn.addEventListener('click', () => {
+  if (isPlaying) {
+    pausePlayback();
+  } else {
+    startPlayback();
+  }
+});
+
+function startPlayback() {
+  if (!audioBuffer) return;
+
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  source = audioCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  source.start(0, pausedAt);
+  startTime = audioCtx.currentTime - pausedAt;
+  isPlaying = true;
+  playBtn.textContent = '⏸';
+
+  animate();
+}
+
+function pausePlayback() {
+  if (!source || !isPlaying) return;
+  pausedAt = audioCtx.currentTime - startTime;
+  source.stop();
+  source.disconnect();
+  source = null;
+  isPlaying = false;
+  playBtn.textContent = '▶';
+  cancelAnimationFrame(animId);
+}
+
+function stopPlayback() {
+  if (source) {
+    try { source.stop(); } catch (_) {}
+    try { source.disconnect(); } catch (_) {}
+    source = null;
+  }
+  isPlaying = false;
+  pausedAt = 0;
+  playBtn.textContent = '▶';
+  playBtn.disabled = true;
+  fileLabel.classList.remove('playing');
+  cancelAnimationFrame(animId);
+}
+
+// ============================================================
+//  Style Switching
+// ============================================================
+styleGroup.addEventListener('click', (e) => {
+  const btn = e.target.closest('.style-btn');
+  if (!btn) return;
+  currentStyle = btn.dataset.style;
+  styleGroup.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+});
+
+// ============================================================
+//  Resize
+// ============================================================
+function resize() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ============================================================
+//  Animation Loop
+// ============================================================
+function animate() {
+  animId = requestAnimationFrame(animate);
+
+  if (!analyser) return;
+
+  analyser.getByteFrequencyData(freqData);
+  analyser.getByteTimeDomainData(timeData);
+
+  // Compute average volume (0–1)
+  let sum = 0;
+  for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+  const rawVol = sum / freqData.length / 255;
+  smoothedVol += (rawVol - smoothedVol) * 0.15;
+
+  // Update volume indicator
+  volFill.style.width = (smoothedVol * 100).toFixed(0) + '%';
+
+  // Clear
+  const W = canvas.clientWidth;
+  const H = canvas.clientHeight;
+  ctx.clearRect(0, 0, W, H);
+
+  // Dynamic base color
+  const hue = (Date.now() / 50 + smoothedVol * 60) % 360;
+  const lightness = 40 + smoothedVol * 40; // 40%–80%
+
+  // Dispatch to active style renderer
+  switch (currentStyle) {
+    case 'ring':  drawRing(W, H, hue, lightness); break;
+    case 'wave':  drawWave(W, H, hue, lightness); break;
+    case 'particle': drawParticles(W, H, hue, lightness); break;
+  }
+}
+
+// ============================================================
+//  1. Ring / Circular Visualization
+// ============================================================
+let ringRotation = 0;
+
+function drawRing(W, H, hue, lightness) {
+  const cx = W / 2;
+  const cy = H / 2;
+  const maxR = Math.min(W, H) * 0.38;
+  const barCount = Math.min(128, freqData.length);
+  const angleStep = (Math.PI * 2) / barCount;
+
+  ringRotation += 0.003 + smoothedVol * 0.008;
+
+  // Inner glow
+  const glowGrad = ctx.createRadialGradient(cx, cy, maxR * 0.15, cx, cy, maxR * 1.2);
+  glowGrad.addColorStop(0, `hsla(${hue}, 80%, ${lightness}%, ${0.08 + smoothedVol * 0.06})`);
+  glowGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw bars
+  for (let i = 0; i < barCount; i++) {
+    const angle = i * angleStep + ringRotation;
+    const val = freqData[i] / 255; // 0–1
+
+    // Bar length: minimum 4px, max up to maxR
+    const barLen = 4 + val * maxR * 0.75 + smoothedVol * maxR * 0.1;
+
+    const innerR = maxR * 0.22;
+    const x1 = cx + Math.cos(angle) * innerR;
+    const y1 = cy + Math.sin(angle) * innerR;
+    const x2 = cx + Math.cos(angle) * (innerR + barLen);
+    const y2 = cy + Math.sin(angle) * (innerR + barLen);
+
+    const barHue = (hue + i * 1.2) % 360;
+    const barLight = lightness + val * 20;
+    ctx.strokeStyle = `hsl(${barHue}, 75%, ${barLight}%)`;
+    ctx.lineWidth = Math.max(1.2, (W / 600) * (1 + val * 1.8));
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // Tip dot for strong amplitudes
+    if (val > 0.6) {
+      ctx.fillStyle = `hsl(${barHue}, 90%, ${barLight + 15}%)`;
+      ctx.beginPath();
+      ctx.arc(x2, y2, ctx.lineWidth * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Center circle
+  const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 0.22);
+  centerGrad.addColorStop(0, `hsla(0, 0%, 5%, 1)`);
+  centerGrad.addColorStop(1, `hsla(0, 0%, 8%, 0.9)`);
+  ctx.fillStyle = centerGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, maxR * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Center ring pulse
+  ctx.strokeStyle = `hsla(${hue}, 70%, ${lightness}%, ${0.3 + smoothedVol * 0.4})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, maxR * 0.22 + smoothedVol * 6, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// ============================================================
+//  2. Wave Visualization
+// ============================================================
+const waveHistory = []; // ring buffer of freq snapshots
+const MAX_WAVE_SNAPS = 180;
+
+function drawWave(W, H, hue, lightness) {
+  // Push current snapshot
+  const snapshot = new Float64Array(freqData.length);
+  for (let i = 0; i < freqData.length; i++) snapshot[i] = freqData[i] / 255;
+  waveHistory.push(snapshot);
+  if (waveHistory.length > MAX_WAVE_SNAPS) waveHistory.shift();
+
+  const barW = W / MAX_WAVE_SNAPS;
+  const midY = H / 2;
+
+  // Background gradient (subtle)
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, `hsla(${hue}, 40%, 8%, 0.3)`);
+  bgGrad.addColorStop(0.5, `hsla(${hue}, 30%, 4%, 0.3)`);
+  bgGrad.addColorStop(1, `hsla(${hue}, 40%, 8%, 0.3)`);
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Mirror line
+  ctx.strokeStyle = `hsla(${hue}, 30%, 30%, 0.15)`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 8]);
+  ctx.beginPath();
+  ctx.moveTo(0, midY);
+  ctx.lineTo(W, midY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  for (let t = 0; t < waveHistory.length; t++) {
+    const snap = waveHistory[t];
+    const x = t * barW + barW / 2;
+
+    // Compute average amplitude for this column
+    let amp = 0;
+    const step = Math.max(1, Math.floor(snap.length / 16));
+    for (let i = 0; i < snap.length; i += step) amp += snap[i];
+    amp /= (snap.length / step);
+
+    const halfH = amp * midY * 0.85;
+
+    // Color varies by position and amplitude
+    const colHue = (hue + t * 0.8) % 360;
+    const colLight = lightness + amp * 25;
+
+    // Draw upper bar
+    ctx.fillStyle = `hsla(${colHue}, 70%, ${colLight}%, 0.85)`;
+    ctx.fillRect(x - barW * 0.55, midY - halfH, barW * 0.55, Math.max(1, halfH));
+
+    // Draw lower bar (mirrored)
+    ctx.fillStyle = `hsla(${colHue}, 70%, ${colLight}%, 0.45)`;
+    ctx.fillRect(x - barW * 0.55, midY, barW * 0.55, Math.max(1, halfH));
+
+    // Draw upper mirrored reflection
+    ctx.fillStyle = `hsla(${colHue}, 70%, ${colLight}%, 0.2)`;
+    ctx.fillRect(x - barW * 0.55, midY, barW * 0.55, Math.max(1, halfH));
+  }
+
+  // Waveform line overlay
+  ctx.strokeStyle = `hsl(${hue}, 80%, ${lightness + 10}%)`;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = `hsl(${hue}, 90%, ${lightness + 15}%)`;
+  ctx.shadowBlur = 12 + smoothedVol * 10;
+  ctx.beginPath();
+
+  const wSamples = Math.min(waveHistory.length, 256);
+  const wStep = Math.max(1, Math.floor(timeData.length / wSamples));
+  for (let i = 0; i < wSamples; i++) {
+    const val = (timeData[i * wStep] / 128) - 1; // -1 to 1
+    const x = (i / (wSamples - 1)) * W;
+    const y = midY + val * midY * 0.75;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+// ============================================================
+//  3. Particle Rain Visualization
+// ============================================================
+let particles = [];
+
+function initParticle(x, y, freqIndex) {
+  const val = freqData[freqIndex] / 255;
+  return {
+    x: x ?? Math.random() * canvas.clientWidth,
+    y: y ?? Math.random() * -canvas.clientHeight * 0.5,
+    vx: (Math.random() - 0.5) * 1.5,
+    vy: 1.5 + val * 8 + Math.random() * 2,
+    size: 1.5 + val * 5,
+    freqIndex,
+    val,
+    life: 0.6 + Math.random() * 0.4,
+    hue: (Math.random() * 60) - 30, // offset from base hue
+  };
+}
+
+function drawParticles(W, H, hue, lightness) {
+  // Spawn new particles at top row based on frequency data
+  const spawnCount = Math.floor(4 + smoothedVol * 20);
+  for (let s = 0; s < spawnCount; s++) {
+    const fi = Math.floor(Math.random() * freqData.length);
+    const x = Math.random() * W;
+    particles.push(initParticle(x, -10, fi));
+  }
+
+  // Cap particles
+  const MAX_PARTICLES = 600;
+  if (particles.length > MAX_PARTICLES) {
+    particles.splice(0, particles.length - MAX_PARTICLES);
+  }
+
+  // Subtle vignette
+  const vignette = ctx.createRadialGradient(W/2, H/2, W*0.3, W/2, H/2, W*0.75);
+  vignette.addColorStop(0, 'transparent');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.25)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+
+  // Update & draw
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.y += p.vy;
+    p.x += p.vx + Math.sin(p.y * 0.02 + p.freqIndex) * 0.4;
+    p.life -= 0.0008;
+
+    // Remove if dead or off-screen
+    if (p.life <= 0 || p.y > H + 20 || p.x < -20 || p.x > W + 20) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    const pLight = lightness + p.val * 35;
+    const alpha = p.life * (0.5 + p.val * 0.5);
+
+    // Glow
+    ctx.fillStyle = `hsla(${hue + p.hue}, 80%, ${pLight}%, ${alpha * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core
+    ctx.fillStyle = `hsla(${hue + p.hue}, 75%, ${pLight + 10}%, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Bass impact: bright flash at bottom when volume spikes
+  if (smoothedVol > 0.55) {
+    const flashGrad = ctx.createLinearGradient(0, H - 60, 0, H);
+    const flashAlpha = (smoothedVol - 0.55) * 0.5;
+    flashGrad.addColorStop(0, 'transparent');
+    flashGrad.addColorStop(1, `hsla(${hue}, 90%, ${lightness + 20}%, ${flashAlpha})`);
+    ctx.fillStyle = flashGrad;
+    ctx.fillRect(0, H - 60, W, 60);
+  }
+}
+
+// ============================================================
+//  Keyboard Shortcuts
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  switch (e.key.toLowerCase()) {
+    case ' ':
+      e.preventDefault();
+      if (audioBuffer) {
+        isPlaying ? pausePlayback() : startPlayback();
+      }
+      break;
+    case '1': currentStyle = 'ring';    updateStyleBtns(); break;
+    case '2': currentStyle = 'wave';    updateStyleBtns(); break;
+    case '3': currentStyle = 'particle'; updateStyleBtns(); break;
+  }
+});
+
+function updateStyleBtns() {
+  styleGroup.querySelectorAll('.style-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.style === currentStyle);
+  });
+}
+</script>
+</body>
+</html>
