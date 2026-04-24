@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线问卷构建工具</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: #eef2ff;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,.1);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --transition: .2s ease;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.6;
+  min-height:100vh;
+}
+button{
+  cursor:pointer;border:none;font-family:inherit;font-size:.9rem;
+  font-weight:500;border-radius:var(--radius-sm);padding:8px 16px;
+  transition:var(--transition);display:inline-flex;align-items:center;gap:6px;
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,textarea,select{
+  font-family:inherit;font-size:.9rem;border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);padding:8px 12px;width:100%;
+  transition:var(--transition);background:var(--surface);color:var(--text);
+}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
+textarea{resize:vertical;min-height:70px}
+label{font-weight:500;font-size:.85rem;color:var(--text-secondary);display:block;margin-bottom:4px}
+
+/* Buttons */
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:var(--danger-hover)}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--bg)}
+.btn-ghost{background:transparent;color:var(--text-secondary)}
+.btn-ghost:hover{background:var(--bg);color:var(--text)}
+.btn-sm{padding:5px 10px;font-size:.8rem}
+.btn-lg{padding:12px 24px;font-size:1rem}
+.btn-icon{padding:6px;border-radius:50%;width:36px;height:36px;justify-content:center}
+
+/* App Layout */
+.app-container{max-width:1400px;margin:0 auto;padding:16px;min-height:100vh}
+.app-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;background:var(--surface);border-radius:var(--radius);
+  box-shadow:var(--shadow);margin-bottom:16px;flex-wrap:wrap;gap:12px;
+}
+.app-header h1{font-size:1.2rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.app-header h1 .icon{font-size:1.4rem}
+.header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:var(--radius-sm)}
+.tab-btn{
+  padding:6px 16px;border-radius:4px;background:transparent;
+  color:var(--text-secondary);font-size:.85rem;font-weight:500;
+}
+.tab-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+/* Builder Layout */
+.builder-layout{display:grid;grid-template-columns:280px 1fr;gap:16px;min-height:calc(100vh - 140px)}
+@media(max-width:1024px){.builder-layout{grid-template-columns:1fr}}
+@media(max-width:768px){
+  .app-header{flex-direction:column;align-items:flex-start}
+  .header-actions{width:100%}
+  .builder-layout{grid-template-columns:1fr}
+}
+
+/* Question Sidebar */
+.question-sidebar{
+  background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:calc(100vh - 160px);
+}
+@media(max-width:1024px){.question-sidebar{max-height:none}}
+.sidebar-title{font-size:.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;padding:4px 8px}
+.question-list-item{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);
+  border:1.5px solid transparent;background:var(--bg);font-size:.85rem;
+}
+.question-list-item:hover{border-color:var(--border)}
+.question-list-item.active{border-color:var(--primary);background:var(--primary-light)}
+.question-list-item .q-type{
+  font-size:.7rem;font-weight:600;text-transform:uppercase;
+  padding:2px 6px;border-radius:3px;color:#fff;flex-shrink:0;
+}
+.q-type-radio{background:#6366f1}
+.q-type-checkbox{background:#8b5cf6}
+.q-type-text{background:#06b6d4}
+.q-type-slider{background:#f59e0b}
+.question-list-item .q-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.question-list-item .q-actions{display:flex;gap:2px;opacity:0;transition:var(--transition)}
+.question-list-item:hover .q-actions{opacity:1}
+
+/* Main Editor */
+.editor-main{
+  background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:24px;overflow-y:auto;max-height:calc(100vh - 160px);
+}
+@media(max-width:1024px){.editor-main{max-height:none}}
+.editor-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;color:var(--text-muted);gap:12px;text-align:center;
+}
+.editor-empty .empty-icon{font-size:3rem;opacity:.5}
+
+/* Question Editor */
+.q-editor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.q-editor-header h3{font-size:1rem}
+.form-group{margin-bottom:16px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}}
+
+/* Options Editor */
+.options-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.option-row{display:flex;align-items:center;gap:8px}
+.option-row input{flex:1}
+.option-row .btn-icon{flex-shrink:0}
+
+/* Branch Rules */
+.branch-rules{margin-top:20px;padding-top:16px;border-top:1.5px solid var(--border)}
+.branch-rule-row{
+  display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;
+  background:var(--bg);padding:12px;border-radius:var(--radius-sm);margin-bottom:8px;
+}
+@media(max-width:600px){.branch-rule-row{grid-template-columns:1fr 1fr;gap:6px}}
+
+/* Add Question Palette */
+.add-palette{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;
+}
+@media(max-width:600px){.add-palette{grid-template-columns:repeat(2,1fr)}}
+.add-type-btn{
+  flex-direction:column;padding:12px 8px;gap:4px;font-size:.8rem;
+  background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--radius-sm);
+  color:var(--text-secondary);text-align:center;
+}
+.add-type-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+.add-type-btn .type-icon{font-size:1.3rem}
+
+/* Settings Bar */
+.settings-bar{
+  display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;
+  margin-bottom:16px;padding:16px;background:var(--bg);border-radius:var(--radius-sm);
+}
+@media(max-width:768px){.settings-bar{grid-template-columns:1fr 1fr}}
+
+/* Fill View */
+.fill-container{max-width:640px;margin:0 auto;padding:20px 0}
+.fill-card{
+  background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);
+  padding:32px;margin-bottom:20px;
+}
+@media(max-width:600px){.fill-card{padding:20px}}
+.fill-header{text-align:center;margin-bottom:24px}
+.fill-header h2{font-size:1.3rem;margin-bottom:4px}
+.fill-header p{color:var(--text-secondary);font-size:.9rem}
+
+/* Timer */
+.timer-bar{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 16px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:20px;
+}
+.timer-bar.warning{background:#fef3c7;color:#92400e}
+.timer-bar.danger{background:#fee2e2;color:#991b1b;animation:pulse 1s infinite}
+.timer-bar .time{font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.timer-bar .time-label{font-size:.8rem;color:var(--text-muted)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* Progress */
+.progress-wrapper{margin-bottom:20px}
+.progress-info{display:flex;justify-content:space-between;margin-bottom:6px;font-size:.8rem;color:var(--text-secondary)}
+.progress-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .4s ease}
+
+/* Question Card in Fill */
+.fill-question{margin-bottom:24px}
+.fill-question .q-label{font-size:1.05rem;font-weight:600;margin-bottom:12px}
+.fill-question .q-required{color:var(--danger);margin-left:2px}
+.fill-question .q-desc{font-size:.85rem;color:var(--text-secondary);margin-bottom:12px}
+
+/* Option styles for fill mode */
+.option-group{display:flex;flex-direction:column;gap:8px}
+.option-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition)}
+.option-item:hover{border-color:var(--primary);background:var(--primary-light)}
+.option-item.selected{border-color:var(--primary);background:var(--primary-light);font-weight:500}
+.option-item input[type=radio],.option-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary);flex-shrink:0}
+.option-item input[type=checkbox]{border-radius:4px}
+
+/* Slider */
+.slider-wrapper{padding:8px 0}
+.slider-wrapper input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;background:var(--border);border-radius:3px;outline:none}
+.slider-wrapper input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--primary);cursor:pointer;transition:var(--transition)}
+.slider-wrapper input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.slider-value{text-align:center;font-size:1.5rem;font-weight:700;color:var(--primary);margin-top:8px}
+.slider-range{display:flex;justify-content:space-between;font-size:.75rem;color:var(--text-muted);margin-top:4px}
+
+/* Text input */
+.text-input-wrapper textarea{width:100%;min-height:100px}
+
+/* Fill Navigation */
+.fill-nav{display:flex;justify-content:space-between;gap:12px;margin-top:24px}
+.fill-nav button{min-width:100px;justify-content:center}
+
+/* Results */
+.results-container{max-width:900px;margin:0 auto;padding:20px 0}
+.results-header{text-align:center;margin-bottom:24px}
+.results-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.summary-card{background:var(--surface);padding:16px;border-radius:var(--radius);box-shadow:var(--shadow);text-align:center}
+.summary-card .stat{font-size:1.8rem;font-weight:700;color:var(--primary)}
+.summary-card .stat-label{font-size:.8rem;color:var(--text-secondary);margin-top:4px}
+.result-question{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:16px}
+.result-question h3{font-size:1rem;margin-bottom:16px;color:var(--text)}
+.chart-wrap{position:relative;max-width:400px;margin:0 auto;height:280px}
+.chart-wrap canvas{width:100%!important;height:100%!important}
+.text-responses{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}
+.text-response-item{padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);font-size:.9rem;word-break:break-word}
+.no-responses{text-align:center;color:var(--text-muted);padding:40px 20px}
+
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:var(--radius-sm);color:#fff;font-size:.85rem;font-weight:500;box-shadow:var(--shadow-lg);animation:slideIn .3s ease;max-width:360px}
+.toast.success{background:var(--success)}
+.toast.error{background:var(--danger)}
+.toast.info{background:var(--primary)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:24px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto}
+.modal h3{margin-bottom:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+/* Review answers */
+.review-answer{padding:12px 16px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:8px}
+.review-answer .ra-q{font-weight:600;font-size:.85rem;margin-bottom:4px}
+.review-answer .ra-a{color:var(--text-secondary);font-size:.9rem}
+
+/* Landing / mode selector */
+.landing{text-align:center;padding:60px 20px;max-width:500px;margin:0 auto}
+.landing h2{font-size:1.6rem;margin-bottom:8px}
+.landing p{color:var(--text-secondary);margin-bottom:24px}
+.landing-actions{display:flex;flex-direction:column;gap:12px}
+.landing-btn{padding:16px 24px;font-size:1rem;justify-content:center;border-radius:var(--radius)}
+
+/* Welcome fill screen */
+.fill-welcome{text-align:center;padding:40px 20px}
+.fill-welcome h2{font-size:1.4rem;margin-bottom:8px}
+.fill-welcome p{color:var(--text-secondary);margin-bottom:8px}
+.fill-welcome .time-info{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--primary-light);color:var(--primary);border-radius:20px;font-weight:600;font-size:.85rem;margin:12px 0}
+
+/* Time limit input */
+.time-limit-group{display:flex;align-items:center;gap:8px}
+.time-limit-group input{width:80px;text-align:center}
+.time-limit-group span{font-size:.85rem;color:var(--text-secondary);white-space:nowrap}
+
+/* Transition */
+.view{display:none}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.view.active{animation:fadeIn .3s ease}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+</style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+  <!-- Header -->
+  <header class="app-header">
+    <h1><span class="icon">📋</span>在线问卷构建工具</h1>
+    <div class="header-actions" id="header-actions"></div>
+  </header>
+
+  <!-- Builder View -->
+  <div class="view" id="builder-view">
+    <div class="builder-layout">
+      <aside class="question-sidebar" id="question-sidebar">
+        <div class="add-palette" id="add-palette"></div>
+        <div class="sidebar-title">问题列表</div>
+        <div id="question-list"></div>
+      </aside>
+      <main class="editor-main" id="editor-main">
+        <div class="editor-empty">
+          <div class="empty-icon">📝</div>
+          <p>点击左侧按钮添加第一个问题</p>
+          <p style="font-size:.8rem;color:var(--text-muted)">支持单选、多选、文本输入、滑块四种题型</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Fill View -->
+  <div class="view" id="fill-view">
+    <div class="fill-container" id="fill-container"></div>
+  </div>
+
+  <!-- Results View -->
+  <div class="view" id="results-view">
+    <div class="results-container" id="results-container"></div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ==================== UTILS ====================
+function $(sel, ctx = document) { return ctx.querySelector(sel) }
+function $$(sel, ctx = document) { return [...ctx.querySelectorAll(sel)] }
+function uid() { return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) }
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div')
+  el.className = `toast ${type}`
+  el.textContent = msg
+  $('#toast-container').appendChild(el)
+  setTimeout(() => { el.style.animation = 'slideIn .3s ease reverse'; setTimeout(() => el.remove(), 300) }, 2500)
+}
+
+// ==================== SURVEY ENGINE ====================
+const Engine = {
+  createSurvey(title = '未命名问卷') {
+    return {
+      id: uid(),
+      title,
+      description: '',
+      timeLimit: 0,
+      questions: [],
+      createdAt: Date.now()
+    }
+  },
+
+  createQuestion(type = 'radio') {
+    const q = {
+      id: uid(),
+      type,
+      text: '',
+      required: true,
+      branching: []
+    }
+    if (type === 'radio' || type === 'checkbox') q.options = ['选项 1', '选项 2']
+    if (type === 'slider') { q.min = 0; q.max = 100; q.step = 1 }
+    return q
+  },
+
+  encodeUrl(survey) {
+    const json = JSON.stringify(survey)
+    // Use encodeURIComponent + btoa for URL-safe encoding
+    const base64 = btoa(unescape(encodeURIComponent(json)))
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  },
+
+  decodeUrl(str) {
+    try {
+      let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
+      while (base64.length % 4) base64 += '='
+      const json = decodeURIComponent(escape(atob(base64)))
+      return JSON.parse(json)
+    } catch (e) {
+      return null
+    }
+  },
+
+  saveSurvey(survey) {
+    const surveys = this.loadAllSurveys()
+    const idx = surveys.findIndex(s => s.id === survey.id)
+    if (idx >= 0) surveys[idx] = survey
+    else surveys.push(survey)
+    localStorage.setItem('sb_surveys', JSON.stringify(surveys))
+  },
+
+  loadAllSurveys() {
+    try { return JSON.parse(localStorage.getItem('sb_surveys') || '[]') } catch { return [] }
+  },
+
+  loadSurvey(id) {
+    return this.loadAllSurveys().find(s => s.id === id) || null
+  },
+
+  deleteSurvey(id) {
+    const surveys = this.loadAllSurveys().filter(s => s.id !== id)
+    localStorage.setItem('sb_surveys', JSON.stringify(surveys))
+    localStorage.removeItem(`sb_responses_${id}`)
+    localStorage.removeItem(`sb_progress_${id}`)
+  },
+
+  saveResponse(surveyId, answers) {
+    const responses = this.loadResponses(surveyId)
+    responses.push({
+      surveyId,
+      answers,
+      startedAt: Date.now(),
+      completedAt: Date.now()
+    })
+    localStorage.setItem(`sb_responses_${surveyId}`, JSON.stringify(responses))
+    // Clear progress after submission
+    localStorage.removeItem(`sb_progress_${surveyId}`)
+  },
+
+  loadResponses(surveyId) {
+    try { return JSON.parse(localStorage.getItem(`sb_responses_${surveyId}`) || '[]') } catch { return [] }
+  },
+
+  saveProgress(surveyId, progress) {
+    localStorage.setItem(`sb_progress_${surveyId}`, JSON.stringify({
+      ...progress,
+      savedAt: Date.now()
+    }))
+  },
+
+  loadProgress(surveyId) {
+    try { return JSON.parse(localStorage.getItem(`sb_progress_${surveyId}`)) } catch { return null }
+  },
+
+  clearProgress(surveyId) {
+    localStorage.removeItem(`sb_progress_${surveyId}`)
+  },
+
+  // Branch logic evaluator
+  evaluateBranches(question, answer) {
+    if (!question.branching || !question.branching.length) return null
+    for (const rule of question.branching) {
+      let match = false
+      const av = answer, rv = rule.value
+      if (Array.isArray(av)) {
+        match = av.some(v => this._compare(v, rule.condition, rv))
+      } else {
+        match = this._compare(av, rule.condition, rv)
+      }
+      if (match) return rule.targetQuestionId
+    }
+    return null
+  },
+
+  _compare(answerVal, condition, ruleVal) {
+    switch (condition) {
+      case 'eq': return String(answerVal) === String(ruleVal)
+      case 'neq': return String(answerVal) !== String(ruleVal)
+      case 'contains': return String(answerVal).toLowerCase().includes(String(ruleVal).toLowerCase())
+      case 'gt': return Number(answerVal) > Number(ruleVal)
+      case 'lt': return Number(answerVal) < Number(ruleVal)
+      default: return false
+    }
+  },
+
+  // Returns the next question ID based on branching logic, or null if end of survey
+  getNextQuestionId(survey, currentQuestionId, answers) {
+    const questions = survey.questions
+    const currentIdx = questions.findIndex(q => q.id === currentQuestionId)
+    if (currentIdx === -1) return null
+
+    const currentQ = questions[currentIdx]
+    const answer = answers[currentQ.id]
+
+    // Check branching rules
+    if (answer !== undefined && answer !== null && answer !== '') {
+      const branchTarget = this.evaluateBranches(currentQ, answer)
+      if (branchTarget) return branchTarget
+    }
+
+    // Default: go to next question in order
+    const nextIdx = currentIdx + 1
+    return nextIdx < questions.length ? questions[nextIdx].id : null
+  },
+
+  // Get ordered list of ALL question IDs that would be visible given current answers
+  // This walks the full branching tree
+  getVisibleQuestionIds(survey, answers) {
+    if (!survey.questions.length) return []
+    const visible = [survey.questions[0].id]
+    let current = survey.questions[0]
+    let currentAnswers = { ...answers }
+
+    while (current) {
+      const answer = currentAnswers[current.id]
+      let nextId = null
+      if (answer !== undefined && answer !== null && answer !== '') {
+        const branchTarget = this.evaluateBranches(current, answer)
+        if (branchTarget) {
+          nextId = branchTarget
+          if (!visible.includes(nextId)) visible.push(nextId)
+        }
+      }
+      if (!nextId) {
+        const currentIdx = survey.questions.findIndex(q => q.id === current.id)
+        const nextInOrder = survey.questions[currentIdx + 1]
+        if (nextInOrder) { nextId = nextInOrder.id; visible.push(nextId) }
+      }
+      current = survey.questions.find(q => q.id === nextId) || null
+    }
+    return visible
+  }
+}
+
+// ==================== APP STATE ====================
+let currentSurvey = null
+let currentQuestionId = null
+let fillState = null // { surveyId, answers, questionOrder, currentIdx, startTime }
+let charts = [] // Track Chart.js instances for cleanup
+
+// ==================== VIEW SWITCHING ====================
+function switchView(viewName) {
+  $$('.view').forEach(v => v.classList.remove('active'))
+  const view = document.getElementById(`${viewName}-view`)
+  if (view) view.classList.add('active')
+  // Destroy charts when leaving results view
+  if (viewName !== 'results') destroyCharts()
+}
+
+// ==================== HEADER ACTIONS ====================
+function updateHeader(viewName) {
+  const el = $('#header-actions')
+  el.innerHTML = ''
+  if (viewName === 'builder') {
+    el.innerHTML = `
+      <button class="btn-ghost btn-sm" onclick="saveCurrentSurvey()">💾 保存</button>
+      <button class="btn-outline btn-sm" onclick="generateShareLink()">🔗 生成分享链接</button>
+      <button class="btn-outline btn-sm" onclick="openFillPreview()">👁 预览</button>
+      <button class="btn-outline btn-sm" onclick="viewResults()">📊 查看结果</button>
+      <button class="btn-ghost btn-sm" onclick="resetBuilder()" style="color:var(--danger)">🗑 新建</button>
+    `
+  }
+  else if (viewName === 'fill') {
+    el.innerHTML = `
+      <button class="btn-ghost btn-sm" onclick="exitFill()">← 返回</button>
+      <span style="font-size:.85rem;color:var(--text-secondary)">📋 ${escapeHtml(currentSurvey?.title || '问卷填写')}</span>
+    `
+  }
+  else if (viewName === 'results') {
+    el.innerHTML = `
+      <button class="btn-ghost btn-sm" onclick="switchView('builder');updateHeader('builder');renderBuilder()">← 返回编辑</button>
+      <button class="btn-outline btn-sm" onclick="exportResults()">📥 导出结果</button>
+    `
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div')
+  div.textContent = str
+  return div.innerHTML
+}
+
+// ==================== BUILDER ====================
+function initBuilder() {
+  // Check for saved surveys or URL param
+  const urlParams = new URLSearchParams(window.location.search)
+  const surveyParam = urlParams.get('survey')
+
+  if (surveyParam) {
+    // Opening a shared survey for filling
+    const survey = Engine.decodeUrl(surveyParam)
+    if (survey) {
+      currentSurvey = survey
+      startFill()
+      return
+    }
+    toast('无效的问卷链接', 'error')
+  }
+
+  // Load last saved survey or create new
+  const surveys = Engine.loadAllSurveys()
+  if (surveys.length > 0) {
+    currentSurvey = surveys[surveys.length - 1]
+  } else {
+    currentSurvey = Engine.createSurvey()
+    Engine.saveSurvey(currentSurvey)
+  }
+
+  currentQuestionId = currentSurvey.questions.length > 0 ? currentSurvey.questions[0].id : null
+  switchView('builder')
+  updateHeader('builder')
+  renderBuilder()
+}
+
+function renderSidebar() {
+  const addPalette = $('#add-palette')
+  addPalette.innerHTML = `
+    <button class="add-type-btn" onclick="addQuestion('radio')">
+      <span class="type-icon">◉</span> 单选
+    </button>
+    <button class="add-type-btn" onclick="addQuestion('checkbox')">
+      <span class="type-icon">☑</span> 多选
+    </button>
+    <button class="add-type-btn" onclick="addQuestion('text')">
+      <span class="type-icon">✎</span> 文本
+    </button>
+    <button class="add-type-btn" onclick="addQuestion('slider')">
+      <span class="type-icon">⬌</span> 滑块
+    </button>
+  `
+
+  const listEl = $('#question-list')
+  if (!currentSurvey.questions.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:.85rem">暂无问题</div>'
+    return
+  }
+
+  listEl.innerHTML = currentSurvey.questions.map(q => {
+    const typeLabels = { radio: '单选', checkbox: '多选', text: '文本', slider: '滑块' }
+    const text = q.text || '(未命名问题)'
+    return `
+      <div class="question-list-item ${q.id === currentQuestionId ? 'active' : ''}" onclick="selectQuestion('${q.id}')">
+        <span class="q-type q-type-${q.type}">${typeLabels[q.type]}</span>
+        <span class="q-text">${escapeHtml(text)}</span>
+        <span class="q-actions">
+          <button class="btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();moveQuestion('${q.id}', -1)" title="上移">↑</button>
+          <button class="btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();moveQuestion('${q.id}', 1)" title="下移">↓</button>
+          <button class="btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();deleteQuestion('${q.id}')" title="删除" style="color:var(--danger)">×</button>
+        </span>
+      </div>
+    `
+  }).join('')
+}
+
+function selectQuestion(id) {
+  currentQuestionId = id
+  renderSidebar()
+  renderEditor()
+}
+
+function addQuestion(type) {
+  const q = Engine.createQuestion(type)
+  currentSurvey.questions.push(q)
+  currentQuestionId = q.id
+  Engine.saveSurvey(currentSurvey)
+  renderBuilder()
+  toast('问题已添加', 'success')
+}
+
+function deleteQuestion(id) {
+  if (!confirm('确定删除这个问题吗？相关的分支逻辑也会被清除。')) return
+  currentSurvey.questions = currentSurvey.questions.filter(q => q.id !== id)
+  // Remove branching rules pointing to this question
+  currentSurvey.questions.forEach(q => {
+    q.branching = q.branching.filter(b => b.targetQuestionId !== id)
+  })
+  currentQuestionId = currentSurvey.questions.length > 0 ? currentSurvey.questions[0].id : null
+  Engine.saveSurvey(currentSurvey)
+  renderBuilder()
+  toast('问题已删除', 'info')
+}
+
+function moveQuestion(id, direction) {
+  const idx = currentSurvey.questions.findIndex(q => q.id === id)
+  if (idx === -1) return
+  const newIdx = idx + direction
+  if (newIdx < 0 || newIdx >= currentSurvey.questions.length) return
+  const [item] = currentSurvey.questions.splice(idx, 1)
+  currentSurvey.questions.splice(newIdx, 0, item)
+  Engine.saveSurvey(currentSurvey)
+  renderBuilder()
+}
+
+function updateQuestionField(field, value) {
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+  if (!q) return
+  q[field] = value
+  autoSaveDebounced()
+}
+
+function updateQuestionNested(field, subfield, value) {
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+  if (!q) return
+  if (!q[field]) q[field] = {}
+  q[field][subfield] = value
+  autoSaveDebounced()
+}
+
+const autoSaveDebounced = debounce(() => {
+  Engine.saveSurvey(currentSurvey)
+}, 500)
+
+function saveCurrentSurvey() {
+  Engine.saveSurvey(currentSurvey)
+  toast('问卷已保存', 'success')
+}
+
+function renderEditor() {
+  const editor = $('#editor-main')
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+
+  if (!q) {
+    editor.innerHTML = `
+      <div class="editor-empty">
+        <div class="empty-icon">📝</div>
+        <p>点击左侧按钮添加第一个问题</p>
+        <p style="font-size:.8rem;color:var(--text-muted)">支持单选、多选、文本输入、滑块四种题型</p>
+      </div>
+    `
+    return
+  }
+
+  const typeLabels = { radio: '单选题', checkbox: '多选题', text: '文本输入题', slider: '滑块题' }
+  const typeSpecificHTML = getTypeSpecificEditor(q)
+
+  editor.innerHTML = `
+    <div class="q-editor-header">
+      <h3>编辑${typeLabels[q.type]}</h3>
+      <span style="font-size:.8rem;color:var(--text-muted)">ID: ${q.id.slice(0,8)}</span>
+    </div>
+
+    <div class="form-group">
+      <label>问题标题</label>
+      <input type="text" value="${escapeHtml(q.text)}" placeholder="请输入问题..." onchange="updateQuestionField('text', this.value)">
+    </div>
+
+    <div class="form-group">
+      <label>
+        <input type="checkbox" ${q.required ? 'checked' : ''} onchange="updateQuestionField('required', this.checked)" style="width:auto;margin-right:6px">
+        此题为必答题
+      </label>
+    </div>
+
+    ${typeSpecificHTML}
+
+    ${renderBranchEditor(q)}
+  `
+}
+
+function getTypeSpecificEditor(q) {
+  if (q.type === 'radio' || q.type === 'checkbox') {
+    return `
+      <div class="form-group">
+        <label>选项列表</label>
+        <div class="options-list">
+          ${(q.options || []).map((opt, i) => `
+            <div class="option-row">
+              <input type="text" value="${escapeHtml(opt)}" onchange="updateOption(${i}, this.value)" placeholder="选项 ${i + 1}">
+              <button class="btn-ghost btn-icon btn-sm" onclick="removeOption(${i})" style="color:var(--danger)" title="删除">×</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn-outline btn-sm" onclick="addOption()">+ 添加选项</button>
+      </div>
+    `
+  }
+
+  if (q.type === 'slider') {
+    return `
+      <div class="form-row">
+        <div class="form-group">
+          <label>最小值</label>
+          <input type="number" value="${q.min ?? 0}" onchange="updateQuestionField('min', Number(this.value))">
+        </div>
+        <div class="form-group">
+          <label>最大值</label>
+          <input type="number" value="${q.max ?? 100}" onchange="updateQuestionField('max', Number(this.value))">
+        </div>
+        <div class="form-group">
+          <label>步长</label>
+          <input type="number" value="${q.step ?? 1}" min="1" onchange="updateQuestionField('step', Number(this.value))">
+        </div>
+      </div>
+    `
+  }
+
+  if (q.type === 'text') {
+    return `
+      <div class="form-group">
+        <label>输入提示</label>
+        <input type="text" value="${escapeHtml(q.placeholder || '')}" placeholder="例如：请详细描述..." onchange="updateQuestionField('placeholder', this.value)">
+      </div>
+    `
+  }
+
+  return ''
+}
+
+function updateOption(index, value) {
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+  if (!q || !q.options) return
+  q.options[index] = value
+  autoSaveDebounced()
+}
+
+function addOption() {
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+  if (!q) return
+  if (!q.options) q.options = []
+  q.options.push(`选项 ${q.options.length + 1}`)
+  Engine.saveSurvey(currentSurvey)
+  renderEditor()
+}
+
+function removeOption(index) {
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+  if (!q || !q.options || q.options.length <= 2) {
+    toast('至少保留两个选项', 'error')
+    return
+  }
+  q.options.splice(index, 1)
+  Engine.saveSurvey(currentSurvey)
+  renderEditor()
+}
+
+// Branch Logic Editor
+function renderBranchEditor(q) {
+  // Get other questions as potential targets (only questions AFTER this one)
+  const otherQuestions = currentSurvey.questions.filter(oq => oq.id !== q.id)
+
+  return `
+    <div class="branch-rules">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h4 style="font-size:.9rem">🔀 分支逻辑（条件跳转）</h4>
+        <button class="btn-outline btn-sm" onclick="addBranchRule('${q.id}')">+ 添加规则</button>
+      </div>
+      <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:12px">当此问题的答案满足条件时，将跳转到指定问题</p>
+      ${(q.branching || []).length === 0 ? '<p style="font-size:.8rem;color:var(--text-muted);text-align:center;padding:12px">暂无分支规则</p>' : ''}
+      ${(q.branching || []).map((rule, i) => renderBranchRule(q, rule, i, otherQuestions)).join('')}
+    </div>
+  `
+}
+
+function renderBranchRule(q, rule, index, otherQuestions) {
+  const conditions = [
+    { value: 'eq', label: '等于' },
+    { value: 'neq', label: '不等于' },
+    { value: 'contains', label: '包含' },
+    { value: 'gt', label: '大于' },
+    { value: 'lt', label: '小于' }
+  ]
+
+  return `
+    <div class="branch-rule-row">
+      <div class="form-group" style="margin:0">
+        <label style="font-size:.75rem">条件</label>
+        <select onchange="updateBranchRule(${index}, 'condition', this.value)">
+          ${conditions.map(c => `<option value="${c.value}" ${rule.condition === c.value ? 'selected' : ''}>${c.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label style="font-size:.75rem">匹配值</label>
+        <input type="text" value="${escapeHtml(String(rule.value ?? ''))}" onchange="updateBranchRule(${index}, 'value', this.value)" placeholder="答案值">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label style="font-size:.75rem">跳转到</label>
+        <select onchange="updateBranchRule(${index}, 'targetQuestionId', this.value)">
+          <option value="">-- 选择问题 --</option>
+          ${otherQuestions.map(oq => `<option value="${oq.id}" ${rule.targetQuestionId === oq.id ? 'selected' : ''}>${escapeHtml(oq.text || '(未命名)')}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn-ghost btn-icon btn-sm" onclick="deleteBranchRule(${index})" style="color:var(--danger);align-self:center" title="删除规则">×</button>
+    </div>
+  `
+}
+
+function addBranchRule(questionId) {
+  const q = currentSurvey.questions.find(q => q.id === questionId)
+  if (!q) return
+  if (!q.branching) q.branching = []
+  q.branching.push({ condition: 'eq', value: '', targetQuestionId: '' })
+  Engine.saveSurvey(currentSurvey)
+  renderEditor()
+}
+
+function updateBranchRule(index, field, value) {
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+  if (!q || !q.branching) return
+  q.branching[index][field] = value
+  autoSaveDebounced()
+}
+
+function deleteBranchRule(index) {
+  const q = currentSurvey.questions.find(q => q.id === currentQuestionId)
+  if (!q || !q.branching) return
+  q.branching.splice(index, 1)
+  Engine.saveSurvey(currentSurvey)
+  renderEditor()
+}
+
+// Survey Settings
+function updateSurveyField(field, value) {
+  currentSurvey[field] = value
+  autoSaveDebounced()
+}
+
+function generateShareLink() {
+  saveCurrentSurvey()
+  const encoded = Engine.encodeUrl(currentSurvey)
+  const url = `${window.location.origin}${window.location.pathname}?survey=${encoded}`
+  // Copy to clipboard
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => {
+      toast('分享链接已复制到剪贴板！', 'success')
+    }).catch(() => {
+      showShareModal(url)
+    })
+  } else {
+    showShareModal(url)
+  }
+}
+
+function showShareModal(url) {
+  const overlay = document.createElement('div')
+  overlay.className = 'modal-overlay'
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>🔗 分享链接</h3>
+      <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:12px">将此链接发送给填写者：</p>
+      <input type="text" value="${escapeHtml(url)}" readonly onclick="this.select()" style="margin-bottom:12px;font-size:.8rem">
+      <p style="font-size:.75rem;color:var(--text-muted)">注意：问卷数据编码在链接中，链接较长属于正常现象。</p>
+      <div class="modal-actions">
+        <button class="btn-outline btn-sm" onclick="navigator.clipboard.writeText('${escapeHtml(url).replace(/'/g, "\\'")}');toast('已复制','success');this.closest('.modal-overlay').remove()">📋 复制</button>
+        <button class="btn-primary btn-sm" onclick="window.open('${escapeHtml(url).replace(/'/g, "\\'")}', '_blank')">🔗 在新标签页打开</button>
+        <button class="btn-ghost btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+      </div>
+    </div>
+  `
+  document.body.appendChild(overlay)
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+}
+
+function openFillPreview() {
+  if (!currentSurvey.questions.length) {
+    toast('请先添加问题', 'error')
+    return
+  }
+  saveCurrentSurvey()
+  startFill()
+}
+
+function resetBuilder() {
+  if (!confirm('确定要创建新问卷吗？当前问卷已保存，不会丢失。')) return
+  currentSurvey = Engine.createSurvey()
+  currentQuestionId = null
+  Engine.saveSurvey(currentSurvey)
+  renderBuilder()
+  toast('已创建新问卷', 'info')
+}
+
+// ==================== FILL VIEW ====================
+function startFill() {
+  if (!currentSurvey || !currentSurvey.questions.length) {
+    toast('问卷没有可回答的问题', 'error')
+    return
+  }
+
+  // Check for saved progress
+  const savedProgress = Engine.loadProgress(currentSurvey.id)
+
+  fillState = {
+    surveyId: currentSurvey.id,
+    answers: savedProgress?.answers || {},
+    questionOrder: currentSurvey.questions.map(q => q.id),
+    currentIdx: savedProgress?.currentIdx || 0,
+    startTime: savedProgress?.startTime || Date.now(),
+    submitted: false
+  }
+
+  switchView('fill')
+  updateHeader('fill')
+  renderFillView()
+}
+
+function exitFill() {
+  if (!fillState.submitted && Object.keys(fillState.answers).length > 0) {
+    // Save progress before exiting
+    Engine.saveProgress(currentSurvey.id, {
+      answers: fillState.answers,
+      currentIdx: fillState.currentIdx,
+      startTime: fillState.startTime
+    })
+  }
+  fillState = null
+  switchView('builder')
+  updateHeader('builder')
+  renderBuilder()
+}
+
+function renderFillView() {
+  const container = $('#fill-container')
+  if (!fillState || !currentSurvey) return
+
+  // Timer logic
+  const totalTime = currentSurvey.timeLimit || 0
+  const elapsed = Math.floor((Date.now() - fillState.startTime) / 1000)
+  const remaining = totalTime > 0 ? Math.max(0, totalTime - elapsed) : null
+
+  // Auto-submit if time is up
+  if (remaining !== null && remaining <= 0 && !fillState.submitted) {
+    submitSurvey()
+    return
+  }
+
+  const totalQuestions = currentSurvey.questions.length
+  const answeredCount = Object.keys(fillState.answers).filter(k => fillState.answers[k] !== undefined && fillState.answers[k] !== null && fillState.answers[k] !== '').length
+  const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0
+
+  // Determine if showing welcome, question, or review
+  if (fillState.currentIdx < 0) {
+    // Welcome screen
+    container.innerHTML = renderWelcome(remaining)
+    startTimerIfNeeded(remaining)
+  } else if (fillState.currentIdx >= totalQuestions) {
+    // Review screen
+    container.innerHTML = renderReview()
+    if (timerInterval) clearInterval(timerInterval)
+  } else {
+    // Question screen
+    container.innerHTML = renderQuestionScreen(progress, remaining)
+    startTimerIfNeeded(remaining)
+  }
+}
+
+function renderWelcome(remaining) {
+  return `
+    <div class="fill-card">
+      <div class="fill-welcome">
+        <h2>${escapeHtml(currentSurvey.title)}</h2>
+        ${currentSurvey.description ? `<p>${escapeHtml(currentSurvey.description)}</p>` : ''}
+        <p style="color:var(--text-muted);font-size:.85rem">共 ${currentSurvey.questions.length} 个问题</p>
+        ${remaining !== null ? `
+          <div class="time-info">⏱ 限时 ${formatTime(remaining)}</div>
+        ` : ''}
+        ${currentSurvey.timeLimit > 0 ? `<p style="font-size:.8rem;color:var(--text-muted);margin-top:8px">请在规定时间内完成问卷，超时将自动提交</p>` : ''}
+        <div style="margin-top:24px">
+          <button class="btn-primary btn-lg" onclick="fillState.currentIdx=0;renderFillView()">开始填写</button>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+function renderQuestionScreen(progress, remaining) {
+  const q = currentSurvey.questions[fillState.currentIdx]
+  if (!q) {
+    fillState.currentIdx = currentSurvey.questions.length
+    renderFillView()
+    return ''
+  }
+
+  const hasPrev = fillState.currentIdx > 0
+  const currentAnswer = fillState.answers[q.id]
+
+  let questionInputHTML = ''
+  if (q.type === 'radio') {
+    questionInputHTML = `
+      <div class="option-group">
+        ${(q.options || []).map(opt => `
+          <label class="option-item ${currentAnswer === opt ? 'selected' : ''}">
+            <input type="radio" name="q_${q.id}" value="${escapeHtml(opt)}" ${currentAnswer === opt ? 'checked' : ''} onchange="setAnswer('${q.id}', this.value);highlightSelected(this)">
+            <span>${escapeHtml(opt)}</span>
+          </label>
+        `).join('')}
+      </div>
+    `
+  } else if (q.type === 'checkbox') {
+    const selected = Array.isArray(currentAnswer) ? currentAnswer : []
+    questionInputHTML = `
+      <div class="option-group">
+        ${(q.options || []).map(opt => `
+          <label class="option-item ${selected.includes(opt) ? 'selected' : ''}">
+            <input type="checkbox" name="q_${q.id}" value="${escapeHtml(opt)}" ${selected.includes(opt) ? 'checked' : ''} onchange="toggleCheckbox('${q.id}', this);highlightSelectedCheckbox(this)">
+            <span>${escapeHtml(opt)}</span>
+          </label>
+        `).join('')}
+      </div>
+    `
+  } else if (q.type === 'slider') {
+    const val = currentAnswer ?? Math.floor(((q.min ?? 0) + (q.max ?? 100)) / 2)
+    questionInputHTML = `
+      <div class="slider-wrapper">
+        <input type="range" min="${q.min ?? 0}" max="${q.max ?? 100}" step="${q.step ?? 1}" value="${val}" oninput="updateSliderValue(this, '${q.id}')">
+        <div class="slider-value" id="slider-val-${q.id}">${val}</div>
+        <div class="slider-range">
+          <span>${q.min ?? 0}</span><span>${q.max ?? 100}</span>
+        </div>
+      </div>
+    `
+  } else if (q.type === 'text') {
+    questionInputHTML = `
+      <div class="text-input-wrapper">
+        <textarea placeholder="${escapeHtml(q.placeholder || '请输入您的回答...')}" onchange="setAnswer('${q.id}', this.value)">${escapeHtml(String(currentAnswer ?? ''))}</textarea>
+      </div>
+    `
+  }
+
+  return `
+    <div class="fill-card">
+      ${renderTimerBar(remaining)}
+      <div class="progress-wrapper">
+        <div class="progress-info">
+          <span>问题 ${fillState.currentIdx + 1} / ${currentSurvey.questions.length}</span>
+          <span>${progress}% 完成</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
+      </div>
+
+      <div class="fill-question">
+        <div class="q-label">
+          ${fillState.currentIdx + 1}. ${escapeHtml(q.text)}
+          ${q.required ? '<span class="q-required">*</span>' : ''}
+        </div>
+        <div class="q-desc" style="margin-bottom:16px;font-size:.8rem;color:var(--text-muted)">
+          ${q.type === 'radio' ? '请选择一个选项' : q.type === 'checkbox' ? '可选择多个选项' : q.type === 'slider' ? '拖动滑块选择数值' : '请输入您的回答'}
+        </div>
+        ${questionInputHTML}
+      </div>
+
+      <div class="fill-nav">
+        <button class="btn-outline" ${!hasPrev ? 'disabled' : ''} onclick="prevQuestion()">← 上一题</button>
+        <button class="btn-primary" onclick="nextQuestion()">
+          ${fillState.currentIdx < currentSurvey.questions.length - 1 ? '下一题 →' : '完成 →'}
+        </button>
+      </div>
+    </div>
+  `
+}
+
+function renderTimerBar(remaining) {
+  if (remaining === null) return ''
+  let cls = ''
+  if (remaining < 60) cls = 'danger'
+  else if (remaining < 300) cls = 'warning'
+  return `
+    <div class="timer-bar ${cls}">
+      <span>⏱</span>
+      <span class="time" id="timer-display">${formatTime(remaining)}</span>
+      <span class="time-label">剩余时间</span>
+    </div>
+  `
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+let timerInterval = null
+
+function startTimerIfNeeded(remaining) {
+  if (timerInterval) clearInterval(timerInterval)
+  if (remaining === null || remaining <= 0) return
+
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - fillState.startTime) / 1000)
+    const newRemaining = Math.max(0, currentSurvey.timeLimit - elapsed)
+    const display = document.getElementById('timer-display')
+    if (display) display.textContent = formatTime(newRemaining)
+
+    if (newRemaining <= 0) {
+      clearInterval(timerInterval)
+      if (!fillState.submitted) {
+        toast('时间到！问卷已自动提交', 'info')
+        submitSurvey()
+      }
+    }
+  }, 1000)
+}
+
+function setAnswer(questionId, value) {
+  fillState.answers[questionId] = value
+  // Auto-save progress
+  Engine.saveProgress(currentSurvey.id, {
+    answers: fillState.answers,
+    currentIdx: fillState.currentIdx,
+    startTime: fillState.startTime
+  })
+}
+
+function updateSliderValue(slider, questionId) {
+  const valEl = document.getElementById(`slider-val-${questionId}`)
+  if (valEl) valEl.textContent = slider.value
+  setAnswer(questionId, Number(slider.value))
+}
+
+function toggleCheckbox(questionId, checkbox) {
+  const q = currentSurvey.questions.find(q => q.id === questionId)
+  if (!q) return
+  let selected = fillState.answers[questionId]
+  if (!Array.isArray(selected)) selected = []
+  if (checkbox.checked) {
+    if (!selected.includes(checkbox.value)) selected.push(checkbox.value)
+  } else {
+    selected = selected.filter(v => v !== checkbox.value)
+  }
+  fillState.answers[questionId] = selected
+  Engine.saveProgress(currentSurvey.id, {
+    answers: fillState.answers,
+    currentIdx: fillState.currentIdx,
+    startTime: fillState.startTime
+  })
+}
+
+function highlightSelected(label) {
+  const group = label.closest('.option-group')
+  if (group) {
+    group.querySelectorAll('.option-item').forEach(item => item.classList.remove('selected'))
+    label.classList.add('selected')
+  }
+}
+
+function highlightSelectedCheckbox(checkbox) {
+  const label = checkbox.closest('.option-item')
+  if (label) {
+    if (checkbox.checked) label.classList.add('selected')
+    else label.classList.remove('selected')
+  }
+}
+
+function nextQuestion() {
+  const q = currentSurvey.questions[fillState.currentIdx]
+  if (!q) return
+
+  const answer = fillState.answers[q.id]
+
+  // Validate required
+  if (q.required) {
+    if (answer === undefined || answer === null || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
+      toast('请先回答此题', 'error')
+      return
+    }
+  }
+
+  // Check branching
+  if (answer !== undefined && answer !== null && answer !== '') {
+    const branchTarget = Engine.evaluateBranches(q, answer)
+    if (branchTarget) {
+      const targetIdx = currentSurvey.questions.findIndex(oq => oq.id === branchTarget)
+      if (targetIdx >= 0) {
+        fillState.currentIdx = targetIdx
+        renderFillView()
+        return
+      }
+    }
+  }
+
+  // Go to next question
+  fillState.currentIdx++
+  renderFillView()
+}
+
+function prevQuestion() {
+  if (fillState.currentIdx > 0) {
+    fillState.currentIdx--
+    renderFillView()
+  }
+}
+
+function renderReview() {
+  return `
+    <div class="fill-card">
+      <h2 style="text-align:center;margin-bottom:16px">📋 检查您的回答</h2>
+      <p style="text-align:center;color:var(--text-secondary);margin-bottom:20px;font-size:.9rem">请确认以下回答无误后提交</p>
+      ${currentSurvey.questions.map(q => {
+        const answer = fillState.answers[q.id]
+        let displayAnswer = '（未回答）'
+        if (answer !== undefined && answer !== null && answer !== '') {
+          if (Array.isArray(answer)) displayAnswer = answer.join(', ')
+          else displayAnswer = String(answer)
+        }
+        return `
+          <div class="review-answer">
+            <div class="ra-q">${escapeHtml(q.text)}</div>
+            <div class="ra-a">${escapeHtml(displayAnswer)}</div>
+          </div>
+        `
+      }).join('')}
+      <div class="fill-nav">
+        <button class="btn-outline" onclick="fillState.currentIdx=currentSurvey.questions.length-1;renderFillView()">← 返回修改</button>
+        <button class="btn-primary btn-lg" onclick="submitSurvey()">✅ 提交问卷</button>
+      </div>
+    </div>
+  `
+}
+
+function submitSurvey() {
+  if (fillState.submitted) return
+  fillState.submitted = true
+  if (timerInterval) clearInterval(timerInterval)
+
+  Engine.saveResponse(currentSurvey.id, fillState.answers)
+  Engine.clearProgress(currentSurvey.id)
+
+  // Show results
+  viewResults()
+  toast('问卷提交成功！', 'success')
+}
+
+// ==================== RESULTS VIEW ====================
+function viewResults() {
+  if (!currentSurvey) return
+
+  switchView('results')
+  updateHeader('results')
+  renderResults()
+}
+
+function renderResults() {
+  const container = $('#results-container')
+  const responses = Engine.loadResponses(currentSurvey.id)
+
+  if (responses.length === 0) {
+    container.innerHTML = `
+      <div class="results-header">
+        <h2>📊 ${escapeHtml(currentSurvey.title)} - 结果</h2>
+      </div>
+      <div class="no-responses">
+        <div style="font-size:3rem;margin-bottom:12px">📭</div>
+        <p>暂无回答数据</p>
+        <p style="font-size:.85rem;color:var(--text-muted)">分享问卷链接并收集回答后，结果将显示在此处</p>
+      </div>
+    `
+    return
+  }
+
+  destroyCharts()
+
+  const completionRate = responses.length // simplified since all are complete
+  const totalQuestions = currentSurvey.questions.length
+
+  container.innerHTML = `
+    <div class="results-header">
+      <h2>📊 ${escapeHtml(currentSurvey.title)} - 结果</h2>
+      <p style="color:var(--text-secondary);font-size:.9rem">共 ${responses.length} 份回答</p>
+    </div>
+
+    <div class="results-summary">
+      <div class="summary-card">
+        <div class="stat">${responses.length}</div>
+        <div class="stat-label">总回答数</div>
+      </div>
+      <div class="summary-card">
+        <div class="stat">${totalQuestions}</div>
+        <div class="stat-label">问题数</div>
+      </div>
+      <div class="summary-card">
+        <div class="stat">${completionRate}</div>
+        <div class="stat-label">完成数</div>
+      </div>
+    </div>
+
+    <div id="result-charts">
+      ${currentSurvey.questions.map((q, idx) => renderResultQuestion(q, responses, idx)).join('')}
+    </div>
+  `
+
+  // Initialize charts after DOM is ready
+  setTimeout(() => initCharts(currentSurvey, responses), 100)
+}
+
+function renderResultQuestion(q, responses, idx) {
+  return `
+    <div class="result-question">
+      <h3>${idx + 1}. ${escapeHtml(q.text)} <span style="font-size:.75rem;color:var(--text-muted);font-weight:400">(${getTypeLabel(q.type)})</span></h3>
+      <div id="chart-container-${q.id}">
+        ${q.type === 'text' ? renderTextResponses(q, responses) : `<div class="chart-wrap"><canvas id="chart-${q.id}"></canvas></div>`}
+      </div>
+    </div>
+  `
+}
+
+function getTypeLabel(type) {
+  const labels = { radio: '单选', checkbox: '多选', text: '文本', slider: '滑块' }
+  return labels[type] || type
+}
+
+function renderTextResponses(q, responses) {
+  const answers = responses.map(r => r.answers[q.id]).filter(a => a !== undefined && a !== null && a !== '')
+  if (answers.length === 0) return '<p style="text-align:center;color:var(--text-muted);padding:20px">暂无文本回答</p>'
+  return `
+    <div class="text-responses">
+      ${answers.map((a, i) => `<div class="text-response-item"><strong>#${i + 1}:</strong> ${escapeHtml(String(a))}</div>`).join('')}
+    </div>
+  `
+}
+
+function initCharts(survey, responses) {
+  survey.questions.forEach(q => {
+    if (q.type === 'text') return
+    const canvas = document.getElementById(`chart-${q.id}`)
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+
+    if (q.type === 'radio') {
+      const counts = {}
+      q.options.forEach(opt => { counts[opt] = 0 })
+      responses.forEach(r => {
+        const answer = r.answers[q.id]
+        if (answer && counts.hasOwnProperty(answer)) counts[answer]++
+      })
+      const labels = Object.keys(counts)
+      const data = Object.values(counts)
+      const colors = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#84cc16']
+
+      const chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: colors.slice(0, labels.length),
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+          }
+        }
+      })
+      charts.push(chart)
+    }
+
+    else if (q.type === 'checkbox') {
+      const counts = {}
+      q.options.forEach(opt => { counts[opt] = 0 })
+      responses.forEach(r => {
+        const answer = r.answers[q.id]
+        if (Array.isArray(answer)) {
+          answer.forEach(a => { if (counts.hasOwnProperty(a)) counts[a]++ })
+        }
+      })
+      const labels = Object.keys(counts)
+      const data = Object.values(counts)
+
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: '选择次数',
+            data,
+            backgroundColor: '#6366f1',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { stepSize: 1 }, grid: { display: false } },
+            y: { grid: { display: false } }
+          }
+        }
+      })
+      charts.push(chart)
+    }
+
+    else if (q.type === 'slider') {
+      const min = q.min ?? 0
+      const max = q.max ?? 100
+      const bucketCount = Math.min(10, max - min + 1)
+      const bucketSize = (max - min) / bucketCount
+
+      const buckets = []
+      for (let i = 0; i < bucketCount; i++) {
+        const start = Math.round(min + i * bucketSize)
+        const end = Math.round(min + (i + 1) * bucketSize)
+        buckets.push({ label: `${start}-${end}`, count: 0, start, end })
+      }
+
+      responses.forEach(r => {
+        const answer = r.answers[q.id]
+        if (typeof answer === 'number' || (typeof answer === 'string' && !isNaN(answer))) {
+          const val = Number(answer)
+          for (const bucket of buckets) {
+            if (val >= bucket.start && val <= bucket.end) {
+              bucket.count++
+              break
+            }
+          }
+        }
+      })
+
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: buckets.map(b => b.label),
+          datasets: [{
+            label: '回答数',
+            data: buckets.map(b => b.count),
+            backgroundColor: '#f59e0b',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { ticks: { stepSize: 1 }, grid: { display: false } },
+            x: { grid: { display: false } }
+          }
+        }
+      })
+      charts.push(chart)
+    }
+  })
+}
+
+function destroyCharts() {
+  charts.forEach(c => c.destroy())
+  charts = []
+}
+
+function exportResults() {
+  const responses = Engine.loadResponses(currentSurvey.id)
+  if (responses.length === 0) {
+    toast('没有可导出的数据', 'error')
+    return
+  }
+
+  let text = `问卷结果: ${currentSurvey.title}\n`
+  text += `总回答数: ${responses.length}\n`
+  text += `${'='.repeat(50)}\n\n`
+
+  currentSurvey.questions.forEach((q, idx) => {
+    text += `Q${idx + 1}: ${q.text} (${getTypeLabel(q.type)})\n`
+    const answers = responses.map(r => r.answers[q.id]).filter(a => a !== undefined && a !== null && a !== '')
+    if (q.type === 'radio' || q.type === 'slider') {
+      const freq = {}
+      answers.forEach(a => { const k = String(a); freq[k] = (freq[k] || 0) + 1 })
+      Object.entries(freq).sort((a,b) => b[1]-a[1]).forEach(([k, v]) => {
+        text += `  ${k}: ${v} 次 (${Math.round(v/answers.length*100)}%)\n`
+      })
+    } else if (q.type === 'checkbox') {
+      const freq = {}
+      answers.flat().forEach(a => { freq[a] = (freq[a] || 0) + 1 })
+      Object.entries(freq).sort((a,b) => b[1]-a[1]).forEach(([k, v]) => {
+        text += `  ${k}: ${v} 次\n`
+      })
+    } else {
+      answers.forEach((a, i) => { text += `  #${i+1}: ${a}\n` })
+    }
+    text += '\n'
+  })
+
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `survey-results-${currentSurvey.id.slice(0,8)}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+  toast('结果已导出', 'success')
+}
+
+// ==================== INITIALIZATION ====================
+function init() {
+  const urlParams = new URLSearchParams(window.location.search)
+  const surveyParam = urlParams.get('survey')
+
+  if (surveyParam) {
+    const survey = Engine.decodeUrl(surveyParam)
+    if (survey) {
+      currentSurvey = survey
+      startFill()
+      return
+    }
+    toast('无效的问卷链接，将进入创建模式', 'error')
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+
+  // Load last saved survey
+  const surveys = Engine.loadAllSurveys()
+  if (surveys.length > 0) {
+    currentSurvey = surveys[surveys.length - 1]
+  } else {
+    currentSurvey = Engine.createSurvey()
+    Engine.saveSurvey(currentSurvey)
+  }
+
+  currentQuestionId = currentSurvey.questions.length > 0 ? currentSurvey.questions[0].id : null
+  switchView('builder')
+  updateHeader('builder')
+  renderBuilder()
+}
+
+function renderBuilder() {
+  renderSidebar()
+  renderEditor()
+  addSettingsToSidebar()
+}
+
+function addSettingsToSidebar() {
+  const sidebar = $('#question-sidebar')
+  const existingSettings = $('#survey-settings-inline')
+  if (existingSettings) existingSettings.remove()
+
+  const settingsDiv = document.createElement('div')
+  settingsDiv.id = 'survey-settings-inline'
+  settingsDiv.style.cssText = 'padding:12px;border-bottom:1.5px solid var(--border);margin-bottom:8px'
+  settingsDiv.innerHTML = `
+    <div class="sidebar-title">问卷设置</div>
+    <div class="form-group" style="margin-bottom:8px">
+      <input type="text" value="${escapeHtml(currentSurvey.title)}" placeholder="问卷标题" onchange="updateSurveyField('title', this.value)" style="font-weight:600">
+    </div>
+    <div class="form-group" style="margin-bottom:8px">
+      <textarea placeholder="问卷描述（选填）" onchange="updateSurveyField('description', this.value)" style="min-height:50px">${escapeHtml(currentSurvey.description || '')}</textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label>时间限制（秒，0=不限时）</label>
+      <div class="time-limit-group">
+        <input type="number" value="${currentSurvey.timeLimit || 0}" min="0" step="30" onchange="updateSurveyField('timeLimit', Number(this.value))">
+        <span>${currentSurvey.timeLimit > 0 ? `= ${formatTime(currentSurvey.timeLimit)}` : '不限时'}</span>
+      </div>
+    </div>
+  `
+
+  const addPalette = $('#add-palette', sidebar)
+  addPalette.parentNode.insertBefore(settingsDiv, addPalette)
+}
+
+// Update the window resize for responsive charts
+window.addEventListener('resize', debounce(() => {
+  charts.forEach(c => c.resize())
+}, 200))
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', init)
+</script>
+</body>
+</html>
