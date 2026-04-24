@@ -1,0 +1,330 @@
+/* ===== 全局样式 ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  color: #e0e0e0;
+  overflow-x: hidden;
+}
+
+/* ===== 通知容器 ===== */
+#notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 12px;
+  z-index: 9999;
+  max-height: 100vh;
+  padding: 10px 0;
+  pointer-events: none;
+}
+
+/* ===== 单条通知 ===== */
+.notification {
+  pointer-events: auto;
+  min-width: 320px;
+  max-width: 420px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  /* 进入动画 */
+  animation: slideIn 0.45s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+  transform: translateX(120%);
+  opacity: 0;
+}
+
+/* 关闭中（点击关闭 / 自动消失） */
+.notification.slide-out {
+  animation: slideOut 0.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+/* ---- 进度条 ---- */
+.notification .progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 0 0 12px 12px;
+  animation: shrink linear forwards;
+  opacity: 0.6;
+}
+
+/* ---- 图标 ---- */
+.notification .icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ---- 内容区 ---- */
+.notification .content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification .title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.notification .message {
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.9;
+  word-wrap: break-word;
+}
+
+.notification .priority-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* ===== 四种类型配色 ===== */
+
+/* 成功 - 绿色 */
+.notification.success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.08));
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.notification.success .icon, .notification.success .title {
+  color: #34d399;
+}
+.notification.success .progress-bar {
+  background: #34d399;
+}
+.notification.success .priority-badge {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+/* 信息 - 蓝色 */
+.notification.info {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.08));
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.notification.info .icon, .notification.info .title {
+  color: #60a5fa;
+}
+.notification.info .progress-bar {
+  background: #60a5fa;
+}
+.notification.info .priority-badge {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+}
+
+/* 警告 - 橙色 */
+.notification.warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.08));
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.notification.warning .icon, .notification.warning .title {
+  color: #fbbf24;
+}
+.notification.warning .progress-bar {
+  background: #fbbf24;
+}
+.notification.warning .priority-badge {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
+/* 错误 - 红色 */
+.notification.error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.08));
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.notification.error .icon, .notification.error .title {
+  color: #f87171;
+}
+.notification.error .progress-bar {
+  background: #f87171;
+}
+.notification.error .priority-badge {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+/* 高优先级脉冲效果 */
+.notification.pulse {
+  animation: slideIn 0.45s cubic-bezier(0.21, 1.02, 0.73, 1) forwards,
+             glow 2s ease-in-out infinite;
+}
+
+.notification.pulse.slide-out {
+  animation: slideOut 0.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+/* ===== 动画关键帧 ===== */
+
+@keyframes slideIn {
+  0% {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(-3%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 120px;
+    margin-bottom: 0;
+    padding: 16px 20px;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(140%);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: -12px;
+    padding: 0 20px;
+  }
+}
+
+@keyframes shrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 rgba(239,68,68,0); }
+  50%      { box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 20px rgba(239,68,68,0.25); }
+}
+
+/* ===== 演示面板 ===== */
+.demo-panel {
+  max-width: 600px;
+  margin: 60px auto;
+  padding: 40px;
+  text-align: center;
+}
+
+.demo-panel h1 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.demo-panel .subtitle {
+  color: #9ca3af;
+  font-size: 1rem;
+  margin-bottom: 36px;
+}
+
+.btn-group {
+  margin-bottom: 28px;
+}
+
+.btn-group h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #6b7280;
+  margin-bottom: 14px;
+}
+
+.demo-panel button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  margin: 5px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: #d1d5db;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(6px);
+}
+
+.demo-panel button:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.25);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.demo-panel button:active {
+  transform: translateY(0);
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.dot.success { background: #34d399; }
+.dot.info    { background: #60a5fa; }
+.dot.warning { background: #fbbf24; }
+.dot.error   { background: #f87171; }
+
+.tip {
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 500px) {
+  .notification {
+    min-width: 260px;
+    max-width: calc(100vw - 40px);
+  }
+  .demo-panel {
+    margin: 30px 16px;
+    padding: 24px;
+  }
+}

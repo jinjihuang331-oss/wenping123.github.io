@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>交互式通知系统</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 通知容器 -->
+  <div id="notification-container"></div>
+
+  <!-- 演示面板 -->
+  <div class="demo-panel">
+    <h1>交互式通知系统</h1>
+    <p class="subtitle">点击下方按钮触发不同类型和优先级的通知</p>
+
+    <div class="btn-group">
+      <h2>按类型</h2>
+      <button onclick="notify('操作成功完成！', 'success', 'low')">
+        <span class="dot success"></span> 成功通知
+      </button>
+      <button onclick="notify('请注意这条提示信息。', 'info', 'low')">
+        <span class="dot info"></span> 信息通知
+      </button>
+      <button onclick="notify('发生了一个警告！', 'warning', 'medium')">
+        <span class="dot warning"></span> 警告通知
+      </button>
+      <button onclick="notify('发生严重错误！', 'error', 'high')">
+        <span class="dot error"></span> 错误通知
+      </button>
+    </div>
+
+    <div class="btn-group">
+      <h2>按优先级</h2>
+      <button onclick="notify('这是一条低优先级消息，将快速消失。', 'info', 'low')">
+        低优先级
+      </button>
+      <button onclick="notify('这是一条中优先级消息。', 'info', 'medium')">
+        中优先级
+      </button>
+      <button onclick="notify('这是一条高优先级消息，将停留更久。', 'warning', 'high')">
+        高优先级
+      </button>
+    </div>
+
+    <div class="btn-group">
+      <h2>批量测试</h2>
+      <button onclick="burstTest()">
+        快速连续发送 5 条通知
+      </button>
+      <button onclick="mixedBurst()">
+        混合类型发送 6 条通知
+      </button>
+    </div>
+
+    <div class="tip">
+      点击任意通知可手动关闭它
+    </div>
+  </div>
+
+  <script src="notify.js"></script>
+  <script>
+    /* ---- 演示用快捷函数 ---- */
+    function notify(message, type, priority) {
+      NotificationSystem.show(message, type, priority);
+    }
+
+    function burstTest() {
+      const types = ['success', 'info', 'warning', 'error'];
+      const msgs = [
+        '文件上传成功',
+        '你有 3 条新消息',
+        '磁盘空间不足',
+        '网络连接断开',
+        '系统暂停维护',
+      ];
+      msgs.forEach((msg, i) => {
+        setTimeout(() => {
+          NotificationSystem.show(msg, types[i], i < 2 ? 'low' : i < 4 ? 'medium' : 'high');
+        }, i * 300);
+      });
+    }
+
+    function mixedBurst() {
+      const configs = [
+        { msg: '用户登录成功', type: 'success', p: 'low' },
+        { msg: '数据库查询异常', type: 'error', p: 'high' },
+        { msg: '新版本 v2.5 已发布', type: 'info', p: 'low' },
+        { msg: '服务器响应时间过高', type: 'warning', p: 'medium' },
+        { msg: '数据同步完成', type: 'success', p: 'medium' },
+        { msg: '未授权的访问尝试', type: 'error', p: 'high' },
+      ];
+      configs.forEach((c, i) => {
+        setTimeout(() => NotificationSystem.show(c.msg, c.type, c.p), i * 250);
+      });
+    }
+  </script>
+</body>
+</html>
