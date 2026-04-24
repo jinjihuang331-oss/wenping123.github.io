@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在线问卷构建工具</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav id="navbar">
+    <div class="nav-brand" onclick="App.navigate('home')">
+      <span class="nav-icon">&#9745;</span>
+      <span class="nav-title">问卷构建工具</span>
+    </div>
+    <div class="nav-links">
+      <a href="#/home" class="nav-link active" data-view="home">首页</a>
+      <a href="#/builder" class="nav-link" data-view="builder">创建问卷</a>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-sm btn-outline" onclick="App.exportAllData()">导出数据</button>
+    </div>
+  </nav>
+
+  <!-- Main App Container -->
+  <main id="app">
+    <!-- ========== Home View ========== -->
+    <div id="home-view" class="view active">
+      <div class="container">
+        <div class="home-header">
+          <div>
+            <h1>我的问卷</h1>
+            <p class="text-muted">创建、管理和分析您的在线问卷</p>
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="App.navigate('builder')">
+            <span class="btn-icon">+</span> 新建问卷
+          </button>
+        </div>
+        <div id="survey-list" class="survey-list">
+          <!-- Rendered dynamically -->
+        </div>
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon">&#128196;</div>
+          <h3>还没有问卷</h3>
+          <p>点击"新建问卷"开始创建您的第一个问卷</p>
+          <button class="btn btn-primary" onclick="App.navigate('builder')">创建第一个问卷</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Builder View ========== -->
+    <div id="builder-view" class="view">
+      <div class="container container-wide">
+        <div id="builder-content">
+          <!-- Builder Header -->
+          <div class="builder-header">
+            <div class="builder-header-left">
+              <button class="btn btn-outline btn-sm" onclick="App.navigate('home')">
+                &#8592; 返回
+              </button>
+            </div>
+            <div class="builder-header-actions">
+              <button class="btn btn-outline btn-sm" onclick="App.Builder.previewSurvey()">预览</button>
+              <button class="btn btn-primary btn-sm" onclick="App.Builder.save()">保存问卷</button>
+            </div>
+          </div>
+
+          <!-- Builder Form -->
+          <div class="builder-form">
+            <div class="form-card">
+              <h2>问卷基本信息</h2>
+              <div class="form-group">
+                <label for="q-title">问卷标题 *</label>
+                <input type="text" id="q-title" class="form-input" placeholder="输入问卷标题...">
+              </div>
+              <div class="form-group">
+                <label for="q-desc">问卷描述</label>
+                <textarea id="q-desc" class="form-input form-textarea" rows="3" placeholder="输入问卷描述..."></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="q-timelimit">时间限制（分钟）</label>
+                  <input type="number" id="q-timelimit" class="form-input" min="0" placeholder="0 表示无限制" value="0">
+                </div>
+                <div class="form-group">
+                  <label for="q-theme">主题色</label>
+                  <div class="theme-selector">
+                    <button class="theme-dot active" data-color="#4f46e5" style="background:#4f46e5" onclick="App.Builder.setTheme(this)"></button>
+                    <button class="theme-dot" data-color="#059669" style="background:#059669" onclick="App.Builder.setTheme(this)"></button>
+                    <button class="theme-dot" data-color="#dc2626" style="background:#dc2626" onclick="App.Builder.setTheme(this)"></button>
+                    <button class="theme-dot" data-color="#d97706" style="background:#d97706" onclick="App.Builder.setTheme(this)"></button>
+                    <button class="theme-dot" data-color="#7c3aed" style="background:#7c3aed" onclick="App.Builder.setTheme(this)"></button>
+                    <button class="theme-dot" data-color="#0891b2" style="background:#0891b2" onclick="App.Builder.setTheme(this)"></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Questions List -->
+            <div class="builder-questions">
+              <div class="section-header">
+                <h2>问题列表</h2>
+                <div class="add-question-dropdown">
+                  <button class="btn btn-primary btn-sm" onclick="App.Builder.toggleAddMenu()">
+                    <span class="btn-icon">+</span> 添加问题
+                  </button>
+                  <div id="add-question-menu" class="dropdown-menu hidden">
+                    <button onclick="App.Builder.addQuestion('radio')">
+                      <span class="q-type-icon">&#9744;</span> 单选题
+                    </button>
+                    <button onclick="App.Builder.addQuestion('checkbox')">
+                      <span class="q-type-icon">&#9745;</span> 多选题
+                    </button>
+                    <button onclick="App.Builder.addQuestion('text')">
+                      <span class="q-type-icon">&#9998;</span> 文本题
+                    </button>
+                    <button onclick="App.Builder.addQuestion('slider')">
+                      <span class="q-type-icon">&#9641;</span> 滑块题
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div id="questions-list">
+                <!-- Questions rendered dynamically -->
+              </div>
+              <div id="no-questions" class="empty-state small">
+                <p>点击"添加问题"开始构建您的问卷</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Survey View ========== -->
+    <div id="survey-view" class="view">
+      <!-- Survey Header -->
+      <div class="survey-header">
+        <div class="survey-header-content">
+          <div>
+            <h1 id="survey-title"></h1>
+            <p id="survey-desc" class="text-muted"></p>
+          </div>
+          <div id="survey-timer" class="timer hidden">
+            <span class="timer-icon">&#9200;</span>
+            <span id="timer-display">00:00</span>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div id="survey-progress" class="progress-bar" style="width: 0%"></div>
+        </div>
+        <div class="progress-text">
+          <span id="progress-current">0</span> / <span id="progress-total">0</span>
+        </div>
+      </div>
+
+      <!-- Survey Body -->
+      <div class="survey-body">
+        <div class="container container-narrow">
+          <div id="survey-questions">
+            <!-- Questions rendered dynamically -->
+          </div>
+          <div class="survey-actions">
+            <button id="btn-prev" class="btn btn-outline" onclick="App.Survey.prevQuestion()" disabled>上一题</button>
+            <button id="btn-next" class="btn btn-primary" onclick="App.Survey.nextQuestion()">下一题</button>
+            <button id="btn-submit" class="btn btn-success hidden" onclick="App.Survey.submit()">提交问卷</button>
+            <button id="btn-save-progress" class="btn btn-outline btn-sm" onclick="App.Survey.saveProgress()">
+              保存进度
+            </button>
+          </div>
+          <!-- Resume progress banner -->
+          <div id="resume-banner" class="resume-banner hidden">
+            <p>&#128260; 检测到未完成的答卷，是否恢复进度？</p>
+            <div class="resume-actions">
+              <button class="btn btn-primary btn-sm" onclick="App.Survey.resumeProgress()">恢复进度</button>
+              <button class="btn btn-outline btn-sm" onclick="App.Survey.dismissResume()">重新开始</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Results View ========== -->
+    <div id="results-view" class="view">
+      <div class="container container-wide">
+        <div class="results-header">
+          <div class="builder-header-left">
+            <button class="btn btn-outline btn-sm" onclick="App.navigate('home')">&#8592; 返回</button>
+          </div>
+          <h1 id="results-title">问卷结果</h1>
+          <div class="results-header-actions">
+            <button class="btn btn-outline btn-sm" onclick="App.Results.toggleRawData()">
+              &#128196; 原始数据
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Summary -->
+        <div id="results-stats" class="stats-cards">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Charts Container -->
+        <div id="results-charts" class="charts-container">
+          <!-- Charts rendered dynamically -->
+        </div>
+
+        <!-- Raw Data Table -->
+        <div id="raw-data-section" class="raw-data-section hidden">
+          <div class="section-header">
+            <h3>原始数据</h3>
+            <button class="btn btn-outline btn-sm" onclick="App.Results.exportCSV()">导出 CSV</button>
+          </div>
+          <div class="table-wrapper">
+            <table id="raw-data-table">
+              <thead id="raw-data-thead"></thead>
+              <tbody id="raw-data-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- No results message -->
+        <div id="no-results" class="empty-state hidden">
+          <div class="empty-icon">&#128202;</div>
+          <h3>暂无数据</h3>
+          <p>还没有人回答此问卷</p>
+          <button class="btn btn-primary" onclick="App.Survey.start(App.currentResultsId)">填写问卷</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Toast Notification ========== -->
+    <div id="toast-container"></div>
+
+    <!-- ========== Confirm Modal ========== -->
+    <div id="confirm-modal" class="modal hidden">
+      <div class="modal-overlay" onclick="App.closeModal()"></div>
+      <div class="modal-content">
+        <h3 id="modal-title">确认操作</h3>
+        <p id="modal-message"></p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="App.closeModal()">取消</button>
+          <button id="modal-confirm-btn" class="btn btn-danger">确认</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Share Modal ========== -->
+    <div id="share-modal" class="modal hidden">
+      <div class="modal-overlay" onclick="App.closeShareModal()"></div>
+      <div class="modal-content">
+        <h3>分享问卷</h3>
+        <p>使用以下链接分享您的问卷：</p>
+        <div class="share-url-box">
+          <input type="text" id="share-url-input" class="form-input" readonly>
+          <button class="btn btn-primary btn-sm" onclick="App.copyShareUrl()">复制</button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="App.closeShareModal()">关闭</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
