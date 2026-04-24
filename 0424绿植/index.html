@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌱 AI 绿植助手</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- 侧边栏 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">🌿</span>
+        <div class="logo-text">
+          <h1>AI 绿植助手</h1>
+          <p>你的智能园艺顾问</p>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="chat">
+        <span class="nav-icon">💬</span>
+        <span>智能问答</span>
+      </button>
+      <button class="nav-item" data-tab="plants">
+        <span class="nav-icon">🍀</span>
+        <span>植物百科</span>
+      </button>
+      <button class="nav-item" data-tab="calendar">
+        <span class="nav-icon">📅</span>
+        <span>养护日历</span>
+      </button>
+      <button class="nav-item" data-tab="tips">
+        <span class="nav-icon">💡</span>
+        <span>养护小贴士</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="weather-mini" id="weatherMini">
+        <span>☀️</span>
+        <div>
+          <p class="weather-temp">26°C</p>
+          <p class="weather-desc">晴天 · 适合浇水</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="main-content">
+    <!-- 顶部栏 -->
+    <header class="top-bar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="top-info">
+        <h2 id="pageTitle">💬 智能问答</h2>
+        <p id="pageDesc" class="text-muted">向 AI 咨询任何花草养护问题</p>
+      </div>
+      <div class="top-actions">
+        <button class="btn-icon" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+    </header>
+
+    <!-- 聊天页面 -->
+    <section class="tab-content active" id="tab-chat">
+      <div class="chat-container" id="chatContainer">
+        <div class="chat-welcome">
+          <div class="welcome-icon">🌱</div>
+          <h3>你好，我是 AI 绿植助手！</h3>
+          <p>我可以帮你解答关于花草养护的各种问题，比如浇水、施肥、光照、病虫害防治等。</p>
+          <div class="quick-questions">
+            <button class="quick-q" data-q="给绿萝浇水需要注意什么？">💧 浇水技巧</button>
+            <button class="quick-q" data-q="多肉植物怎么施肥？">🌱 施肥指导</button>
+            <button class="quick-q" data-q="家里适合养什么植物？">🏠 室内推荐</button>
+            <button class="quick-q" data-q="发财树叶子发黄怎么办？">🍂 叶片诊断</button>
+            <button class="quick-q" data-q="夏天多久浇一次水？">☀️ 季节养护</button>
+            <button class="quick-q" data-q="兰花怎么养护？">🌸 兰花养护</button>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="input-wrapper">
+          <textarea id="chatInput" placeholder="输入你的绿植养护问题..." rows="1"></textarea>
+          <button class="send-btn" id="sendBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
+            </svg>
+          </button>
+        </div>
+        <p class="input-hint">按 Enter 发送，Shift+Enter 换行</p>
+      </div>
+    </section>
+
+    <!-- 植物百科页面 -->
+    <section class="tab-content" id="tab-plants">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="plantSearch" placeholder="搜索植物名称...">
+        <div class="category-filter" id="categoryFilter">
+          <button class="filter-btn active" data-cat="all">全部</button>
+          <button class="filter-btn" data-cat="foliage">观叶植物</button>
+          <button class="filter-btn" data-cat="flowering">开花植物</button>
+          <button class="filter-btn" data-cat="succulent">多肉植物</button>
+          <button class="filter-btn" data-cat="herb">草本植物</button>
+        </div>
+      </div>
+      <div class="plant-grid" id="plantGrid"></div>
+    </section>
+
+    <!-- 养护日历页面 -->
+    <section class="tab-content" id="tab-calendar">
+      <div class="calendar-header">
+        <button class="cal-nav" id="calPrev">‹</button>
+        <h3 id="calMonth"></h3>
+        <button class="cal-nav" id="calNext">›</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="calendar-tasks" id="calendarTasks">
+        <div class="task-empty">
+          <span>📋</span>
+          <p>选择日期查看养护任务</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 养护小贴士页面 -->
+    <section class="tab-content" id="tab-tips">
+      <div class="tips-grid" id="tipsGrid"></div>
+      <div class="seasonal-advice">
+        <h3>🌸 当季养护建议</h3>
+        <div id="seasonalContent"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 植物详情弹窗 -->
+  <div class="modal" id="plantModal">
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose">✕</button>
+      <div class="modal-header" id="modalHeader">
+        <span class="modal-plant-emoji" id="modalEmoji">🌿</span>
+        <h2 id="modalTitle"></h2>
+        <p id="modalSubtitle" class="text-muted"></p>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="modalAsk">💬 向 AI 询问养护方法</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
