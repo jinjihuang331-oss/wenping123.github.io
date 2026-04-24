@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>虚拟教室平台</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <button class="mobile-toggle" id="mobileMenuBtn" aria-label="菜单">
+        <span></span><span></span><span></span>
+      </button>
+      <h1 class="logo">虚拟教室</h1>
+    </div>
+    <div class="header-center">
+      <span class="room-name" id="roomName">会议室 101 - 数学课堂</span>
+    </div>
+    <div class="header-right">
+      <div class="header-btn-group">
+        <button class="header-btn" id="screenShareBtn" title="屏幕共享">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <span class="btn-label">共享</span>
+        </button>
+        <button class="header-btn" id="recordBtn" title="录制">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="4" id="recordIcon"/>
+          </svg>
+          <span class="btn-label">录制</span>
+        </button>
+        <button class="header-btn" id="leaveBtn" title="离开">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18.36 5.64a9 9 0 11-12.73 0"/>
+            <line x1="12" y1="2" x2="12" y2="12"/>
+          </svg>
+          <span class="btn-label">离开</span>
+        </button>
+      </div>
+      <div class="recording-indicator hidden" id="recordingIndicator">
+        <span class="rec-dot"></span>
+        <span class="rec-text">REC</span>
+        <span class="rec-time" id="recTime">00:00</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Screen Share Overlay -->
+  <div class="screen-share-overlay hidden" id="screenShareOverlay">
+    <div class="share-selection-box" id="shareSelectionBox"></div>
+    <div class="share-hint" id="shareHint">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      拖动选择要共享的区域
+    </div>
+    <button class="share-cancel-btn" id="shareCancelBtn">取消</button>
+  </div>
+
+  <!-- Shared Area Highlight -->
+  <div class="shared-area-frame hidden" id="sharedAreaFrame">
+    <div class="shared-area-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      正在共享
+    </div>
+    <button class="shared-area-stop" id="sharedAreaStop">✕ 停止共享</button>
+  </div>
+
+  <!-- Main Content -->
+  <main class="app-main">
+    <!-- Left Sidebar: Participants -->
+    <aside class="sidebar sidebar-left" id="participantsPanel">
+      <div class="panel-header">
+        <h2>参与者 (<span id="participantCount">0</span>)</h2>
+      </div>
+      <div class="participants-list" id="participantsList"></div>
+    </aside>
+
+    <!-- Center: Whiteboard -->
+    <section class="whiteboard-container" id="whiteboardContainer">
+      <div class="whiteboard-toolbar" id="whiteboardToolbar">
+        <div class="tool-group">
+          <button class="tool-btn active" data-tool="pen" title="画笔">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </button>
+          <button class="tool-btn" data-tool="eraser" title="橡皮擦">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 20H7L3 16a1 1 0 010-1.4l9.6-9.6a1 1 0 011.4 0l7 7a1 1 0 010 1.4L16 18"/>
+            </svg>
+          </button>
+          <button class="tool-btn" data-tool="line" title="直线">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="19" x2="19" y2="5"/>
+            </svg>
+          </button>
+          <button class="tool-btn" data-tool="rect" title="矩形">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+            </svg>
+          </button>
+          <button class="tool-btn" data-tool="circle" title="椭圆">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <ellipse cx="12" cy="12" rx="10" ry="8"/>
+            </svg>
+          </button>
+          <button class="tool-btn" data-tool="text" title="文字">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
+            </svg>
+          </button>
+        </div>
+        <div class="tool-separator"></div>
+        <div class="tool-group">
+          <input type="color" class="color-picker" id="colorPicker" value="#e74c3c" title="颜色">
+          <div class="color-presets" id="colorPresets">
+            <span class="color-dot active" data-color="#e74c3c" style="background:#e74c3c"></span>
+            <span class="color-dot" data-color="#3498db" style="background:#3498db"></span>
+            <span class="color-dot" data-color="#2ecc71" style="background:#2ecc71"></span>
+            <span class="color-dot" data-color="#f39c12" style="background:#f39c12"></span>
+            <span class="color-dot" data-color="#9b59b6" style="background:#9b59b6"></span>
+            <span class="color-dot" data-color="#1abc9c" style="background:#1abc9c"></span>
+            <span class="color-dot" data-color="#ecf0f1" style="background:#ecf0f1; border:1px solid #ccc"></span>
+            <span class="color-dot" data-color="#2c3e50" style="background:#2c3e50"></span>
+          </div>
+        </div>
+        <div class="tool-separator"></div>
+        <div class="tool-group">
+          <label class="size-label" title="画笔大小">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="12" r="5"/>
+            </svg>
+            <input type="range" class="size-slider" id="sizeSlider" min="1" max="30" value="3">
+          </label>
+        </div>
+        <div class="tool-separator"></div>
+        <div class="tool-group">
+          <button class="tool-btn" id="undoBtn" title="撤销">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-11.36L1 10"/>
+            </svg>
+          </button>
+          <button class="tool-btn" id="clearBtn" title="清空画布">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+              <path d="M9 6V3h6v3"/>
+            </svg>
+          </button>
+          <button class="tool-btn" id="downloadBtn" title="下载">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <canvas id="whiteboard"></canvas>
+      <!-- Text input overlay -->
+      <textarea class="text-input-overlay hidden" id="textInput" rows="2"></textarea>
+    </section>
+
+    <!-- Right Sidebar: Chat -->
+    <aside class="sidebar sidebar-right" id="chatPanel">
+      <div class="panel-header">
+        <h2>聊天</h2>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="emoji-picker hidden" id="emojiPicker">
+        <div class="emoji-search">
+          <input type="text" class="emoji-search-input" id="emojiSearch" placeholder="搜索表情...">
+        </div>
+        <div class="emoji-grid" id="emojiGrid"></div>
+      </div>
+      <div class="chat-input-area">
+        <button class="emoji-btn" id="emojiBtn" title="表情">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+        </button>
+        <input type="text" class="chat-input" id="chatInput" placeholder="输入消息..." maxlength="500">
+        <button class="send-btn" id="sendBtn" title="发送">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Mobile Bottom Tabs -->
+  <nav class="mobile-tabs" id="mobileTabs">
+    <button class="mobile-tab active" data-panel="whiteboard">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M3 9h18"/><path d="M9 3v18"/>
+      </svg>
+      白板
+    </button>
+    <button class="mobile-tab" data-panel="participants">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+      </svg>
+      成员
+    </button>
+    <button class="mobile-tab" data-panel="chat">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      聊天
+      <span class="chat-badge hidden" id="chatBadge">0</span>
+    </button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
