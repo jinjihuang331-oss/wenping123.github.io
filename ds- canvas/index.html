@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Canvas 图片编辑器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a2e; color: #eee;
+    display: flex; flex-direction: column;
+    height: 100dvh; overflow: hidden;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+  }
+  header {
+    padding: 10px 16px; display: flex; align-items: center; gap: 12px;
+    background: #16213e; border-bottom: 1px solid #0f3460;
+  }
+  header h1 { font-size: 18px; font-weight: 600; white-space: nowrap; }
+
+  .toolbar {
+    display: flex; gap: 6px; padding: 8px 12px;
+    background: #16213e; flex-wrap: wrap; border-bottom: 1px solid #0f3460;
+  }
+  .toolbar button, .tool-btn {
+    padding: 8px 14px; border: 1px solid #0f3460; border-radius: 6px;
+    background: #1a1a2e; color: #ccc; cursor: pointer; font-size: 13px;
+    white-space: nowrap; transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .toolbar button:active, .tool-btn:active { background: #0f3460; }
+  .toolbar button.active, .tool-btn.active {
+    background: #e94560; border-color: #e94560; color: #fff;
+  }
+  .toolbar button:disabled, .tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .canvas-area {
+    flex: 1; position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: #222;
+    background-image:
+      linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+      linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  }
+  .canvas-container { position: relative; display: inline-block; }
+  canvas { display: block; max-width: 100%; max-height: 100%; }
+
+  .panel {
+    background: #16213e; border-top: 1px solid #0f3460; padding: 12px 16px;
+    display: none; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  .panel.visible { display: flex; }
+  .panel label { font-size: 13px; color: #aaa; }
+  .panel input[type="range"] { width: 100px; accent-color: #e94560; }
+  .panel input[type="text"] {
+    padding: 6px 10px; border: 1px solid #0f3460; border-radius: 4px;
+    background: #1a1a2e; color: #eee; font-size: 13px; width: 160px;
+  }
+  .panel input[type="color"] {
+    width: 32px; height: 28px; border: 1px solid #0f3460;
+    border-radius: 4px; cursor: pointer; background: transparent; padding: 2px;
+  }
+  .panel input[type="number"] {
+    padding: 6px 8px; border: 1px solid #0f3460; border-radius: 4px;
+    background: #1a1a2e; color: #eee; font-size: 13px; width: 60px;
+  }
+
+  .upload-hint {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center; color: #555; pointer-events: none;
+  }
+  .upload-hint .icon { font-size: 48px; margin-bottom: 8px; }
+  .upload-hint p { font-size: 14px; }
+
+  #fileInput { display: none; }
+
+  .btn-primary {
+    background: #e94560 !important; border-color: #e94560 !important; color: #fff !important;
+  }
+
+  .info-tag { font-size: 12px; color: #888; }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 15px; }
+    .toolbar button, .tool-btn { padding: 6px 10px; font-size: 12px; }
+    .panel { padding: 8px 10px; gap: 6px; }
+    .panel input[type="text"] { width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Canvas 图片编辑器</h1>
+</header>
+
+<div class="toolbar" id="toolbar">
+  <button id="btnUpload" class="btn-primary">📁 打开图片</button>
+  <button id="btnCrop" disabled>✂️ 裁剪</button>
+  <button id="btnRotate" disabled>↻ 旋转</button>
+  <button id="btnWatermark" disabled>💧 水印</button>
+  <button id="btnExport" disabled>⬇ 导出 PNG</button>
+  <button id="btnReset" disabled>↩ 重置</button>
+</div>
+
+<div class="canvas-area" id="canvasArea">
+  <div class="upload-hint" id="uploadHint">
+    <div class="icon">🖼️</div>
+    <p>点击"打开图片"或拖放图片到此处</p>
+  </div>
+  <div class="canvas-container" id="canvasContainer" style="display:none;">
+    <canvas id="mainCanvas"></canvas>
+  </div>
+</div>
+
+<!-- Crop panel -->
+<div class="panel" id="cropPanel">
+  <button class="tool-btn" id="btnApplyCrop">✅ 应用裁剪</button>
+  <button class="tool-btn" id="btnCancelCrop">取消</button>
+  <span class="info-tag">拖拽边角 ↕ 调整大小 ｜ 拖拽中间 ↔ 移动区域</span>
+</div>
+
+<!-- Rotate panel -->
+<div class="panel" id="rotatePanel">
+  <button class="tool-btn" id="btnRotateLeft">↺ 逆时针90°</button>
+  <button class="tool-btn" id="btnRotateRight">↻ 顺时针90°</button>
+  <label>角度</label>
+  <input type="range" id="rotateSlider" min="-180" max="180" value="0" step="1">
+  <input type="number" id="rotateValue" value="0" min="-180" max="180" style="width:50px;">°
+  <button class="tool-btn" id="btnApplyRotate">应用</button>
+</div>
+
+<!-- Watermark panel -->
+<div class="panel" id="watermarkPanel">
+  <label>文字</label>
+  <input type="text" id="wmText" value="Watermark" placeholder="水印文字">
+  <label>字号</label>
+  <input type="number" id="wmSize" value="36" min="8" max="200" style="width:55px;">px
+  <label>颜色</label>
+  <input type="color" id="wmColor" value="#ffffff">
+  <label>透明度</label>
+  <input type="range" id="wmOpacity" min="10" max="100" value="60">
+  <button class="tool-btn" id="btnApplyWatermark">✅ 应用水印</button>
+  <span class="info-tag">拖拽水印文字到目标位置</span>
+</div>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<script>
+(() => {
+
+// ─── Constants ──────────────────────────────────────────
+const HANDLE_SIZE = 14;          // visual handle size
+const HANDLE_HIT = 22;           // touch hit area
+const MIN_CROP = 20;             // minimum crop dimension in canvas-px
+
+// ─── DOM refs ──────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const canvas = $('mainCanvas');
+const ctx = canvas.getContext('2d');
+const canvasArea = $('canvasArea');
+const container = $('canvasContainer');
+
+// ─── State ──────────────────────────────────────────────
+let image = null;                // HTMLImageElement (source of truth)
+let originalSrc = null;          // original data URL for reset
+let imageLoaded = false;
+
+// Crop
+let cropMode = false;
+let cropRect = null;             // { x, y, w, h } in canvas coords
+let cropHandle = null;           // which handle is being dragged (null = moving body)
+let cropDragStart = null;        // { px, py, rx, ry, rw, rh } snapshot at drag start
+
+// Rotation
+let appliedRotation = 0;         // rotation already baked into `image`
+let previewRotation = 0;         // live slider preview (not yet baked)
+
+// Watermark
+let watermarkMode = false;
+let watermark = null;            // { text, x, y, fontSize, color, opacity }
+let draggingWatermark = false;
+
+// ─── Fit canvas to container ────────────────────────────
+
+function fitCanvas() {
+  if (!image) return;
+  const pad = 32;
+  const areaW = canvasArea.clientWidth - pad;
+  const areaH = canvasArea.clientHeight - pad;
+  const scale = Math.min(areaW / image.width, areaH / image.height, 1);
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  render();
+}
+
+// ─── Render ─────────────────────────────────────────────
+
+function render() {
+  if (!image) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Draw image (with rotation preview around center)
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  const rot = appliedRotation + previewRotation;
+  if (rot !== 0) ctx.rotate((rot * Math.PI) / 180);
+  ctx.drawImage(image, -w / 2, -h / 2, w, h);
+  ctx.restore();
+
+  // Watermark preview
+  if (watermark) drawWatermark();
+
+  // Crop overlay (drawn last, on top)
+  if (cropMode && cropRect) drawCropOverlay();
+}
+
+// ─── Crop overlay (drawn on canvas) ─────────────────────
+
+function drawCropOverlay() {
+  const r = cropRect;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Dim areas outside crop rect
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, W, r.y);                                     // top
+  ctx.fillRect(0, r.y, r.x, r.h);                                  // left
+  ctx.fillRect(r.x + r.w, r.y, W - r.x - r.w, r.h);               // right
+  ctx.fillRect(0, r.y + r.h, W, H - r.y - r.h);                   // bottom
+
+  // Dashed border
+  ctx.strokeStyle = '#e94560';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 3]);
+  ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.setLineDash([]);
+
+  // Rule-of-thirds guide lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 8]);
+  for (let i = 1; i < 3; i++) {
+    const lx = r.x + (r.w / 3) * i;
+    ctx.beginPath(); ctx.moveTo(lx, r.y); ctx.lineTo(lx, r.y + r.h); ctx.stroke();
+    const ly = r.y + (r.h / 3) * i;
+    ctx.beginPath(); ctx.moveTo(r.x, ly); ctx.lineTo(r.x + r.w, ly); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // 8 resize handles
+  const handles = getHandlePositions(r);
+  for (const h of Object.values(handles)) {
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#e94560';
+    ctx.lineWidth = 2;
+    ctx.fillRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+    ctx.strokeRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+  }
+}
+
+function getHandlePositions(r) {
+  const mx = r.x + r.w / 2;
+  const my = r.y + r.h / 2;
+  return {
+    tl:  { x: r.x,       y: r.y },
+    tr:  { x: r.x + r.w, y: r.y },
+    bl:  { x: r.x,       y: r.y + r.h },
+    br:  { x: r.x + r.w, y: r.y + r.h },
+    tm:  { x: mx,        y: r.y },
+    bm:  { x: mx,        y: r.y + r.h },
+    ml:  { x: r.x,       y: my },
+    mr:  { x: r.x + r.w, y: my },
+  };
+}
+
+function hitTestHandle(px, py) {
+  const r = cropRect;
+  const handles = getHandlePositions(r);
+  for (const [name, h] of Object.entries(handles)) {
+    if (Math.abs(px - h.x) <= HANDLE_HIT / 2 && Math.abs(py - h.y) <= HANDLE_HIT / 2) {
+      return name;
+    }
+  }
+  // Check if inside the crop rect (for moving)
+  if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
+    return 'body';
+  }
+  return null;
+}
+
+// ─── Crop operations ────────────────────────────────────
+
+function enterCropMode() {
+  if (!imageLoaded) return;
+  cropMode = true;
+  watermarkMode = false;
+  watermark = null;
+  const margin = 0.1;
+  cropRect = {
+    x: canvas.width * margin,
+    y: canvas.height * margin,
+    w: canvas.width * (1 - 2 * margin),
+    h: canvas.height * (1 - 2 * margin)
+  };
+  canvas.style.cursor = 'default';
+  showPanel('cropPanel');
+  updateUI();
+  render();
+}
+
+function applyCrop() {
+  if (!cropRect || !image) return;
+  const r = cropRect;
+  const sx = image.width / canvas.width;
+  const sy = image.height / canvas.height;
+
+  const srcX = r.x * sx;
+  const srcY = r.y * sy;
+  const srcW = r.w * sx;
+  const srcH = r.h * sy;
+
+  const oc = document.createElement('canvas');
+  oc.width = srcW;
+  oc.height = srcH;
+  oc.getContext('2d').drawImage(image, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+
+  const img = new Image();
+  img.onload = () => {
+    image = img;
+    cropMode = false;
+    cropRect = null;
+    cropHandle = null;
+    appliedRotation = 0;
+    previewRotation = 0;
+    hideAllPanels();
+    fitCanvas();
+    updateUI();
+  };
+  img.src = oc.toDataURL();
+}
+
+function cancelCrop() {
+  cropMode = false;
+  cropRect = null;
+  cropHandle = null;
+  hideAllPanels();
+  updateUI();
+  render();
+}
+
+// ─── Rotation ───────────────────────────────────────────
+
+function rotateBy(deg) {
+  appliedRotation = (appliedRotation + deg) % 360;
+  previewRotation = 0;
+  $('rotateSlider').value = appliedRotation;
+  $('rotateValue').value = appliedRotation;
+  render();
+}
+
+function applyRotation() {
+  const total = appliedRotation + previewRotation;
+  if (total % 360 === 0) {
+    previewRotation = 0;
+    hideAllPanels();
+    return;
+  }
+
+  // Bake rotation into a new image
+  const rad = (total * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  const srcW = image.width;
+  const srcH = image.height;
+  const newW = Math.ceil(srcW * cos + srcH * sin);
+  const newH = Math.ceil(srcW * sin + srcH * cos);
+
+  const oc = document.createElement('canvas');
+  oc.width = newW;
+  oc.height = newH;
+  const octx = oc.getContext('2d');
+  octx.translate(newW / 2, newH / 2);
+  octx.rotate(rad);
+  octx.drawImage(image, -srcW / 2, -srcH / 2);
+
+  const img = new Image();
+  img.onload = () => {
+    image = img;
+    appliedRotation = 0;
+    previewRotation = 0;
+    $('rotateSlider').value = 0;
+    $('rotateValue').value = 0;
+    hideAllPanels();
+    fitCanvas();
+  };
+  img.src = oc.toDataURL();
+}
+
+// ─── Watermark ──────────────────────────────────────────
+
+function enterWatermarkMode() {
+  if (!imageLoaded) return;
+  watermarkMode = true;
+  cropMode = false;
+  cropRect = null;
+
+  watermark = {
+    text: $('wmText').value || 'Watermark',
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    fontSize: parseInt($('wmSize').value) || 36,
+    color: $('wmColor').value,
+    opacity: parseInt($('wmOpacity').value) / 100
+  };
+
+  canvas.style.cursor = 'grab';
+  showPanel('watermarkPanel');
+  updateUI();
+  render();
+}
+
+function updateWatermarkPreview() {
+  if (!watermark) return;
+  watermark.text = $('wmText').value || 'Watermark';
+  watermark.fontSize = parseInt($('wmSize').value) || 36;
+  watermark.color = $('wmColor').value;
+  watermark.opacity = parseInt($('wmOpacity').value) / 100;
+  render();
+}
+
+function drawWatermark() {
+  const wm = watermark;
+  ctx.save();
+  ctx.globalAlpha = wm.opacity;
+  ctx.fillStyle = wm.color;
+  ctx.font = `bold ${wm.fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Semi-transparent background for better readability while dragging
+  const metrics = ctx.measureText(wm.text);
+  const tw = metrics.width;
+  const th = wm.fontSize;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(wm.x - tw / 2 - 8, wm.y - th / 2 - 4, tw + 16, th + 8);
+
+  ctx.fillStyle = wm.color;
+  ctx.fillText(wm.text, wm.x, wm.y);
+  ctx.restore();
+}
+
+function applyWatermark() {
+  if (!watermark || !image) return;
+  const wm = watermark;
+  const sx = image.width / canvas.width;
+  const sy = image.height / canvas.height;
+
+  const oc = document.createElement('canvas');
+  oc.width = image.width;
+  oc.height = image.height;
+  const octx = oc.getContext('2d');
+  octx.drawImage(image, 0, 0);
+  octx.globalAlpha = wm.opacity;
+  octx.fillStyle = wm.color;
+  octx.font = `bold ${Math.round(wm.fontSize * sx)}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.fillText(wm.text, wm.x * sx, wm.y * sy);
+
+  const img = new Image();
+  img.onload = () => {
+    image = img;
+    watermarkMode = false;
+    watermark = null;
+    canvas.style.cursor = 'default';
+    hideAllPanels();
+    updateUI();
+    render();
+  };
+  img.src = oc.toDataURL();
+}
+
+// ─── Export ─────────────────────────────────────────────
+
+function exportPNG() {
+  if (!image) return;
+  const a = document.createElement('a');
+  a.download = `edited_${Date.now()}.png`;
+  const ec = document.createElement('canvas');
+  ec.width = image.width;
+  ec.height = image.height;
+  ec.getContext('2d').drawImage(image, 0, 0);
+  ec.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+// ─── Reset ──────────────────────────────────────────────
+
+function reset() {
+  if (!imageLoaded || !originalSrc) return;
+  const img = new Image();
+  img.onload = () => {
+    image = img;
+    appliedRotation = 0;
+    previewRotation = 0;
+    cropMode = false;
+    cropRect = null;
+    cropHandle = null;
+    watermarkMode = false;
+    watermark = null;
+    canvas.style.cursor = 'default';
+    hideAllPanels();
+    updateUI();
+    fitCanvas();
+  };
+  img.src = originalSrc;
+}
+
+// ─── Image loading ──────────────────────────────────────
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      image = img;
+      originalSrc = e.target.result;
+      imageLoaded = true;
+      appliedRotation = 0;
+      previewRotation = 0;
+      cropMode = false;
+      cropRect = null;
+      watermarkMode = false;
+      watermark = null;
+      updateUI();
+      fitCanvas();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── Pointer / Touch handling ──────────────────────────
+
+function canvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (canvas.width / rect.width),
+    y: (e.clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+function onPointerDown(e) {
+  if (!imageLoaded) return;
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  const pos = canvasPos(e);
+
+  // --- Crop mode ---
+  if (cropMode && cropRect) {
+    cropHandle = hitTestHandle(pos.x, pos.y);
+    if (cropHandle) {
+      cropDragStart = {
+        px: pos.x, py: pos.y,
+        rx: cropRect.x, ry: cropRect.y, rw: cropRect.w, rh: cropRect.h
+      };
+      canvas.style.cursor = cropHandle === 'body' ? 'move' : getHandleCursor(cropHandle);
+    }
+    return;
+  }
+
+  // --- Watermark mode ---
+  if (watermarkMode && watermark) {
+    const wm = watermark;
+    ctx.save();
+    ctx.font = `bold ${wm.fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    const tw = ctx.measureText(wm.text).width;
+    ctx.restore();
+    const th = wm.fontSize;
+    if (pos.x >= wm.x - tw / 2 - 8 && pos.x <= wm.x + tw / 2 + 8 &&
+        pos.y >= wm.y - th / 2 - 4 && pos.y <= wm.y + th / 2 + 8) {
+      draggingWatermark = true;
+      canvas.style.cursor = 'grabbing';
+    }
+  }
+}
+
+function onPointerMove(e) {
+  if (!imageLoaded) return;
+  e.preventDefault();
+  const pos = canvasPos(e);
+
+  // --- Crop dragging ---
+  if (cropMode && cropDragStart && cropHandle) {
+    const s = cropDragStart;
+    const dx = pos.x - s.px;
+    const dy = pos.y - s.py;
+    const W = canvas.width;
+    const H = canvas.height;
+
+    let { rx, ry, rw, rh } = s;
+
+    switch (cropHandle) {
+      case 'tl': rx += dx; ry += dy; rw -= dx; rh -= dy; break;
+      case 'tr': ry += dy; rw += dx; rh -= dy; break;
+      case 'bl': rx += dx; rw -= dx; rh += dy; break;
+      case 'br': rw += dx; rh += dy; break;
+      case 'tm': ry += dy; rh -= dy; break;
+      case 'bm': rh += dy; break;
+      case 'ml': rx += dx; rw -= dx; break;
+      case 'mr': rw += dx; break;
+      case 'body':
+        rx += dx; ry += dy;
+        break;
+    }
+
+    // Clamp
+    if (cropHandle !== 'body') {
+      if (rw < MIN_CROP) {
+        if (['tl', 'ml', 'bl'].includes(cropHandle)) rx -= (MIN_CROP - rw);
+        rw = MIN_CROP;
+      }
+      if (rh < MIN_CROP) {
+        if (['tl', 'tm', 'tr'].includes(cropHandle)) ry -= (MIN_CROP - rh);
+        rh = MIN_CROP;
+      }
+      if (rx < 0) { rw += rx; rx = 0; }
+      if (ry < 0) { rh += ry; ry = 0; }
+      if (rx + rw > W) rw = W - rx;
+      if (ry + rh > H) rh = H - ry;
+    } else {
+      rx = Math.max(0, Math.min(rx, W - rw));
+      ry = Math.max(0, Math.min(ry, H - rh));
+    }
+
+    cropRect = { x: rx, y: ry, w: rw, h: rh };
+    render();
+    return;
+  }
+
+  // --- Watermark dragging ---
+  if (watermarkMode && draggingWatermark && watermark) {
+    watermark.x = Math.max(0, Math.min(canvas.width, pos.x));
+    watermark.y = Math.max(0, Math.min(canvas.height, pos.y));
+    render();
+    return;
+  }
+
+  // --- Hover cursor in crop mode ---
+  if (cropMode && cropRect && !cropDragStart) {
+    const h = hitTestHandle(pos.x, pos.y);
+    canvas.style.cursor = h ? (h === 'body' ? 'move' : getHandleCursor(h)) : 'default';
+  }
+}
+
+function onPointerUp(e) {
+  if (!imageLoaded) return;
+  cropDragStart = null;
+  cropHandle = null;
+  draggingWatermark = false;
+  if (watermarkMode) canvas.style.cursor = 'grab';
+  if (cropMode) canvas.style.cursor = 'default';
+  canvas.releasePointerCapture(e.pointerId);
+}
+
+function getHandleCursor(h) {
+  const map = {
+    tl: 'nwse-resize', br: 'nwse-resize',
+    tr: 'nesw-resize', bl: 'nesw-resize',
+    tm: 'ns-resize',   bm: 'ns-resize',
+    ml: 'ew-resize',   mr: 'ew-resize'
+  };
+  return map[h] || 'default';
+}
+
+// ─── Panels ─────────────────────────────────────────────
+
+function showPanel(id) { hideAllPanels(); $(id).classList.add('visible'); }
+function hideAllPanels() {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'));
+}
+
+// ─── UI state ───────────────────────────────────────────
+
+function updateUI() {
+  $('uploadHint').style.display = imageLoaded ? 'none' : '';
+  container.style.display = imageLoaded ? 'inline-block' : 'none';
+  ['btnExport','btnCrop','btnRotate','btnWatermark','btnReset'].forEach(id => {
+    $(id).disabled = !imageLoaded;
+  });
+  $('btnCrop').classList.toggle('active', cropMode);
+  $('btnWatermark').classList.toggle('active', watermarkMode);
+  $('btnRotate').classList.toggle('active', $('rotatePanel').classList.contains('visible'));
+  if (!imageLoaded) hideAllPanels();
+}
+
+// ─── Event binding ──────────────────────────────────────
+
+function bind() {
+  $('btnUpload').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', (e) => {
+    if (e.target.files[0]) loadImage(e.target.files[0]);
+  });
+
+  // Drag & drop
+  canvasArea.addEventListener('dragover', (e) => e.preventDefault());
+  canvasArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImage(file);
+  });
+
+  // Toolbar
+  $('btnCrop').addEventListener('click', () => {
+    if (cropMode) { cancelCrop(); return; }
+    enterCropMode();
+  });
+  $('btnRotate').addEventListener('click', () => {
+    const panel = $('rotatePanel');
+    if (panel.classList.contains('visible')) {
+      previewRotation = 0;
+      $('rotateSlider').value = 0;
+      $('rotateValue').value = 0;
+      hideAllPanels();
+      render();
+    } else {
+      cropMode = false;
+      cropRect = null;
+      cropHandle = null;
+      watermarkMode = false;
+      watermark = null;
+      canvas.style.cursor = 'default';
+      showPanel('rotatePanel');
+    }
+    updateUI();
+  });
+  $('btnWatermark').addEventListener('click', () => {
+    if (watermarkMode) {
+      watermarkMode = false;
+      watermark = null;
+      canvas.style.cursor = 'default';
+      hideAllPanels();
+      render();
+      updateUI();
+      return;
+    }
+    enterWatermarkMode();
+  });
+  $('btnExport').addEventListener('click', () => exportPNG());
+  $('btnReset').addEventListener('click', () => reset());
+
+  // Crop panel
+  $('btnApplyCrop').addEventListener('click', () => applyCrop());
+  $('btnCancelCrop').addEventListener('click', () => cancelCrop());
+
+  // Rotate panel
+  $('btnRotateLeft').addEventListener('click', () => rotateBy(-90));
+  $('btnRotateRight').addEventListener('click', () => rotateBy(90));
+  $('btnApplyRotate').addEventListener('click', () => applyRotation());
+
+  const rs = $('rotateSlider');
+  const rv = $('rotateValue');
+  rs.addEventListener('input', () => { rv.value = rs.value; previewRotation = parseInt(rs.value); render(); });
+  rv.addEventListener('input', () => { rs.value = rv.value; previewRotation = parseInt(rv.value); render(); });
+
+  // Watermark panel
+  $('btnApplyWatermark').addEventListener('click', () => applyWatermark());
+  ['wmText','wmSize','wmColor','wmOpacity'].forEach(id => {
+    $(id).addEventListener('input', () => { if (watermark) updateWatermarkPreview(); });
+  });
+
+  // Pointer events (unified mouse + touch)
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+
+  // Prevent double-tap zoom on canvas
+  canvas.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+  window.addEventListener('resize', () => fitCanvas());
+}
+
+// ─── Boot ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', bind);
+
+})();
+</script>
+</body>
+</html>
