@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>科学函数计算器</title>
+<style>
+/* ========== CSS Variables & Themes ========== */
+:root {
+  --transition-speed: 0.3s;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-card: #0f3460;
+  --bg-button: #1a1a40;
+  --bg-button-hover: #2a2a5a;
+  --bg-operator: #e94560;
+  --bg-operator-hover: #ff6b81;
+  --bg-function: #533483;
+  --bg-function-hover: #7952b3;
+  --bg-equals: #00b894;
+  --bg-equals-hover: #00d9a3;
+  --bg-clear: #d63031;
+  --bg-clear-hover: #ff5555;
+  --text-primary: #f5f5f5;
+  --text-secondary: #b0b0c0;
+  --text-display: #00ff88;
+  --border-color: #2a2a5a;
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --canvas-bg: #0a0a1a;
+  --canvas-grid: #1a1a3e;
+  --canvas-axis: #4a4a6a;
+  --canvas-line: #00ff88;
+  --history-bg: #12122a;
+  --scrollbar-track: #1a1a2e;
+  --scrollbar-thumb: #3a3a5e;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f0f2f5;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-button: #e8eaf0;
+  --bg-button-hover: #d0d4dc;
+  --bg-operator: #e94560;
+  --bg-operator-hover: #ff6b81;
+  --bg-function: #6c5ce7;
+  --bg-function-hover: #a29bfe;
+  --bg-equals: #00b894;
+  --bg-equals-hover: #00d9a3;
+  --bg-clear: #d63031;
+  --bg-clear-hover: #ff5555;
+  --text-primary: #2d3436;
+  --text-secondary: #636e72;
+  --text-display: #2d3436;
+  --border-color: #dfe6e9;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --canvas-bg: #fafafa;
+  --canvas-grid: #e0e0e0;
+  --canvas-axis: #888;
+  --canvas-line: #e94560;
+  --history-bg: #f5f6fa;
+  --scrollbar-track: #f0f2f5;
+  --scrollbar-thumb: #b2bec3;
+}
+
+[data-theme="retro"] {
+  --bg-primary: #2b2b2b;
+  --bg-secondary: #3c3c3c;
+  --bg-card: #4a4a4a;
+  --bg-button: #5a5a0a;
+  --bg-button-hover: #7a7a1a;
+  --bg-operator: #8b8b00;
+  --bg-operator-hover: #aaaa22;
+  --bg-function: #6d5100;
+  --bg-function-hover: #8a6b00;
+  --bg-equals: #2a7a2a;
+  --bg-equals-hover: #3a9a3a;
+  --bg-clear: #aa2a2a;
+  --bg-clear-hover: #cc4444;
+  --text-primary: #33ff33;
+  --text-secondary: #22bb22;
+  --text-display: #33ff33;
+  --border-color: #1a1a1a;
+  --shadow-color: rgba(0, 50, 0, 0.3);
+  --canvas-bg: #1a1a0a;
+  --canvas-grid: #2a2a1a;
+  --canvas-axis: #4a4a2a;
+  --canvas-line: #33ff33;
+  --history-bg: #1a1a1a;
+  --scrollbar-track: #2b2b2b;
+  --scrollbar-thumb: #4a4a00;
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', 'SF Pro Display', -apple-system, system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  transition: background var(--transition-speed), color var(--transition-speed);
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+/* ========== Layout ========== */
+.app-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ========== Header ========== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.header h1 span { color: var(--text-display); }
+
+/* Theme Selector */
+.theme-selector {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.theme-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.theme-btn:hover { color: var(--text-primary); background: var(--bg-button); }
+.theme-btn.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 2px 6px var(--shadow-color); }
+
+/* ========== Main Layout ========== */
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* ========== Calculator ========== */
+.calculator {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px var(--shadow-color);
+  overflow: hidden;
+  transition: background var(--transition-speed), border var(--transition-speed);
+}
+
+/* Display */
+.calc-display {
+  padding: 24px 20px 16px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.keyboard-hint {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-bottom: 4px;
+  opacity: 0.6;
+}
+
+.expression {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-align: right;
+  min-height: 1.4em;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.result {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text-display);
+  text-align: right;
+  word-break: break-all;
+  line-height: 1.3;
+  margin-top: 4px;
+  transition: color 0.2s;
+}
+
+.result.error { color: var(--bg-clear); font-size: 1.2rem; }
+
+/* Buttons Grid */
+.calc-buttons {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.calc-buttons.sci-grid { grid-template-columns: repeat(5, 1fr); }
+.calc-buttons.basic-grid { grid-template-columns: repeat(5, 1fr); }
+
+.btn {
+  padding: 14px 6px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-button);
+  transition: all 0.15s;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:hover { background: var(--bg-button-hover); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn.pressed {
+  transform: scale(0.95);
+  filter: brightness(1.3);
+}
+
+.btn.operator { background: var(--bg-operator); color: #fff; font-weight: 600; }
+.btn.operator:hover { background: var(--bg-operator-hover); }
+
+.btn.function { background: var(--bg-function); color: #fff; }
+.btn.function:hover { background: var(--bg-function-hover); }
+
+.btn.equals { background: var(--bg-equals); color: #fff; font-weight: 700; font-size: 1.2rem; }
+.btn.equals:hover { background: var(--bg-equals-hover); }
+
+.btn.clear { background: var(--bg-clear); color: #fff; font-weight: 600; }
+.btn.clear:hover { background: var(--bg-clear-hover); }
+
+.btn.wide { grid-column: span 2; }
+
+.btn-mode-toggle {
+  font-size: 0.78rem;
+  padding: 10px 6px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+.btn-mode-toggle:hover { color: var(--text-primary); }
+
+/* ========== Right Panel ========== */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ========== History ========== */
+.history-panel {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px var(--shadow-color);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 300px;
+  transition: background var(--transition-speed);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.history-header h2 { font-size: 1rem; font-weight: 600; }
+
+.clear-history-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: all 0.2s;
+}
+
+.clear-history-btn:hover { background: var(--bg-clear); color: #fff; border-color: var(--bg-clear); }
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.history-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 4px;
+}
+
+.history-item:hover { background: var(--bg-button); }
+
+.history-expr {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.history-result {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-display);
+}
+
+.history-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+/* ========== Canvas Plot ========== */
+.plot-panel {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px var(--shadow-color);
+  overflow: hidden;
+  transition: background var(--transition-speed);
+}
+
+.plot-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plot-header h2 { font-size: 1rem; font-weight: 600; }
+
+.plot-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.plot-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-button);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  width: 180px;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.plot-input:focus { border-color: var(--bg-equals); }
+
+.plot-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-equals);
+  color: #fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.plot-btn:hover { background: var(--bg-equals-hover); }
+
+.plot-canvas-wrapper {
+  position: relative;
+  background: var(--canvas-bg);
+  transition: background var(--transition-speed);
+}
+
+canvas#plotCanvas {
+  display: block;
+  width: 100%;
+  cursor: grab;
+}
+
+canvas#plotCanvas:active { cursor: grabbing; }
+
+.plot-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.plot-presets {
+  padding: 8px 18px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border-color);
+}
+
+.preset-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+  font-family: 'Fira Code', 'SF Mono', monospace;
+}
+
+.preset-btn:hover {
+  background: var(--bg-function);
+  color: #fff;
+  border-color: var(--bg-function);
+}
+
+/* ========== Toast ========== */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  box-shadow: 0 6px 20px var(--shadow-color);
+  border: 1px solid var(--border-color);
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 800px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+
+  .history-panel { max-height: 200px; }
+
+  .calc-display { padding: 16px 16px 12px; min-height: 100px; }
+  .result { font-size: 1.8rem; }
+
+  .btn { padding: 12px 4px; font-size: 0.88rem; }
+
+  .plot-input { width: 140px; }
+
+  .app-container { padding: 12px; }
+}
+
+@media (max-width: 420px) {
+  .btn { padding: 11px 2px; font-size: 0.8rem; }
+  .result { font-size: 1.5rem; }
+  .expression { font-size: 0.88rem; }
+  .header h1 { font-size: 1.2rem; }
+  .theme-btn { padding: 4px 10px; font-size: 0.75rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Header -->
+  <div class="header">
+    <h1><span>f(x)</span> 科学函数计算器</h1>
+    <div class="theme-selector">
+      <button class="theme-btn active" data-theme="dark">暗色</button>
+      <button class="theme-btn" data-theme="light">浅色</button>
+      <button class="theme-btn" data-theme="retro">复古</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Calculator -->
+    <div class="calculator" tabindex="0" id="calcFocus">
+      <div class="calc-display">
+        <div class="keyboard-hint">支持键盘输入</div>
+        <div class="expression" id="expression"></div>
+        <div class="result" id="result">0</div>
+      </div>
+
+      <!-- Scientific Buttons -->
+      <div class="calc-buttons sci-grid" id="sciButtons">
+        <button class="btn function" data-action="fn" data-value="sin(">sin</button>
+        <button class="btn function" data-action="fn" data-value="cos(">cos</button>
+        <button class="btn function" data-action="fn" data-value="tan(">tan</button>
+        <button class="btn function" data-action="fn" data-value="log(">log</button>
+        <button class="btn function" data-action="fn" data-value="ln(">ln</button>
+        <button class="btn function" data-action="fn" data-value="sqrt(">√</button>
+        <button class="btn function" data-action="fn" data-value="abs(">|x|</button>
+        <button class="btn function" data-action="fn" data-value="^">x<sup>y</sup></button>
+        <button class="btn function" data-action="fn" data-value="pi">π</button>
+        <button class="btn function" data-action="fn" data-value="e_const">e</button>
+        <button class="btn function" data-action="fn" data-value="asin(">asin</button>
+        <button class="btn function" data-action="fn" data-value="acos(">acos</button>
+        <button class="btn function" data-action="fn" data-value="atan(">atan</button>
+        <button class="btn function" data-action="fn" data-value="log10(button">log₁₀</button>
+        <button class="btn function" data-action="fn" data-value="exp(">eˣ</button>
+        <button class="btn clear" data-action="clear">AC</button>
+        <button class="btn function" data-action="backspace">⌫</button>
+        <button class="btn function" data-action="fn" data-value="(">(</button>
+        <button class="btn function" data-action="fn" data-value=")">)</button>
+      </div>
+
+      <!-- Basic Buttons -->
+      <div class="calc-buttons basic-grid" id="basicButtons">
+        <button class="btn" data-action="input" data-value="7">7</button>
+        <button class="btn" data-action="input" data-value="8">8</button>
+        <button class="btn" data-action="input" data-value="9">9</button>
+        <button class="btn operator" data-action="input" data-value="÷">÷</button>
+        <button class="btn operator" data-action="input" data-value="%">%</button>
+
+        <button class="btn" data-action="input" data-value="4">4</button>
+        <button class="btn" data-action="input" data-value="5">5</button>
+        <button class="btn" data-action="input" data-value="6">6</button>
+        <button class="btn operator" data-action="input" data-value="×">×</button>
+        <button class="btn clear" data-action="clear-entry">CE</button>
+
+        <button class="btn" data-action="input" data-value="1">1</button>
+        <button class="btn" data-action="input" data-value="2">2</button>
+        <button class="btn" data-action="input" data-value="3">3</button>
+        <button class="btn operator" data-action="input" data-value="-">−</button>
+        <button class="btn clear" data-action="backspace">⌫</button>
+
+        <button class="btn" data-action="input" data-value="0">0</button>
+        <button class="btn" data-action="fn" data-value=".">.</button>
+        <button class="btn operator" data-action="input" data-value="+">+</button>
+        <button class="btn equals wide" data-action="evaluate">=</button>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <!-- History -->
+      <div class="history-panel">
+        <div class="history-header">
+          <h2>计算历史</h2>
+          <button class="clear-history-btn" id="clearHistory">清空</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">暂无历史记录</div>
+        </div>
+      </div>
+
+      <!-- Plot -->
+      <div class="plot-panel">
+        <div class="plot-header">
+          <h2>函数绘图</h2>
+          <div class="plot-controls">
+            <input type="text" class="plot-input" id="plotInput" placeholder="例: x^2, sin(x)" value="sin(x)">
+            <button class="plot-btn" id="plotBtn">绘制</button>
+          </div>
+        </div>
+        <div class="plot-canvas-wrapper">
+          <canvas id="plotCanvas" width="1000" height="500"></canvas>
+          <div class="plot-hint">拖拽平移 · 滚轮缩放</div>
+        </div>
+        <div class="plot-presets">
+          <button class="preset-btn" data-fn="x^2">x²</button>
+          <button class="preset-btn" data-fn="sin(x)">sin(x)</button>
+          <button class="preset-btn" data-fn="cos(x)">cos(x)</button>
+          <button class="preset-btn" data-fn="tan(x)">tan(x)</button>
+          <button class="preset-btn" data-fn="1/x">1/x</button>
+          <button class="preset-btn" data-fn="sqrt(x)">√x</button>
+          <button class="preset-btn" data-fn="log(x)">log(x)</button>
+          <button class="preset-btn" data-fn="x^3-3*x">x³−3x</button>
+          <button class="preset-btn" data-fn="sin(x)/x">sinc(x)</button>
+          <button class="preset-btn" data-fn="abs(sin(x))*exp(-0.1*x)">衰减波</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================================
+   科学函数计算器 - 完整实现
+   Shunting-yard 算法 · 历史记录 · 主题切换 · Canvas 绘图 · 键盘支持
+   ========================================================== */
+
+// ==================== Calculator Engine ====================
+
+const CalcEngine = {
+  // 运算符定义
+  operators: {
+    '+':  { precedence: 2, associativity: 'left', fn: (a, b) => a + b },
+    '-':  { precedence: 2, associativity: 'left', fn: (a, b) => a - b },
+    '*':  { precedence: 3, associativity: 'left', fn: (a, b) => a * b },
+    '/':  { precedence: 3, associativity: 'left', fn: (a, b) => {
+      if (b === 0) throw new Error('除数不能为零');
+      return a / b;
+    }},
+    '%':  { precedence: 3, associativity: 'left', fn: (a, b) => a % b },
+    '^':  { precedence: 4, associativity: 'right', fn: (a, b) => Math.pow(a, b) },
+    'unary-': { precedence: 5, associativity: 'right', fn: (a) => -a },
+  },
+
+  // 函数定义
+  functions: {
+    'sin':   Math.sin,
+    'cos':   Math.cos,
+    'tan':   (x) => Math.tan(x),
+    'asin':  Math.asin,
+    'acos':  Math.acos,
+    'atan':  Math.atan,
+    'log':   Math.log10,
+    'ln':    Math.log,
+    'log10': Math.log10,
+    'sqrt':  Math.sqrt,
+    'abs':   Math.abs,
+    'exp':   Math.exp,
+    'floor': Math.floor,
+    'ceil':  Math.ceil,
+  },
+
+  constants: {
+    'pi': Math.PI,
+    'e':   Math.E,
+  },
+
+  /**
+   * 令牌化：将表达式字符串拆分为 token 数组
+   */
+  tokenize(expr) {
+    const tokens = [];
+    let i = 0;
+    const s = expr.replace(/\s+/g, '');
+
+    while (i < s.length) {
+      // 数字
+      if (/[0-9]/.test(s[i]) || (s[i] === '.' && i + 1 < s.length && /[0-9]/.test(s[i+1]))) {
+        let num = '';
+        while (i < s.length && /[0-9.]/.test(s[i])) num += s[i++];
+        tokens.push({ type: 'number', value: num });
+        continue;
+      }
+
+      // 运算符
+      if ('+-*/%^'.includes(s[i])) {
+        // 判断是否为负号（一元运算符）
+        if (s[i] === '-' && (tokens.length === 0 ||
+            (tokens[tokens.length-1].type === 'operator' && tokens[tokens.length-1].value !== ')') ||
+            tokens[tokens.length-1].type === 'lparen' ||
+            tokens[tokens.length-1].type === 'comma' ||
+            tokens[tokens.length-1].type === 'function')) {
+          tokens.push({ type: 'operator', value: 'unary-' });
+          i++;
+          continue;
+        }
+        tokens.push({ type: 'operator', value: s[i++] });
+        continue;
+      }
+
+      // 括号
+      if (s[i] === '(') { tokens.push({ type: 'lparen', value: '(' }); i++; continue; }
+      if (s[i] === ')') { tokens.push({ type: 'rparen', value: ')' }); i++; continue; }
+      if (s[i] === ',') { tokens.push({ type: 'comma', value: ',' }); i++; continue; }
+
+      // 常量与函数（字母序列）
+      if (/[a-zA-Z]/.test(s[i])) {
+        let name = '';
+        while (i < s.length && /[a-zA-Z0-9_]/.test(s[i])) name += s[i++];
+
+        if (this.constants[name] !== undefined) {
+          tokens.push({ type: 'constant', value: name });
+        } else if (this.functions[name] !== undefined || name === 'log10') {
+          tokens.push({ type: 'function', value: name });
+        } else {
+          throw new Error(`未知标识符: ${name}`);
+        }
+        continue;
+      }
+
+      throw new Error(`无法识别的字符: ${s[i]}`);
+    }
+
+    return tokens;
+  },
+
+  /**
+   * Shunting-yard 算法：中缀表达式 → 逆波兰表示法 (RPN)
+   */
+  shuntingYard(tokens) {
+    const output = [];
+    const opStack = [];
+
+    for (const token of tokens) {
+      switch (token.type) {
+        case 'number':
+        case 'constant':
+          output.push(token);
+          break;
+
+        case 'function':
+          opStack.push(token);
+          break;
+
+        case 'comma':
+          while (opStack.length && opStack[opStack.length-1].value !== '(') {
+            output.push(opStack.pop());
+          }
+          if (!opStack.length) throw new Error('括号不匹配');
+          break;
+
+        case 'lparen':
+          opStack.push(token);
+          break;
+
+        case 'rparen':
+          while (opStack.length && opStack[opStack.length-1].value !== '(') {
+            output.push(opStack.pop());
+          }
+          if (!opStack.length) throw new Error('括号不匹配');
+          opStack.pop(); // 弹出 '('
+          if (opStack.length && opStack[opStack.length-1].type === 'function') {
+            output.push(opStack.pop());
+          }
+          break;
+
+        case 'operator': {
+          const op1 = this.operators[token.value];
+          while (opStack.length) {
+            const top = opStack[opStack.length - 1];
+            if (top.type !== 'operator') break;
+            const op2 = this.operators[top.value];
+            if ((op1.associativity === 'left' && op1.precedence <= op2.precedence) ||
+                (op1.associativity === 'right' && op1.precedence < op2.precedence)) {
+              output.push(opStack.pop());
+            } else {
+              break;
+            }
+          }
+          opStack.push(token);
+          break;
+        }
+      }
+    }
+
+    while (opStack.length) {
+      const top = opStack.pop();
+      if (top.value === '(' || top.value === ')') throw new Error('括号不匹配');
+      output.push(top);
+    }
+
+    return output;
+  },
+
+  /**
+   * 计算逆波兰表达式
+   */
+  evaluateRPN(rpn) {
+    const stack = [];
+
+    for (const token of rpn) {
+      switch (token.type) {
+        case 'number':
+          stack.push(parseFloat(token.value));
+          break;
+
+        case 'constant':
+          stack.push(this.constants[token.value]);
+          break;
+
+        case 'operator': {
+          const op = this.operators[token.value];
+          if (token.value === 'unary-') {
+            if (stack.length < 1) throw new Error('表达式不完整');
+            stack.push(op.fn(stack.pop()));
+          } else {
+            if (stack.length < 2) throw new Error('表达式不完整');
+            const b = stack.pop();
+            const a = stack.pop();
+            stack.push(op.fn(a, b));
+          }
+          break;
+        }
+
+        case 'function': {
+          const fn = this.functions[token.value];
+          if (!fn) { throw new Error(`未知函数: ${token.value}`); }
+          if (stack.length < 1) throw new Error('函数缺少参数');
+          const arg = stack.pop();
+          const result = fn(arg);
+          if (typeof result !== 'number' || !isFinite(result)) {
+            throw new Error(`数学错误: ${token.value}(${arg})`);
+          }
+          stack.push(result);
+          break;
+        }
+      }
+    }
+
+    if (stack.length !== 1) throw new Error('表达式不完整');
+    if (!isFinite(stack[0])) throw new Error('结果为无穷大');
+    return stack[0];
+  },
+
+  /**
+   * 主计算入口：表达式字符串 → 数值
+   */
+  evaluate(expr) {
+    if (!expr || !expr.trim()) throw new Error('请输入表达式');
+
+    const tokens = this.tokenize(expr);
+    const rpn = this.shuntingYard(tokens);
+    return this.evaluateRPN(rpn);
+  },
+
+  /**
+   * 格式化数字结果
+   */
+  format(num) {
+    if (Number.isInteger(num) && Math.abs(num) < 1e15) return num.toString();
+
+    const str = num.toPrecision(12);
+    // 去除末尾零
+    return parseFloat(str).toString();
+  },
+
+  /**
+   * 将显示表达式转为计算表达式
+   */
+  displayToCalc(displayExpr) {
+    return displayExpr
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/−/g, '-')
+      .replace(/π/g, 'pi')
+      .replace(/e_const/g, 'e');
+  }
+};
+
+
+// ==================== UI Controller ====================
+
+const UI = {
+  expression: '',
+  lastResult: null,
+  justEvaluated: false,
+  history: [],
+  animFrame: null,
+
+  els: {
+    expression: document.getElementById('expression'),
+    result: document.getElementById('result'),
+    historyList: document.getElementById('historyList'),
+    plotInput: document.getElementById('plotInput'),
+    plotCanvas: document.getElementById('plotCanvas'),
+    toast: document.getElementById('toast'),
+  },
+
+  init() {
+    this.bindButtons();
+    this.bindKeyboard();
+    this.bindTheme();
+    this.bindHistory();
+    this.bindPlot();
+    this.loadHistory();
+    this.initPlot();
+    this.updateDisplay();
+  },
+
+  // ---- Button Events ----
+  bindButtons() {
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        const value = btn.dataset.value;
+
+        // 按钮按压动画
+        btn.classList.add('pressed');
+        setTimeout(() => btn.classList.remove('pressed'), 120);
+
+        switch (action) {
+          case 'input':
+            this.handleInput(value);
+            break;
+          case 'fn':
+            this.handleFunction(value);
+            break;
+          case 'clear':
+            this.handleClear();
+            break;
+          case 'clear-entry':
+            this.handleBackspace();
+            break;
+          case 'backspace':
+            this.handleBackspace();
+            break;
+          case 'evaluate':
+            this.handleEvaluate();
+            break;
+        }
+      });
+    });
+  },
+
+  handleInput(value) {
+    if (this.justEvaluated && /[0-9.]/.test(value)) {
+      this.expression = '';
+      this.justEvaluated = false;
+    }
+    this.justEvaluated = false;
+
+    // 隐式乘法：number followed by function or (
+    if (/[0-9)]/.test(this.expression.slice(-1)) && ['(', 'sin(', 'cos(', 'tan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'asin(', 'acos(', 'atan(', 'log10('].includes(value)) {
+      this.expression += '×';
+    }
+    if (/[0-9)]π/.test(this.expression.slice(-1)) && value === 'pi') {
+      this.expression += '×';
+    }
+
+    this.expression += value;
+    this.updateDisplay();
+  },
+
+  handleFunction(value) {
+    if (value === '.') {
+      this.handleInput('.');
+      return;
+    }
+
+    if (value === 'e_const') {
+      if (this.justEvaluated) {
+        this.expression = '';
+        this.justEvaluated = false;
+      }
+      // 隐式乘法
+      if (/[0-9)]π/.test(this.expression.slice(-1))) {
+        this.expression += '×';
+      }
+      this.expression += value;
+      this.updateDisplay();
+      return;
+    }
+
+    if (value === 'pi') {
+      if (this.justEvaluated) {
+        this.expression = '';
+        this.justEvaluated = false;
+      }
+      if (/[0-9)]π/.test(this.expression.slice(-1))) {
+        this.expression += '×';
+      }
+      this.expression += value;
+      this.updateDisplay();
+      return;
+    }
+
+    if (value === '^') {
+      if (this.justEvaluated) {
+        this.expression = this.lastResult !== null ? CalcEngine.format(this.lastResult) : '';
+        this.justEvaluated = false;
+      }
+      this.expression += value;
+      this.updateDisplay();
+      return;
+    }
+
+    if (value === '(' || value === ')') {
+      if (this.justEvaluated && value === '(') {
+        this.expression = '';
+        this.justEvaluated = false;
+      }
+      // 隐式乘法
+      if (/[0-9)]π/.test(this.expression.slice(-1)) && value === '(') {
+        this.expression += '×';
+      }
+      this.expression += value;
+      this.updateDisplay();
+      return;
+    }
+
+    // Function calls like "sin("
+    if (this.justEvaluated) {
+      this.expression = '';
+      this.justEvaluated = false;
+    }
+    // 隐式乘法
+    if (/[0-9)]π/.test(this.expression.slice(-1))) {
+      this.expression += '×';
+    }
+    this.expression += value;
+    this.updateDisplay();
+  },
+
+  handleClear() {
+    this.expression = '';
+    this.lastResult = null;
+    this.justEvaluated = false;
+    this.els.result.classList.remove('error');
+    this.els.result.textContent = '0';
+    this.els.expression.textContent = '';
+  },
+
+  handleBackspace() {
+    if (this.justEvaluated) return;
+    // 处理多字符 token 如 "sin("
+    const funcPatterns = ['sin(', 'cos(', 'tan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'asin(', 'acos(', 'atan(', 'log10('];
+    for (const p of funcPatterns) {
+      if (this.expression.endsWith(p)) {
+        this.expression = this.expression.slice(0, -p.length);
+        this.updateDisplay();
+        return;
+      }
+    }
+    // 检查 e_const
+    if (this.expression.endsWith('e_const')) {
+      this.expression = this.expression.slice(0, -7);
+      this.updateDisplay();
+      return;
+    }
+    this.expression = this.expression.slice(0, -1);
+    this.updateDisplay();
+  },
+
+  handleEvaluate() {
+    if (!this.expression) return;
+
+    try {
+      const calcExpr = CalcEngine.displayToCalc(this.expression);
+      const result = CalcEngine.evaluate(calcExpr);
+      const formatted = CalcEngine.format(result);
+
+      this.els.result.classList.remove('error');
+      this.els.result.textContent = formatted;
+      this.els.expression.textContent = this.expression + ' =';
+
+      this.addHistory(this.expression, formatted);
+      this.lastResult = result;
+      this.justEvaluated = true;
+    } catch (err) {
+      this.els.result.classList.add('error');
+      this.els.result.textContent = err.message;
+      this.showToast(err.message);
+    }
+  },
+
+  updateDisplay() {
+    this.els.expression.textContent = this.expression || '';
+    if (!this.justEvaluated) {
+      // Live preview
+      if (this.expression) {
+        try {
+          const calcExpr = CalcEngine.displayToCalc(this.expression);
+          const preview = CalcEngine.evaluate(calcExpr);
+          if (isFinite(preview)) {
+            this.els.result.classList.remove('error');
+            this.els.result.textContent = CalcEngine.format(preview);
+          }
+        } catch {
+          // 表达式不完整，忽略预览错误
+          if (!this.justEvaluated) {
+            this.els.result.textContent = this.expression || '0';
+          }
+        }
+      } else {
+        this.els.result.textContent = '0';
+        this.els.result.classList.remove('error');
+      }
+    }
+  },
+
+  // ---- Keyboard Events ----
+  bindKeyboard() {
+    document.addEventListener('keydown', (e) => {
+      // 如果焦点在绘图输入框则不要劫持
+      if (document.activeElement === this.els.plotInput) return;
+
+      const key = e.key;
+      let handled = true;
+
+      if (/^[0-9]$/.test(key)) {
+        this.handleInput(key);
+        this.flashButton(key);
+      } else if (key === '+') {
+        this.handleInput('+');
+        this.flashButton('+');
+      } else if (key === '-') {
+        this.handleInput('-');
+        this.flashButton('−');
+      } else if (key === '*') {
+        this.handleInput('×');
+        this.flashButton('×');
+      } else if (key === '/') {
+        e.preventDefault();
+        this.handleInput('÷');
+        this.flashButton('÷');
+      } else if (key === '%') {
+        this.handleInput('%');
+        this.flashButton('%');
+      } else if (key === '^') {
+        this.handleFunction('^');
+      } else if (key === '(') {
+        this.handleFunction('(');
+      } else if (key === ')') {
+        this.handleFunction(')');
+      } else if (key === '.') {
+        this.handleInput('.');
+      } else if (key === 'Enter' || key === '=') {
+        this.handleEvaluate();
+        this.flashButton('=');
+      } else if (key === 'Backspace') {
+        this.handleBackspace();
+      } else if (key === 'Escape' || key === 'Delete') {
+        this.handleClear();
+        this.flashButton('AC');
+      } else {
+        handled = false;
+      }
+
+      if (handled) e.preventDefault();
+    });
+  },
+
+  flashButton(displayValue) {
+    document.querySelectorAll('.btn').forEach(btn => {
+      const val = btn.dataset.value || btn.textContent.trim();
+      if (val === displayValue || btn.textContent.trim() === displayValue) {
+        btn.classList.add('pressed');
+        setTimeout(() => btn.classList.remove('pressed'), 120);
+      }
+    });
+  },
+
+  // ---- Theme ----
+  bindTheme() {
+    const saved = localStorage.getItem('calc-theme');
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved);
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.theme === saved);
+      });
+    }
+
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('calc-theme', theme);
+        document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // Redraw plot
+        this.drawPlot();
+      });
+    });
+  },
+
+  // ---- History ----
+  bindHistory() {
+    document.getElementById('clearHistory').addEventListener('click', () => {
+      this.history = [];
+      localStorage.removeItem('calc-history');
+      this.renderHistory();
+      this.showToast('历史已清空');
+    });
+  },
+
+  addHistory(expr, result) {
+    this.history.unshift({ expr, result, time: Date.now() });
+    if (this.history.length > 50) this.history.pop();
+    localStorage.setItem('calc-history', JSON.stringify(this.history));
+    this.renderHistory();
+  },
+
+  loadHistory() {
+    try {
+      const data = localStorage.getItem('calc-history');
+      if (data) this.history = JSON.parse(data);
+    } catch { this.history = []; }
+    this.renderHistory();
+  },
+
+  renderHistory() {
+    const list = this.els.historyList;
+
+    if (this.history.length === 0) {
+      list.innerHTML = '<div class="history-empty">暂无历史记录</div>';
+      return;
+    }
+
+    list.innerHTML = this.history.map((item, i) => `
+      <div class="history-item" data-index="${i}">
+        <div class="history-expr">${this.escapeHtml(item.expr)}</div>
+        <div class="history-result">= ${this.escapeHtml(item.result)}</div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.index);
+        const item = this.history[idx];
+        this.expression = item.expr;
+        this.justEvaluated = false;
+        this.updateDisplay();
+      });
+    });
+  },
+
+  escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  },
+
+  // ---- Toast ----
+  showToast(msg) {
+    const t = this.els.toast;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  },
+
+  // ==================== Canvas Plot ====================
+
+  plotState: {
+    xMin: -10, xMax: 10,
+    yMin: -5, yMax: 5,
+    dragging: false,
+    startX: 0, startY: 0,
+    startViewX: 0, startViewY: 0,
+    currentFn: null,
+  },
+
+  bindPlot() {
+    document.getElementById('plotBtn').addEventListener('click', () => this.plotFromInput());
+
+    this.els.plotInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.plotFromInput();
+    });
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.els.plotInput.value = btn.dataset.fn;
+        this.plotFromInput();
+      });
+    });
+
+    const canvas = this.els.plotCanvas;
+
+    // Drag to pan
+    canvas.addEventListener('mousedown', (e) => {
+      this.plotState.dragging = true;
+      this.plotState.startX = e.clientX;
+      this.plotState.startY = e.clientY;
+      this.plotState.startViewX = this.plotState.xMin;
+      this.plotState.startViewY = this.plotState.yMin;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!this.plotState.dragging) return;
+      const rect = canvas.getBoundingClientRect();
+      const dx = e.clientX - this.plotState.startX;
+      const dy = e.clientY - this.plotState.startY;
+      const xRange = this.plotState.xMax - this.plotState.xMin;
+      const yRange = this.plotState.yMax - this.plotState.yMin;
+      const shiftX = -dx * xRange / rect.width;
+      const shiftY = dy * yRange / rect.height;
+      this.plotState.xMin = this.plotState.startViewX + shiftX;
+      this.plotState.xMax = this.plotState.startViewX + xRange + shiftX;
+      this.plotState.yMin = this.plotState.startViewY + shiftY;
+      this.plotState.yMax = this.plotState.startViewY + yRange + shiftY;
+      this.drawPlot();
+    });
+
+    window.addEventListener('mouseup', () => {
+      this.plotState.dragging = false;
+    });
+
+    // Scroll to zoom
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) / rect.width;
+      const my = (e.clientY - rect.top) / rect.height;
+
+      const xRange = this.plotState.xMax - this.plotState.xMin;
+      const yRange = this.plotState.yMax - this.plotState.yMin;
+
+      const zoom = e.deltaY > 0 ? 1.1 : 0.9;
+      const nxMin = this.plotState.xMin + mx * xRange * (1 - zoom);
+      const nxMax = this.plotState.xMax - (1 - mx) * xRange * (1 - zoom);
+      const nyMin = this.plotState.yMin + my * yRange * (1 - zoom);
+      const nyMax = this.plotState.yMax - (1 - my) * yRange * (1 - zoom);
+
+      // Limit zoom range
+      if (nxMax - nxMin > 0.001 && nxMax - nxMin < 1e8) {
+        this.plotState.xMin = nxMin;
+        this.plotState.xMax = nxMax;
+        this.plotState.yMin = nyMin;
+        this.plotState.yMax = nyMax;
+        this.drawPlot();
+      }
+    }, { passive: false });
+
+    // Touch support
+    let lastTouchDist = 0;
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        this.plotState.dragging = true;
+        this.plotState.startX = e.touches[0].clientX;
+        this.plotState.startY = e.touches[0].clientY;
+        this.plotState.startViewX = this.plotState.xMin;
+        this.plotState.startViewY = this.plotState.yMin;
+      } else if (e.touches.length === 2) {
+        lastTouchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && this.plotState.dragging) {
+        const rect = canvas.getBoundingClientRect();
+        const dx = e.touches[0].clientX - this.plotState.startX;
+        const dy = e.touches[0].clientY - this.plotState.startY;
+        const xRange = this.plotState.xMax - this.plotState.xMin;
+        const yRange = this.plotState.yMax - this.plotState.yMin;
+        const shiftX = -dx * xRange / rect.width;
+        const shiftY = dy * yRange / rect.height;
+        this.plotState.xMin = this.plotState.startViewX + shiftX;
+        this.plotState.xMax = this.plotState.startViewX + xRange + shiftX;
+        this.plotState.yMin = this.plotState.startViewY + shiftY;
+        this.plotState.yMax = this.plotState.startViewY + yRange + shiftY;
+        this.drawPlot();
+      } else if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (lastTouchDist > 0) {
+          const zoom = lastTouchDist / dist;
+          const cx = (this.plotState.xMin + this.plotState.xMax) / 2;
+          const cy = (this.plotState.yMin + this.plotState.yMax) / 2;
+          const xRange = (this.plotState.xMax - this.plotState.xMin) * zoom;
+          const yRange = (this.plotState.yMax - this.plotState.yMin) * zoom;
+          if (xRange > 0.001 && xRange < 1e8) {
+            this.plotState.xMin = cx - xRange / 2;
+            this.plotState.xMax = cx + xRange / 2;
+            this.plotState.yMin = cy - yRange / 2;
+            this.plotState.yMax = cy + yRange / 2;
+            this.drawPlot();
+          }
+        }
+        lastTouchDist = dist;
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+      this.plotState.dragging = false;
+      lastTouchDist = 0;
+    });
+  },
+
+  initPlot() {
+    this.drawPlot();
+  },
+
+  plotFromInput() {
+    const expr = this.els.plotInput.value.trim();
+    if (!expr) return;
+
+    // Test the expression
+    try {
+      this.createPlotFunction(expr);
+      this.plotState.currentFn = expr;
+      this.drawPlot();
+    } catch (err) {
+      this.showToast('函数错误: ' + err.message);
+    }
+  },
+
+  /**
+   * 将用户输入的函数字符串转为可调用函数 f(x) => number
+   */
+  createPlotFunction(expr) {
+    // 将绘图表达式转为计算表达式
+    const calcExpr = CalcEngine.displayToCalc(expr);
+
+    // 编译函数：替换 x 为变量
+    return (xVal) => {
+      // 直接用计算引擎处理
+      const xExpr = calcExpr.replace(/\bx\b/g, `(${xVal})`);
+      try {
+        const tokens = CalcEngine.tokenize(xExpr);
+        const rpn = CalcEngine.shuntingYard(tokens);
+        return CalcEngine.evaluateRPN(rpn);
+      } catch {
+        return NaN;
+      }
+    };
+  },
+
+  drawPlot() {
+    const canvas = this.els.plotCanvas;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const { xMin, xMax, yMin, yMax } = this.plotState;
+
+    // Read theme colors
+    const cs = getComputedStyle(document.documentElement);
+    const bgColor = cs.getPropertyValue('--canvas-bg').trim();
+    const gridColor = cs.getPropertyValue('--canvas-grid').trim();
+    const axisColor = cs.getPropertyValue('--canvas-axis').trim();
+    const lineColor = cs.getPropertyValue('--canvas-line').trim();
+    const textColor = cs.getPropertyValue('--text-secondary').trim();
+
+    // Clear
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, W, H);
+
+    // Compute grid spacing
+    const xRange = xMax - xMin;
+    const yRange = yMax - yMin;
+    const gridStepX = this.niceStep(xRange / 10);
+    const gridStepY = this.niceStep(yRange / 10);
+
+    // Grid lines
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+
+    // Vertical grid
+    const xStart = Math.ceil(xMin / gridStepX) * gridStepX;
+    for (let gx = xStart; gx <= xMax; gx += gridStepX) {
+      const px = (gx - xMin) / xRange * W;
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, H);
+      ctx.stroke();
+    }
+
+    // Horizontal grid
+    const yStart = Math.ceil(yMin / gridStepY) * gridStepY;
+    for (let gy = yStart; gy <= yMax; gy += gridStepY) {
+      const py = H - (gy - yMin) / yRange * H;
+      ctx.beginPath();
+      ctx.moveTo(0, py);
+      ctx.lineTo(W, py);
+      ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = axisColor;
+    ctx.lineWidth = 2;
+
+    // X axis
+    if (yMin <= 0 && yMax >= 0) {
+      const py = H - (-yMin) / yRange * H;
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+    }
+
+    // Y axis
+    if (xMin <= 0 && xMax >= 0) {
+      const px = (-xMin) / xRange * W;
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+    }
+
+    // Axis labels
+    ctx.fillStyle = textColor;
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    for (let gx = xStart; gx <= xMax; gx += gridStepX) {
+      if (Math.abs(gx) < gridStepX * 0.01) continue;
+      const px = (gx - xMin) / xRange * W;
+      const labelY = (yMin <= 0 && yMax >= 0) ? Math.min(H - (-yMin) / yRange * H + 4, H - 14) : H - 14;
+      ctx.fillText(this.formatAxisLabel(gx), px, labelY);
+    }
+
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let gy = yStart; gy <= yMax; gy += gridStepY) {
+      if (Math.abs(gy) < gridStepY * 0.01) continue;
+      const py = H - (gy - yMin) / yRange * H;
+      const labelX = (xMin <= 0 && xMax >= 0) ? Math.max((-xMin) / xRange * W - 4, 34) : 34;
+      ctx.fillText(this.formatAxisLabel(gy), labelX, py);
+    }
+
+    // Plot function
+    if (this.plotState.currentFn) {
+      const fn = this.createPlotFunction(this.plotState.currentFn);
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      let drawing = false;
+      const step = xRange / W;
+
+      for (let px = 0; px <= W; px++) {
+        const x = xMin + px * step;
+        let y;
+        try {
+          y = fn(x);
+        } catch {
+          y = NaN;
+        }
+
+        if (isNaN(y) || !isFinite(y)) {
+          drawing = false;
+          continue;
+        }
+
+        const py = H - (y - yMin) / yRange * H;
+
+        // Skip if y is way out of range (to avoid visual artifacts with asymptotes)
+        if (py < -H || py > 2 * H) {
+          drawing = false;
+          continue;
+        }
+
+        if (!drawing) {
+          ctx.moveTo(px, py);
+          drawing = true;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      // Glow effect
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 6;
+      ctx.globalAlpha = 0.15;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  },
+
+  niceStep(rough) {
+    const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+    const normalized = rough / pow;
+    if (normalized <= 1) return pow;
+    if (normalized <= 2) return 2 * pow;
+    if (normalized <= 5) return 5 * pow;
+    return 10 * pow;
+  },
+
+  formatAxisLabel(val) {
+    if (Math.abs(val) >= 1000 || (Math.abs(val) < 0.01 && val !== 0)) {
+      return val.toExponential(1);
+    }
+    // Remove trailing zeros
+    return parseFloat(val.toPrecision(4)).toString();
+  },
+};
+
+// ===== Start =====
+document.addEventListener('DOMContentLoaded', () => UI.init());
+</script>
+</body>
+</html>
