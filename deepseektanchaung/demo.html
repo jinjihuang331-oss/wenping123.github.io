@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>弹窗组件 Demo</title>
+  <style>
+    /* ===== Reset ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+
+    /* ===== 页面布局 ===== */
+    .page { max-width: 680px; margin: 0 auto; padding: 40px 24px; }
+    .page h1 { font-size: 24px; margin-bottom: 8px; }
+    .page .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+    .card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .card h3 { font-size: 15px; margin-bottom: 12px; }
+
+    /* ===== 按钮 ===== */
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; font-size: 14px; border-radius: 6px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; transition: all 0.2s; gap: 6px; margin-right: 8px; margin-bottom: 8px; }
+    .btn:hover { border-color: #4f7eff; color: #4f7eff; }
+    .btn-primary { background: #4f7eff; color: #fff; border-color: #4f7eff; }
+    .btn-primary:hover { background: #3d6df0; }
+    .btn-danger { color: #ff4d4f; border-color: #ff4d4f; }
+    .btn-danger:hover { background: #ff4d4f; color: #fff; }
+    .btn-confirm { background: #4f7eff; color: #fff; border: none; height: 36px; padding: 0 20px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    .btn-confirm:hover { background: #3d6df0; }
+    .btn-cancel { background: #fff; color: #333; border: 1px solid #d9d9d9; height: 36px; padding: 0 20px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    .btn-cancel:hover { border-color: #4f7eff; color: #4f7eff; }
+
+    /* ===== ===== 弹窗样式（内联，不依赖外部 CSS）===== ===== */
+    .modal-root { position: fixed; inset: 0; overflow: hidden; outline: 0; pointer-events: none; }
+    .modal-root--visible { pointer-events: auto; }
+    .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.45); opacity: 0; transition: opacity 0.28s ease; }
+    .modal-root--visible .modal-mask { opacity: 1; }
+    .modal-wrap { position: fixed; inset: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-content { position: relative; background: #fff; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.12); max-width: calc(100vw - 32px); max-height: calc(100vh - 64px); display: flex; flex-direction: column; opacity: 0; transform: translateY(-12px) scale(0.96); transition: opacity 0.28s ease, transform 0.28s ease; }
+    .modal-content--visible { opacity: 1; transform: translateY(0) scale(1); }
+    .modal-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: #999; padding: 0; z-index: 1; transition: color 0.2s, background 0.2s; }
+    .modal-close:hover { color: #333; background: rgba(0,0,0,0.06); }
+    .modal-header { padding: 20px 48px 0 24px; font-size: 16px; font-weight: 600; color: #1a1a1a; line-height: 1.5; flex-shrink: 0; }
+    .modal-body { padding: 20px 24px; font-size: 14px; color: #333; line-height: 1.6; overflow-y: auto; flex: 1; word-break: break-word; }
+    .modal-footer { padding: 12px 24px 20px; display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+
+    @media (max-width: 576px) {
+      .modal-wrap { padding: 0; align-items: flex-end; }
+      .modal-content { width: 100% !important; max-width: 100%; max-height: 85vh; border-radius: 12px 12px 0 0; transform: translateY(100%); }
+      .modal-content--visible { transform: translateY(0); }
+      .modal-header { padding: 20px 48px 0 20px; }
+      .modal-body { padding: 16px 20px; }
+      .modal-footer { padding: 12px 20px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    /* ===== Modal 组件 ===== */
+    const ANIMATION_DURATION = 280;
+
+    function Modal({
+      visible = false,
+      onClose,
+      title,
+      children,
+      footer,
+      width = 520,
+      closable = true,
+      maskClosable = true,
+      keyboard = true,
+      destroyOnClose = false,
+      zIndex = 1000,
+      className = '',
+    }) {
+      const [mounted, setMounted] = useState(false);
+      const [show, setShow] = useState(false);
+      const [animating, setAnimating] = useState(false);
+      const ignoreNextMouseUp = useRef(false);
+
+      // 动画控制
+      useEffect(() => {
+        if (visible) {
+          setMounted(true);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setShow(true);
+              setAnimating(true);
+            });
+          });
+        } else if (mounted) {
+          setShow(false);
+          setAnimating(true);
+          const timer = setTimeout(() => {
+            setMounted(false);
+            setAnimating(false);
+          }, ANIMATION_DURATION);
+          return () => clearTimeout(timer);
+        }
+      }, [visible]);
+
+      // ESC 关闭
+      useEffect(() => {
+        function handler(e) {
+          if (e.key === 'Escape' && keyboard && visible) {
+            e.stopPropagation();
+            onClose?.();
+          }
+        }
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+      }, [keyboard, visible, onClose]);
+
+      // 锁定 body 滚动
+      useEffect(() => {
+        if (mounted) {
+          const prev = document.body.style.overflow;
+          document.body.style.overflow = 'hidden';
+          return () => { document.body.style.overflow = prev; };
+        }
+      }, [mounted]);
+
+      const handleClose = useCallback(() => {
+        if (!animating) onClose?.();
+      }, [animating, onClose]);
+
+      // 遮罩点击关闭（区分拖选）
+      const handleMaskMouseDown = (e) => {
+        if (e.target === e.currentTarget) ignoreNextMouseUp.current = false;
+      };
+      const handleMaskMouseUp = (e) => {
+        if (e.target === e.currentTarget && !ignoreNextMouseUp.current && maskClosable) {
+          handleClose();
+        }
+      };
+      const handleContentMouseDown = (e) => {
+        e.stopPropagation();
+      };
+      const handleContentMouseUp = () => {
+        ignoreNextMouseUp.current = true;
+      };
+
+      if (!mounted && !destroyOnClose) return null;
+      if (destroyOnClose && !visible && !animating) return null;
+
+      return ReactDOM.createPortal(
+        <div className={`modal-root ${show ? 'modal-root--visible' : ''} ${className}`} style={{ zIndex }}>
+          <div className="modal-mask" />
+          <div className="modal-wrap" onMouseDown={handleMaskMouseDown} onMouseUp={handleMaskMouseUp}>
+            <div
+              className={`modal-content ${show ? 'modal-content--visible' : ''}`}
+              style={{ width }}
+              onMouseDown={handleContentMouseDown}
+              onMouseUp={handleContentMouseUp}
+            >
+              {closable && (
+                <button className="modal-close" onClick={handleClose} aria-label="关闭">
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 2l12 12M14 2L2 14" />
+                  </svg>
+                </button>
+              )}
+              {title && <div className="modal-header">{title}</div>}
+              <div className="modal-body">{children}</div>
+              {footer && <div className="modal-footer">{footer}</div>}
+            </div>
+          </div>
+        </div>,
+        document.body
+      );
+    }
+
+    /* ===== Demo 页面 ===== */
+    function DemoPage() {
+      const [modal1, setModal1] = useState(false);
+      const [modal2, setModal2] = useState(false);
+      const [modal3, setModal3] = useState(false);
+      const [modal4, setModal4] = useState(false);
+
+      return (
+        <div className="page">
+          <h1>弹窗组件</h1>
+          <p className="subtitle">React 可复用弹窗 · 淡入淡出动画 · 适配移动端</p>
+
+          {/* 基础弹窗 */}
+          <div className="card">
+            <h3>基础弹窗</h3>
+            <button className="btn btn-primary" onClick={() => setModal1(true)}>打开基础弹窗</button>
+            <p style={{marginTop:12,fontSize:13,color:'#888'}}>
+              标题 + 内容 + 底部按钮，点击遮罩/ESC/✕ 可关闭
+            </p>
+            <Modal
+              visible={modal1}
+              onClose={() => setModal1(false)}
+              title="基础弹窗"
+              footer={
+                <button className="btn-confirm" onClick={() => setModal1(false)}>知道了</button>
+              }
+            >
+              <p>这是一个基础弹窗，包含标题、正文内容和底部操作按钮。</p>
+              <p style={{marginTop:8}}>点击遮罩区域或右上角 ✕ 按钮即可关闭，也可以按 ESC 键关闭。</p>
+            </Modal>
+          </div>
+
+          {/* 确认弹窗 */}
+          <div className="card">
+            <h3>确认弹窗</h3>
+            <button className="btn btn-danger" onClick={() => setModal2(true)}>删除确认</button>
+            <p style={{marginTop:12,fontSize:13,color:'#888'}}>
+              模拟危险操作确认，取消/确认双按钮
+            </p>
+            <Modal
+              visible={modal2}
+              onClose={() => setModal2(false)}
+              title="确认删除"
+              footer={
+                <>
+                  <button className="btn-cancel" onClick={() => setModal2(false)}>取消</button>
+                  <button className="btn-confirm" style={{background:'#ff4d4f'}} onClick={() => { alert('已删除'); setModal2(false); }}>确认删除</button>
+                </>
+              }
+            >
+              <p>确定要删除此项吗？此操作不可撤销。</p>
+            </Modal>
+          </div>
+
+          {/* 长内容弹窗 */}
+          <div className="card">
+            <h3>长内容弹窗</h3>
+            <button className="btn" onClick={() => setModal3(true)}>打开长内容弹窗</button>
+            <p style={{marginTop:12,fontSize:13,color:'#888'}}>
+              内容超出时自动滚动，设定了最大高度
+            </p>
+            <Modal
+              visible={modal3}
+              onClose={() => setModal3(false)}
+              title="使用条款"
+              footer={
+                <>
+                  <button className="btn-cancel" onClick={() => setModal3(false)}>不同意</button>
+                  <button className="btn-confirm" onClick={() => setModal3(false)}>同意</button>
+                </>
+              }
+            >
+              <div style={{fontSize:13,color:'#666',lineHeight:1.8}}>
+                {Array.from({length:8}, (_, i) => (
+                  <div key={i} style={{marginBottom:16}}>
+                    <h4 style={{color:'#333',marginBottom:4}}>第{i+1}条 服务条款标题</h4>
+                    <p>用户在使用本服务时应遵守相关法律法规，不得利用本服务从事违法违规活动。平台有权根据实际情况对服务内容进行调整，并保留对违反规定的用户采取相应措施的权利。用户应妥善保管账户信息，因账户信息泄露导致的损失由用户自行承担。</p>
+                  </div>
+                ))}
+              </div>
+            </Modal>
+          </div>
+
+          {/* 无遮罩关闭 */}
+          <div className="card">
+            <h3>禁用遮罩关闭</h3>
+            <button className="btn" onClick={() => setModal4(true)}>打开弹窗</button>
+            <p style={{marginTop:12,fontSize:13,color:'#888'}}>
+              仅通过按钮关闭，点击遮罩不关闭（用于重要操作或表单场景）
+            </p>
+            <Modal
+              visible={modal4}
+              onClose={() => setModal4(false)}
+              title="重要操作"
+              maskClosable={false}
+              footer={
+                <>
+                  <button className="btn-cancel" onClick={() => setModal4(false)}>取消</button>
+                  <button className="btn-confirm" onClick={() => { alert('已提交'); setModal4(false); }}>提交</button>
+                </>
+              }
+            >
+              <p>此弹窗不可通过点击遮罩关闭，只能通过按钮操作。</p>
+              <p style={{marginTop:8}}>适用于表单填写、重要确认等场景，防止误操作。</p>
+            </Modal>
+          </div>
+
+          {/* 移动端提示 */}
+          <div style={{textAlign:'center',marginTop:40,padding:20,background:'#fff',borderRadius:8,fontSize:13,color:'#888'}}>
+            <p>💡 在手机浏览器中打开此页面，弹窗会从底部滑入</p>
+            <p style={{marginTop:4}}>或使用浏览器开发者工具切换到移动端视图查看效果</p>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DemoPage />);
+  </script>
+</body>
+</html>
