@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>斜面小车物理实验模拟器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #475569;
+    flex-shrink: 0;
+  }
+
+  header .icon { font-size: 26px; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+
+  .container { display: flex; flex: 1; overflow: hidden; }
+
+  /* ─── 左侧控制面板 ─── */
+  .panel {
+    width: 320px;
+    min-width: 320px;
+    background: #1e293b;
+    border-right: 1px solid #334155;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .panel-section {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 18px;
+    border: 1px solid #334155;
+  }
+
+  .panel-section h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .param-row { margin-bottom: 18px; }
+  .param-row:last-child { margin-bottom: 0; }
+
+  .param-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+
+  .param-label span:first-child {
+    font-size: 14px;
+    color: #cbd5e1;
+  }
+
+  .param-value {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: "SF Mono", "Fira Code", monospace;
+    color: #38bdf8;
+    min-width: 70px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #334155;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+    transition: box-shadow 0.2s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.7);
+  }
+
+  /* 实时数据面板 */
+  .data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .data-card {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+    border: 1px solid #334155;
+    transition: border-color 0.3s;
+  }
+
+  .data-card.active { border-color: #38bdf8; }
+
+  .data-card .label {
+    font-size: 11px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .data-card .value {
+    font-size: 20px;
+    font-weight: 800;
+    font-family: "SF Mono", "Fira Code", monospace;
+  }
+
+  .data-card .unit {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+
+  .vel-color { color: #34d399; }
+  .acc-color { color: #f97316; }
+  .pos-color { color: #a78bfa; }
+  .force-color { color: #fb7185; }
+
+  /* 按钮组 */
+  .btn-group { display: flex; gap: 10px; }
+
+  .btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .btn-start {
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: white;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+  }
+  .btn-start:hover { box-shadow: 0 4px 24px rgba(37, 99, 235, 0.5); transform: translateY(-1px); }
+  .btn-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-reset {
+    background: #334155;
+    color: #cbd5e1;
+  }
+  .btn-reset:hover { background: #475569; }
+
+  /* 状态指示 */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .status-bar.idle { background: #1e293b; color: #64748b; }
+  .status-bar.running { background: rgba(52, 211, 153, 0.1); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+  .status-bar.paused { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+  .status-bar.stopped { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .status-bar.running .status-dot { animation: pulse 1s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ─── 右侧画布 ─── */
+  .canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+  }
+
+  canvas {
+    border-radius: 16px;
+    background: #0a0f1e;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.5), inset 0 0 80px rgba(15, 23, 42, 0.8);
+  }
+
+  /* 公式提示 */
+  .formula-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(30, 41, 59, 0.9);
+    backdrop-filter: blur(8px);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #94a3b8;
+    font-family: "SF Mono", "Fira Code", monospace;
+    border: 1px solid #334155;
+    white-space: nowrap;
+  }
+
+  .formula-hint em { font-style: normal; color: #38bdf8; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="icon">⚙️</span>
+  <h1>斜面小车物理实验模拟器</h1>
+</header>
+
+<div class="container">
+  <!-- 左侧面板 -->
+  <aside class="panel">
+
+    <!-- 参数调节 -->
+    <div class="panel-section">
+      <h3>📐 实验参数</h3>
+
+      <div class="param-row">
+        <div class="param-label">
+          <span>斜面倾角</span>
+          <span class="param-value" id="angleVal">30°</span>
+        </div>
+        <input type="range" id="angleSlider" min="10" max="75" value="30" step="1">
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">
+          <span>小车质量</span>
+          <span class="param-value" id="massVal">2.0 kg</span>
+        </div>
+        <input type="range" id="massSlider" min="0.5" max="10" value="2" step="0.1">
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">
+          <span>摩擦系数 μ</span>
+          <span class="param-value" id="frictionVal">0.10</span>
+        </div>
+        <input type="range" id="frictionSlider" min="0" max="0.8" value="0.1" step="0.01">
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">
+          <span>初始速度 v₀</span>
+          <span class="param-value" id="v0Val">5.0 m/s</span>
+        </div>
+        <input type="range" id="v0Slider" min="1" max="15" value="5" step="0.5">
+      </div>
+    </div>
+
+    <!-- 实时数据 -->
+    <div class="panel-section">
+      <h3>📊 实时数据</h3>
+      <div class="data-grid">
+        <div class="data-card" id="velCard">
+          <div class="label">速度</div>
+          <div class="value vel-color" id="velDisplay">0.00</div>
+          <div class="unit">m/s</div>
+        </div>
+        <div class="data-card" id="accCard">
+          <div class="label">加速度</div>
+          <div class="value acc-color" id="accDisplay">0.00</div>
+          <div class="unit">m/s²</div>
+        </div>
+        <div class="data-card">
+          <div class="label">位移</div>
+          <div class="value pos-color" id="posDisplay">0.00</div>
+          <div class="unit">m</div>
+        </div>
+        <div class="data-card">
+          <div class="label">合力</div>
+          <div class="value force-color" id="forceDisplay">0.00</div>
+          <div class="unit">N</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 控制按钮 -->
+    <div class="btn-group">
+      <button class="btn btn-start" id="startBtn">▶ 开始实验</button>
+      <button class="btn btn-reset" id="resetBtn">↺ 重置</button>
+    </div>
+
+    <!-- 状态 -->
+    <div class="status-bar idle" id="statusBar">
+      <div class="status-dot"></div>
+      <span id="statusText">等待开始实验</span>
+    </div>
+
+    <!-- 能量信息 -->
+    <div class="panel-section">
+      <h3>⚡ 能量分析</h3>
+      <div class="data-grid">
+        <div class="data-card">
+          <div class="label">动能 Ek</div>
+          <div class="value vel-color" id="ekDisplay">0.00</div>
+          <div class="unit">J</div>
+        </div>
+        <div class="data-card">
+          <div class="label">势能 Ep</div>
+          <div class="value pos-color" id="epDisplay">0.00</div>
+          <div class="unit">J</div>
+        </div>
+        <div class="data-card">
+          <div class="label">摩擦热 Q</div>
+          <div class="value acc-color" id="heatDisplay">0.00</div>
+          <div class="unit">J</div>
+        </div>
+        <div class="data-card">
+          <div class="label">反弹次数</div>
+          <div class="value force-color" id="bounceDisplay">0</div>
+          <div class="unit">次</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 右侧画布 -->
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <div class="formula-hint">
+      F = <em>mg</em>sinθ − μ<em>mg</em>cosθ &nbsp;|&nbsp; a = g(sinθ − μcosθ)
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DOM 引用 ───
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const angleSlider = document.getElementById('angleSlider');
+const massSlider = document.getElementById('massSlider');
+const frictionSlider = document.getElementById('frictionSlider');
+const v0Slider = document.getElementById('v0Slider');
+
+const angleVal = document.getElementById('angleVal');
+const massVal = document.getElementById('massVal');
+const frictionVal = document.getElementById('frictionVal');
+const v0Val = document.getElementById('v0Val');
+
+const velDisplay = document.getElementById('velDisplay');
+const accDisplay = document.getElementById('accDisplay');
+const posDisplay = document.getElementById('posDisplay');
+const forceDisplay = document.getElementById('forceDisplay');
+const ekDisplay = document.getElementById('ekDisplay');
+const epDisplay = document.getElementById('epDisplay');
+const heatDisplay = document.getElementById('heatDisplay');
+const bounceDisplay = document.getElementById('bounceDisplay');
+
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const statusBar = document.getElementById('statusBar');
+const statusText = document.getElementById('statusText');
+const velCard = document.getElementById('velCard');
+const accCard = document.getElementById('accCard');
+
+// ─── 物理常量 ───
+const G = 9.8;
+const COR = 0.65;            // 恢复系数
+const MIN_VEL_THRESHOLD = 0.15; // 速度低于此值视为停止
+
+// ─── 状态变量 ───
+let angle, mass, mu, v0;
+let position = 0;    // 沿斜面位移（米），底部 = 0
+let velocity = 0;    // 沿斜面速度（正 = 上行）
+let acceleration = 0;
+let totalHeat = 0;
+let bounceCount = 0;
+let running = false;
+let lastTime = 0;
+let animId = null;
+
+// 轨迹记录
+let trail = [];
+// 粒子效果
+let particles = [];
+
+// ─── 滑块绑定 ───
+angleSlider.addEventListener('input', () => { angleVal.textContent = angleSlider.value + '°'; });
+massSlider.addEventListener('input', () => { massVal.textContent = parseFloat(massSlider.value).toFixed(1) + ' kg'; });
+frictionSlider.addEventListener('input', () => { frictionVal.textContent = parseFloat(frictionSlider.value).toFixed(2); });
+v0Slider.addEventListener('input', () => { v0Val.textContent = parseFloat(v0Slider.value).toFixed(1) + ' m/s'; });
+
+// ─── 读取参数 ───
+function readParams() {
+  angle = parseFloat(angleSlider.value) * Math.PI / 180;
+  mass = parseFloat(massSlider.value);
+  mu = parseFloat(frictionSlider.value);
+  v0 = parseFloat(v0Slider.value);
+}
+
+// ─── 物理计算 ───
+function calcAcceleration(v) {
+  const sinA = Math.sin(angle);
+  const cosA = Math.cos(angle);
+  const gSin = G * sinA;
+  const gCos = G * cosA;
+  const friction = mu * gCos;
+
+  if (v > 0.001) {
+    // 上行：重力分量 + 摩擦力都向下
+    return -(gSin + friction);
+  } else if (v < -0.001) {
+    // 下行：重力分量向下，摩擦力向上
+    return -(gSin - friction);
+  } else {
+    // 静止判断：重力分量是否超过最大静摩擦力
+    if (gSin > friction) {
+      return -(gSin - friction);
+    }
+    return 0;
+  }
+}
+
+function calcForce(a) {
+  return mass * a;
+}
+
+// ─── 按钮事件 ───
+startBtn.addEventListener('click', () => {
+  if (running) {
+    // 暂停
+    running = false;
+    cancelAnimationFrame(animId);
+    startBtn.textContent = '▶ 继续';
+    setStatus('paused', '实验已暂停');
+    enableSliders(true);
+    return;
+  }
+
+  if ( bouncing ) {
+    // 如果已经停止了都重置再开始
+    resetSim();
+  }
+
+  if (velocity === 0 && position === 0 && trail.length === 0) {
+    // 首次开始
+    readParams();
+    velocity = v0;
+    position = 0;
+  }
+
+  running = true;
+  bouncing = false;
+  startBtn.textContent = '⏸ 暂停';
+  setStatus('running', '实验进行中...');
+  enableSliders(false);
+  lastTime = performance.now();
+  animate(lastTime);
+});
+
+let bouncing = false;
+
+resetBtn.addEventListener('click', () => {
+  resetSim();
+});
+
+function resetSim() {
+  running = false;
+  cancelAnimationFrame(animId);
+  trail = [];
+  particles = [];
+  bouncing = false;
+  resetPhysics();
+  setStatus('idle', '等待开始实验');
+  updateDataDisplay();
+  draw();
+}
+
+function resetPhysics() {
+  readParams();
+  position = 0;
+  velocity = 0;
+  acceleration = 0;
+  totalHeat = 0;
+  bounceCount = 0;
+  startBtn.textContent = '▶ 开始实验';
+  startBtn.disabled = false;
+  enableSliders(true);
+}
+
+function enableSliders(enabled) {
+  angleSlider.disabled = !enabled;
+  massSlider.disabled = !enabled;
+  frictionSlider.disabled = !enabled;
+  v0Slider.disabled = !enabled;
+}
+
+function setStatus(cls, text) {
+  statusBar.className = 'status-bar ' + cls;
+  statusText.textContent = text;
+}
+
+// ─── 动画循环 ───
+function animate(timestamp) {
+  if (!running) return;
+
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05); // 限制最大步长
+  lastTime = timestamp;
+
+  // 物理子步（提高精度）
+  const subSteps = 4;
+  const subDt = dt / subSteps;
+
+  for (let i = 0; i < subSteps; i++) {
+    acceleration = calcAcceleration(velocity);
+
+    // 摩擦热能累积
+    const frictionForce = mu * mass * G * Math.cos(angle);
+    totalHeat += frictionForce * Math.abs(velocity) * subDt;
+
+    velocity += acceleration * subDt;
+    position += velocity * subDt;
+
+    // 底端碰撞反弹
+    if (position <= 0) {
+      position = 0;
+      if (Math.abs(velocity) > MIN_VEL_THRESHOLD) {
+        velocity = -velocity * COR;
+        bounceCount++;
+        spawnParticles();
+      } else {
+        velocity = 0;
+        acceleration = 0;
+        // 检查是否还会滑动
+        if (Math.sin(angle) > mu * Math.cos(angle)) {
+          // 还会下滑，继续不停止
+        } else {
+          // 停止
+          running = false;
+          bouncing = true;
+          startBtn.textContent = '▶ 重新开始';
+          startBtn.disabled = false;
+          enableSliders(true);
+          setStatus('stopped', '实验结束 — 小车停止运动');
+          break;
+        }
+      }
+    }
+  }
+
+  // 记录轨迹
+  if (trail.length === 0 || Math.abs(position - trail[trail.length - 1]) > 0.05) {
+    trail.push(position);
+    if (trail.length > 200) trail.shift();
+  }
+
+  // 更新粒子
+  updateParticles(dt);
+
+  updateDataDisplay();
+  draw();
+
+  if (running) {
+    animId = requestAnimationFrame(animate);
+  }
+}
+
+// ─── 粒子系统 ───
+function spawnParticles() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const inclineLen = 380;
+  const rad = angle;
+
+  const baseX = cx - inclineLen * Math.cos(rad) * 0.42;
+  const baseY = cy + inclineLen * Math.sin(rad) * 0.42;
+
+  for (let i = 0; i < 20; i++) {
+    particles.push({
+      x: baseX,
+      y: baseY,
+      vx: (Math.random() - 0.5) * 200 - Math.cos(rad) * 100,
+      vy: (Math.random() - 0.5) * 200 - Math.sin(rad) * 50 - 80,
+      life: 1.0,
+      size: 2 + Math.random() * 4,
+      color: ['#fbbf24', '#f97316', '#ef4444', '#38bdf8'][Math.floor(Math.random() * 4)]
+    });
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 300 * dt; // 重力
+    p.life -= dt * 2;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+// ─── 数据显示 ───
+function updateDataDisplay() {
+  velDisplay.textContent = Math.abs(velocity).toFixed(2);
+  accDisplay.textContent = Math.abs(acceleration).toFixed(2);
+  posDisplay.textContent = position.toFixed(2);
+  forceDisplay.textContent = Math.abs(calcForce(acceleration)).toFixed(2);
+  ekDisplay.textContent = (0.5 * mass * velocity * velocity).toFixed(1);
+  epDisplay.textContent = (mass * G * position * Math.sin(angle)).toFixed(1);
+  heatDisplay.textContent = totalHeat.toFixed(1);
+  bounceDisplay.textContent = bounceCount;
+
+  velCard.classList.toggle('active', Math.abs(velocity) > 0.1);
+  accCard.classList.toggle('active', Math.abs(acceleration) > 0.1);
+}
+
+// ─── 绘制 ───
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // 背景网格
+  drawGrid(W, H);
+
+  readParams();
+  const rad = angle;
+
+  // 斜面参数
+  const inclineLen = 400;
+  const cx = W / 2 + 40;
+  const cy = H / 2 + 20;
+
+  // 斜面底端和顶端
+  const baseX = cx - inclineLen * Math.cos(rad) * 0.48;
+  const baseY = cy + inclineLen * Math.sin(rad) * 0.48;
+  const topX = cx + inclineLen * Math.cos(rad) * 0.52;
+  const topY = cy - inclineLen * Math.sin(rad) * 0.52;
+
+  // 地面
+  ctx.save();
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(baseX - 20, baseY + 2);
+  ctx.lineTo(topX + 40, baseY + 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // 斜面本体
+  const surfGrad = ctx.createLinearGradient(baseX, baseY, topX, topY);
+  surfGrad.addColorStop(0, '#334155');
+  surfGrad.addColorStop(1, '#1e293b');
+  ctx.save();
+  ctx.fillStyle = surfGrad;
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY);
+  ctx.lineTo(topX, topY);
+  ctx.lineTo(topX, baseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // 斜面表面高亮
+  ctx.save();
+  const surfHL = ctx.createLinearGradient(baseX, baseY, topX, topY);
+  surfHL.addColorStop(0, '#475569');
+  surfHL.addColorStop(0.5, '#64748b');
+  surfHL.addColorStop(1, '#475569');
+  ctx.strokeStyle = surfHL;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY);
+  ctx.lineTo(topX, topY);
+  ctx.stroke();
+  ctx.restore();
+
+  // 角度弧线
+  ctx.save();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(baseX, baseY, 50, -rad, 0);
+  ctx.stroke();
+  // 角度标注
+  const labelAngle = rad / 2;
+  const labelR = 65;
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 14px "SF Mono", "Fira Code", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(
+    (angle * 180 / Math.PI).toFixed(0) + '°',
+    baseX + labelR * Math.cos(labelAngle),
+    baseY - labelR * Math.sin(labelAngle) + 5
+  );
+  ctx.restore();
+
+  // 小车位置（沿斜面方向）
+  const maxPos = inclineLen * Math.cos(rad) * 0.88;
+  const frac = Math.min(position / 10, 1); // 10m 对应斜面全长
+  const carDist = frac * maxPos;
+
+  const dirX = Math.cos(rad);
+  const dirY = -Math.sin(rad);
+  const carX = baseX + carDist * dirX;
+  const carY = baseY + carDist * dirY;
+
+  // 小车轨迹
+  if (trail.length > 1) {
+    ctx.save();
+    for (let i = 1; i < trail.length; i++) {
+      const t = trail[i];
+      const tFrac = Math.min(t / 10, 1);
+      const tDist = tFrac * maxPos;
+      const tX = baseX + tDist * dirX;
+      const tY = baseY + tDist * dirY;
+      const alpha = (i / trail.length) * 0.4;
+      ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(tX, tY - 12, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  drawCar(carX, carY, rad, velocity);
+
+  // 力的矢量
+  if (running || position > 0) {
+    drawForceVectors(carX, carY, rad);
+  }
+
+  // 速度矢量
+  if (Math.abs(velocity) > 0.1) {
+    drawVelocityArrow(carX, carY, rad, velocity);
+  }
+
+  // 粒子
+  drawParticles();
+
+  // 刻度
+  drawScale(baseX, baseY, rad, inclineLen);
+}
+
+function drawGrid(W, H) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
+  ctx.lineWidth = 1;
+  const step = 40;
+  for (let x = 0; x < W; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCar(x, y, rad, vel) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-rad);
+
+  const carW = 50, carH = 22;
+
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, carH / 2 + 4, carW / 2 + 2, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 车身
+  const bodyGrad = ctx.createLinearGradient(0, -carH, 0, 0);
+  bodyGrad.addColorStop(0, '#3b82f6');
+  bodyGrad.addColorStop(1, '#1d4ed8');
+  ctx.fillStyle = bodyGrad;
+  roundRect(ctx, -carW / 2, -carH, carW, carH, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#60a5fa';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, -carW / 2, -carH, carW, carH, 6);
+  ctx.stroke();
+
+  // 质量标注
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = 'bold 11px "SF Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(mass.toFixed(1) + 'kg', 0, -carH + 15);
+
+  // 车轮
+  const wheelR = 7;
+  const wheelY = 1;
+  for (const wx of [-carW / 3, carW / 3]) {
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 车轮辐条
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1;
+    const spokeAngle = (position * 3) % (Math.PI * 2);
+    for (let a = 0; a < 4; a++) {
+      const sa = spokeAngle + a * Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(wx, wheelY);
+      ctx.lineTo(wx + Math.cos(sa) * (wheelR - 1), wheelY + Math.sin(sa) * (wheelR - 1));
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawForceVectors(cx, cy, rad) {
+  const sinA = Math.sin(rad);
+  const cosA = Math.cos(rad);
+  const scale = 2.5;
+
+  // 重力沿斜面分量（向下）
+  const gAlong = mass * G * sinA * scale;
+  drawArrow(ctx,
+    cx, cy - 20,
+    cx - gAlong * Math.cos(rad), cy - 20 + gAlong * Math.sin(rad),
+    '#ef4444', 2.5
+  );
+
+  // 摩擦力方向
+  if (velocity > 0.001) {
+    // 上行，摩擦力向下
+    const fFric = mu * mass * G * cosA * scale;
+    drawArrow(ctx,
+      cx, cy - 20,
+      cx - fFric * Math.cos(rad), cy - 20 + fFric * Math.sin(rad),
+      '#fbbf24', 2
+    );
+  } else if (velocity < -0.001) {
+    // 下行，摩擦力向上
+    const fFric = mu * mass * G * cosA * scale;
+    drawArrow(ctx,
+      cx, cy - 20,
+      cx + fFric * Math.cos(rad), cy - 20 - fFric * Math.sin(rad),
+      '#fbbf24', 2
+    );
+  }
+}
+
+function drawVelocityArrow(cx, cy, rad, vel) {
+  const scale = 12;
+  const len = vel * scale;
+  const startX = cx;
+  const startY = cy - 30;
+
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  drawArrow(ctx,
+    startX - len * Math.cos(rad) / 2,
+    startY + len * Math.sin(rad) / 2,
+    startX + len * Math.cos(rad) / 2,
+    startY - len * Math.sin(rad) / 2,
+    '#34d399', 3
+  );
+
+  // 速度标签
+  const lx = startX + len * Math.cos(rad) / 2 * 0.5;
+  const ly = startY - len * Math.sin(rad) / 2 * 0.5 - 14;
+  ctx.fillStyle = '#34d399';
+  ctx.font = 'bold 12px "SF Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('v=' + Math.abs(vel).toFixed(1) + ' m/s', lx, ly);
+  ctx.restore();
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, width) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 3) return;
+  const ux = dx / len, uy = dy / len;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  const headLen = Math.min(10, len * 0.3);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * ux + headLen * 0.35 * uy, y2 - headLen * uy - headLen * 0.35 * ux);
+  ctx.lineTo(x2 - headLen * ux - headLen * 0.35 * uy, y2 - headLen * uy + headLen * 0.35 * ux);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawScale(baseX, baseY, rad, inclineLen) {
+  ctx.save();
+  ctx.fillStyle = '#64748b';
+  ctx.font = '11px "SF Mono", monospace';
+  ctx.textAlign = 'center';
+
+  // 沿斜面方向每2米标注
+  const cosA = Math.cos(rad);
+  const sinA = Math.sin(rad);
+  const maxM = 10;
+  const dirX = cosA, dirY = -sinA;
+
+  for (let m = 0; m <= maxM; m += 2) {
+    const frac = m / maxM;
+    const totalPx = inclineLen * cosA * 0.88;
+    const px = frac * totalPx;
+    const sx = baseX + px * dirX;
+    const sy = baseY + px * dirY;
+
+    // 刻度线
+    const perpX = sinA, perpY = cosA;
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx - perpX * 6, sy - perpY * 6);
+    ctx.lineTo(sx + perpX * 6, sy + perpY * 6);
+    ctx.stroke();
+
+    ctx.fillText(m + 'm', sx + perpX * 18, sy + perpY * 18 + 4);
+  }
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+// ─── 初始化绘制 ───
+readParams();
+updateDataDisplay();
+draw();
+</script>
+
+</body>
+</html>
