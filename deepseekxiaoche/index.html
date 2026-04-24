@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>斜面小车物理实验</title>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --panel-bg: #ffffff;
+    --text: #1a1a2e;
+    --text-secondary: #555;
+    --accent: #4a6cf7;
+    --accent-hover: #3651d5;
+    --danger: #e74c3c;
+    --danger-hover: #c0392b;
+    --border: #e0e0e0;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+  }
+  .container {
+    display: flex;
+    height: 100vh;
+    padding: 16px;
+    gap: 16px;
+  }
+  .panel {
+    width: 320px;
+    min-width: 320px;
+    background: var(--panel-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow-y: auto;
+  }
+  .panel h1 {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--accent);
+    letter-spacing: 1px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .control-group { display: flex; flex-direction: column; gap: 4px; }
+  .control-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .control-group label .val {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+    background: #eef1ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #ddd;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .btn-row { display: flex; gap: 10px; }
+  .btn {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .btn-start { background: var(--accent); color: #fff; }
+  .btn-start:hover { background: var(--accent-hover); }
+  .btn-pause { background: #f59e0b; color: #fff; }
+  .btn-pause:hover { background: #d97706; }
+  .btn-reset { background: #e0e0e0; color: #333; }
+  .btn-reset:hover { background: #ccc; }
+
+  .data-box {
+    background: #f8f9fc;
+    border-radius: 8px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .data-item { text-align: center; }
+  .data-item .data-label { font-size: 11px; color: #999; margin-bottom: 2px; }
+  .data-item .data-value { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; font-family: "SF Mono", "Menlo", "Consolas", monospace; }
+  .data-item .data-value.negative { color: var(--danger); }
+  .data-item .data-value.positive { color: #10b981; }
+
+  .canvas-wrap {
+    flex: 1;
+    background: var(--panel-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius);
+  }
+
+  .status-badge {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+  .status-badge.idle { background: #e8e8e8; color: #888; }
+  .status-badge.running { background: #d1fae5; color: #059669; }
+  .status-badge.paused { background: #fef3c7; color: #d97706; }
+  .status-badge.bouncing { background: #fee2e2; color: #dc2626; }
+
+  @media (max-width: 768px) {
+    .container { flex-direction: column; }
+    .panel { width: 100%; min-width: auto; max-height: 45vh; }
+    .canvas-wrap { min-height: 400px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <h1>斜面小车物理实验</h1>
+
+    <div class="control-group">
+      <label>斜面倾角 <span class="val" id="angleVal">30°</span></label>
+      <input type="range" id="angleSlider" min="5" max="75" value="30" step="1">
+    </div>
+
+    <div class="control-group">
+      <label>小车质量 <span class="val" id="massVal">1.0 kg</span></label>
+      <input type="range" id="massSlider" min="0.1" max="5" value="1" step="0.1">
+    </div>
+
+    <div class="control-group">
+      <label>摩擦系数 <span class="val" id="frictionVal">0.10</span></label>
+      <input type="range" id="frictionSlider" min="0" max="0.8" value="0.1" step="0.01">
+    </div>
+
+    <div class="control-group">
+      <label>初速度 <span class="val" id="v0Val">8.0 m/s</span></label>
+      <input type="range" id="v0Slider" min="1" max="20" value="8" step="0.5">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-start" id="btnStart">开始实验</button>
+      <button class="btn btn-pause" id="btnPause" disabled>暂停</button>
+    </div>
+    <button class="btn btn-reset" id="btnReset">重置</button>
+
+    <div class="status-badge idle" id="statusBadge">就绪</div>
+
+    <div class="data-box">
+      <div class="data-item">
+        <div class="data-label">时间</div>
+        <div class="data-value" id="timeVal">0.00 s</div>
+      </div>
+      <div class="data-item">
+        <div class="data-label">位置 (距底端)</div>
+        <div class="data-value" id="posVal">0.00 m</div>
+      </div>
+      <div class="data-item">
+        <div class="data-label">速度</div>
+        <div class="data-value" id="velVal">0.00 m/s</div>
+      </div>
+      <div class="data-item">
+        <div class="data-label">加速度</div>
+        <div class="data-value" id="accVal">0.00 m/s²</div>
+      </div>
+      <div class="data-item">
+        <div class="data-label">动能</div>
+        <div class="data-value" id="keVal">0.00 J</div>
+      </div>
+      <div class="data-item">
+        <div class="data-label">重力势能</div>
+        <div class="data-value" id="peVal">0.00 J</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:#aaa;text-align:center;margin-top:-8px;">
+      拖拽滑块可实时调整参数 | 碰撞反弹系数 0.55
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="mainCanvas"></canvas>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // DOM elements
+  const elAngle = document.getElementById('angleSlider');
+  const elMass = document.getElementById('massSlider');
+  const elFriction = document.getElementById('frictionSlider');
+  const elV0 = document.getElementById('v0Slider');
+  const btnStart = document.getElementById('btnStart');
+  const btnPause = document.getElementById('btnPause');
+  const btnReset = document.getElementById('btnReset');
+  const statusBadge = document.getElementById('statusBadge');
+
+  // Physics constants
+  const G = 9.8;
+  const INCLINE_LENGTH = 12; // meters
+  const RESTITUTION = 0.55;
+  const VELOCITY_EPSILON = 0.005;
+  const MAX_SUBSTEPS = 8;
+
+  // State (defaults)
+  let angle = 30;
+  let mass = 1.0;
+  let friction = 0.10;
+  let initialVelocity = 8.0;
+  let position = 0;
+  let velocity = 0;
+  let acceleration = 0;
+  let simTime = 0;
+  let running = false;
+  let paused = false;
+  let bounceFlash = 0; // visual flash timer for bounce
+
+  // Canvas size
+  let cw, ch;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    cw = rect.width;
+    ch = rect.height;
+    canvas.width = cw * dpr;
+    canvas.height = ch * dpr;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // --- Slider bindings ---
+  elAngle.addEventListener('input', () => {
+    angle = parseFloat(elAngle.value);
+    document.getElementById('angleVal').textContent = angle + '°';
+  });
+  elMass.addEventListener('input', () => {
+    mass = parseFloat(elMass.value);
+    document.getElementById('massVal').textContent = mass.toFixed(1) + ' kg';
+  });
+  elFriction.addEventListener('input', () => {
+    friction = parseFloat(elFriction.value);
+    document.getElementById('frictionVal').textContent = friction.toFixed(2);
+  });
+  elV0.addEventListener('input', () => {
+    initialVelocity = parseFloat(elV0.value);
+    document.getElementById('v0Val').textContent = initialVelocity.toFixed(1) + ' m/s';
+  });
+
+  // --- Buttons ---
+  btnStart.addEventListener('click', () => {
+    if (running && !paused) return;
+    if (paused) {
+      paused = false;
+      btnPause.textContent = '暂停';
+      btnPause.disabled = false;
+      setStatus('running', '运行中');
+    } else {
+      position = 0;
+      velocity = initialVelocity;
+      acceleration = 0;
+      simTime = 0;
+      bounceFlash = 0;
+      running = true;
+      paused = false;
+      btnStart.textContent = '重新开始';
+      btnPause.disabled = false;
+      btnPause.textContent = '暂停';
+      setStatus('running', '运行中');
+    }
+  });
+
+  btnPause.addEventListener('click', () => {
+    if (!running) return;
+    paused = !paused;
+    if (paused) {
+      btnPause.textContent = '继续';
+      setStatus('paused', '已暂停');
+    } else {
+      btnPause.textContent = '暂停';
+      setStatus('running', '运行中');
+    }
+  });
+
+  btnReset.addEventListener('click', reset);
+
+  function reset() {
+    running = false;
+    paused = false;
+    position = 0;
+    velocity = 0;
+    acceleration = 0;
+    simTime = 0;
+    bounceFlash = 0;
+    btnStart.textContent = '开始实验';
+    btnPause.disabled = true;
+    btnPause.textContent = '暂停';
+    setStatus('idle', '就绪');
+  }
+
+  function setStatus(cls, text) {
+    statusBadge.className = 'status-badge ' + cls;
+    statusBadge.textContent = text;
+  }
+
+  // --- Physics update ---
+  function physicsStep(dt) {
+    const rad = angle * Math.PI / 180;
+    const sinA = Math.sin(rad);
+    const cosA = Math.cos(rad);
+    const gParallel = G * sinA;
+    const frictionAccelMag = friction * G * cosA;
+
+    if (Math.abs(velocity) < VELOCITY_EPSILON) {
+      if (gParallel <= frictionAccelMag) {
+        velocity = 0;
+        acceleration = 0;
+      } else {
+        acceleration = -(gParallel - frictionAccelMag);
+      }
+    } else if (velocity > 0) {
+      acceleration = -(gParallel + frictionAccelMag);
+    } else {
+      acceleration = -(gParallel - frictionAccelMag);
+    }
+
+    velocity += acceleration * dt;
+    position += velocity * dt;
+
+    // Bottom bounce
+    if (position <= 0) {
+      position = 0;
+      if (Math.abs(velocity) > 0.05) {
+        velocity = Math.abs(velocity) * RESTITUTION;
+        bounceFlash = 1.0;
+      } else {
+        velocity = 0;
+        if (gParallel <= frictionAccelMag) {
+          acceleration = 0;
+        }
+      }
+    }
+
+    // Top bounce
+    if (position >= INCLINE_LENGTH) {
+      position = INCLINE_LENGTH;
+      velocity = -Math.abs(velocity) * RESTITUTION;
+    }
+
+    simTime += dt;
+
+    // Auto-stop when cart settles at bottom
+    if (position < 0.01 && Math.abs(velocity) < VELOCITY_EPSILON && simTime > 0.5) {
+      if (gParallel <= frictionAccelMag + 0.001) {
+        velocity = 0;
+        acceleration = 0;
+        position = 0;
+        running = false;
+        btnStart.textContent = '开始实验';
+        btnPause.disabled = true;
+        setStatus('idle', '已停止（小车静止）');
+      }
+    }
+  }
+
+  // --- Rendering ---
+  function drawIncline() {
+    const rad = angle * Math.PI / 180;
+    const groundY = ch - 70;
+    const inclineStartX = 170;
+    // Compute pixel length such that the ramp fits on canvas
+    const maxPixelLen = Math.min(cw - inclineStartX - 120, ch - 160);
+    // Scale: INCLINE_LENGTH meters → maxPixelLen pixels
+    const pixelLen = maxPixelLen;
+    const scale = pixelLen / INCLINE_LENGTH;
+
+    const endX = inclineStartX + pixelLen * Math.cos(rad);
+    const endY = groundY - pixelLen * Math.sin(rad);
+
+    // Sky gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
+    skyGrad.addColorStop(0, '#e3f0ff');
+    skyGrad.addColorStop(1, '#f8fafc');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, cw, groundY);
+
+    // Ground
+    const gndGrad = ctx.createLinearGradient(0, groundY, 0, ch);
+    gndGrad.addColorStop(0, '#c4b5a5');
+    gndGrad.addColorStop(0.3, '#b0a090');
+    gndGrad.addColorStop(1, '#8b7d6b');
+    ctx.fillStyle = gndGrad;
+    ctx.fillRect(0, groundY, cw, ch - groundY);
+    ctx.strokeStyle = '#5c4f3d';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(cw, groundY);
+    ctx.stroke();
+
+    // Ramp wedge
+    ctx.fillStyle = '#d4c8b8';
+    ctx.beginPath();
+    ctx.moveTo(inclineStartX, groundY);
+    ctx.lineTo(endX, endY);
+    ctx.lineTo(endX, groundY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#8b7d6b';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Ramp surface (hypotenuse) - thicker line
+    ctx.strokeStyle = '#6b5d4f';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(inclineStartX, groundY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+
+    // Small tick marks along the incline
+    ctx.strokeStyle = '#baaa96';
+    ctx.lineWidth = 1;
+    const tickCount = 12;
+    for (let i = 1; i < tickCount; i++) {
+      const t = i / tickCount;
+      const tx = inclineStartX + t * pixelLen * Math.cos(rad);
+      const ty = groundY - t * pixelLen * Math.sin(rad);
+      const nx = Math.sin(rad); // perpendicular direction
+      const ny = Math.cos(rad);
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx + nx * 10, ty + ny * 10);
+      ctx.stroke();
+    }
+
+    // Angle arc
+    const arcR = 50;
+    ctx.strokeStyle = '#4a6cf7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(inclineStartX, groundY, arcR, -rad, 0);
+    ctx.stroke();
+    // Angle label
+    const labelAngle = -rad / 2;
+    const labelR = arcR + 22;
+    ctx.fillStyle = '#4a6cf7';
+    ctx.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      angle + '°',
+      inclineStartX + labelR * Math.cos(labelAngle),
+      groundY + labelR * Math.sin(labelAngle) - 6
+    );
+
+    // Bottom stopper (vertical wall)
+    const wallH = 45;
+    ctx.fillStyle = '#7b6b5a';
+    ctx.fillRect(inclineStartX - 10, groundY - wallH, 14, wallH);
+    ctx.strokeStyle = '#5c4f3d';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(inclineStartX - 10, groundY - wallH, 14, wallH);
+    // Stopper highlight
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(inclineStartX - 10, groundY - wallH, 14, 6);
+
+    return { inclineStartX, groundY, pixelLen, scale, rad, endX, endY };
+  }
+
+  function drawCart(info) {
+    const { inclineStartX, groundY, scale, rad } = info;
+    // Cart position on incline (s in meters → pixels)
+    const sPx = position * scale;
+    const cx = inclineStartX + sPx * Math.cos(rad);
+    const cy = groundY - sPx * Math.sin(rad);
+
+    // Cart dimensions in pixels
+    const cartW = 70;
+    const cartH = 36;
+    const wheelR = 9;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-rad); // align with incline
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(-cartW / 2 + 3, -cartH - 5, cartW, cartH);
+
+    // Cart body
+    const bodyGrad = ctx.createLinearGradient(0, -cartH, 0, 0);
+    bodyGrad.addColorStop(0, '#ff6b6b');
+    bodyGrad.addColorStop(0.5, '#ee5a5a');
+    bodyGrad.addColorStop(1, '#cc4444');
+    ctx.fillStyle = bodyGrad;
+    const bx = -cartW / 2;
+    const by = -cartH;
+    const br = 6;
+    ctx.beginPath();
+    ctx.moveTo(bx + br, by);
+    ctx.lineTo(bx + cartW - br, by);
+    ctx.arcTo(bx + cartW, by, bx + cartW, by + br, br);
+    ctx.lineTo(bx + cartW, by + cartH - br);
+    ctx.arcTo(bx + cartW, by + cartH, bx + cartW - br, by + cartH, br);
+    ctx.lineTo(bx + br, by + cartH);
+    ctx.arcTo(bx, by + cartH, bx, by + cartH - br, br);
+    ctx.lineTo(bx, by + br);
+    ctx.arcTo(bx, by, bx + br, by, br);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#992222';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Cart roof highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(-cartW / 2 + 6, -cartH + 4, cartW - 12, cartH / 3);
+
+    // Wheels
+    const wheelY = 3;
+    const wheelXOff = cartW * 0.28;
+    for (let side = -1; side <= 1; side += 2) {
+      const wx = side * wheelXOff;
+      // Wheel
+      ctx.fillStyle = '#2c2c2c';
+      ctx.beginPath();
+      ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Hub
+      ctx.fillStyle = '#ccc';
+      ctx.beginPath();
+      ctx.arc(wx, wheelY, wheelR * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      // Spokes
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1;
+      const spokeAngle = simTime * (velocity / scale * 0.3);
+      for (let s = 0; s < 4; s++) {
+        const sa = spokeAngle + s * Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(wx, wheelY);
+        ctx.lineTo(wx + Math.cos(sa) * wheelR * 0.8, wheelY + Math.sin(sa) * wheelR * 0.8);
+        ctx.stroke();
+      }
+    }
+
+    // Velocity vector (green)
+    if (Math.abs(velocity) > 0.02) {
+      const vLen = Math.min(Math.abs(velocity) * 8, 120);
+      const vDir = Math.sign(velocity);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, -cartH - 8);
+      ctx.lineTo(vDir * vLen, -cartH - 8);
+      ctx.stroke();
+      // Arrowhead
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.moveTo(vDir * vLen, -cartH - 8);
+      ctx.lineTo(vDir * (vLen - 10), -cartH - 14);
+      ctx.lineTo(vDir * (vLen - 10), -cartH - 2);
+      ctx.closePath();
+      ctx.fill();
+      // Velocity label
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 11px "SF Mono","Menlo",monospace';
+      ctx.textAlign = vDir > 0 ? 'left' : 'right';
+      ctx.fillText((velocity > 0 ? '+' : '') + velocity.toFixed(2) + ' m/s', vDir * vLen + vDir * 6, -cartH - 12);
+    }
+
+    // Acceleration vector (orange)
+    if (Math.abs(acceleration) > 0.005) {
+      const aLen = Math.min(Math.abs(acceleration) * 18, 100);
+      const aDir = Math.sign(acceleration);
+      const ay = -cartH + 8;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(0, ay);
+      ctx.lineTo(aDir * aLen, ay);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Arrowhead
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.moveTo(aDir * aLen, ay);
+      ctx.lineTo(aDir * (aLen - 8), ay - 5);
+      ctx.lineTo(aDir * (aLen - 8), ay + 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    return { cx, cy };
+  }
+
+  function drawForceDiagram(info) {
+    const { inclineStartX, groundY, scale, rad } = info;
+    const sPx = position * scale;
+    const cx = inclineStartX + sPx * Math.cos(rad);
+    const cy = groundY - sPx * Math.sin(rad);
+
+    const forceScale = 25; // pixels per Newton
+    const mg = mass * G;
+    const normalForce = mg * Math.cos(rad);
+    const gParallel = mg * Math.sin(rad);
+
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+
+    // Gravity (vertical down) - from cart center
+    const gravLen = mg * forceScale * 0.3;
+    ctx.strokeStyle = '#6366f1';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 18);
+    ctx.lineTo(cx, cy - 18 + gravLen);
+    ctx.stroke();
+    ctx.fillStyle = '#6366f1';
+    ctx.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('mg=' + mg.toFixed(1) + 'N', cx + 8, cy - 18 + gravLen / 2);
+
+    // Normal force
+    const nx = -Math.sin(rad);
+    const ny = -Math.cos(rad);
+    const normLen = normalForce * forceScale * 0.3;
+    ctx.strokeStyle = '#8b5cf6';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 18);
+    ctx.lineTo(cx + nx * normLen, cy - 18 + ny * normLen);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.restore();
+  }
+
+  function drawBounceEffect(info) {
+    if (bounceFlash <= 0) return;
+    const { inclineStartX, groundY, scale, rad } = info;
+    const sPx = position * scale;
+    const bx = inclineStartX + sPx * Math.cos(rad);
+    const by = groundY - sPx * Math.sin(rad);
+
+    const alpha = bounceFlash;
+    const radius = 30 + (1 - bounceFlash) * 60;
+
+    // Ripple rings
+    for (let r = 0; r < 3; r++) {
+      const rr = radius + r * 15;
+      const aa = alpha * (0.5 - r * 0.15);
+      if (aa <= 0) continue;
+      ctx.strokeStyle = `rgba(255,180,50,${aa})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(bx, by, rr, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Particles
+    for (let i = 0; i < 8; i++) {
+      const pa = (i / 8) * Math.PI * 2;
+      const pr = radius * (0.5 + Math.random() * 0.5);
+      const px = bx + Math.cos(pa) * pr;
+      const py = by + Math.sin(pa) * pr;
+      ctx.fillStyle = `rgba(255,200,80,${alpha * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, cw, ch);
+
+    const inclineInfo = drawIncline();
+    drawForceDiagram(inclineInfo);
+    drawCart(inclineInfo);
+    drawBounceEffect(inclineInfo);
+
+    // Title on canvas
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.font = 'bold 28px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('斜面小车物理实验', cw - 30, 45);
+
+    // Legend
+    const lx = cw - 180;
+    const ly = 70;
+    ctx.font = '12px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'left';
+
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(lx, ly, 14, 3);
+    ctx.fillStyle = '#333';
+    ctx.fillText('速度矢量', lx + 20, ly + 4);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(lx, ly + 18, 14, 3);
+    ctx.setLineDash([3, 2]);
+    ctx.fillStyle = '#333';
+    ctx.fillText('加速度矢量', lx + 20, ly + 22);
+    ctx.setLineDash([]);
+  }
+
+  function updateDataDisplay() {
+    document.getElementById('timeVal').textContent = simTime.toFixed(2) + ' s';
+    document.getElementById('posVal').textContent = position.toFixed(2) + ' m';
+
+    const velEl = document.getElementById('velVal');
+    velEl.textContent = (velocity > 0 ? '+' : '') + velocity.toFixed(2) + ' m/s';
+    velEl.className = 'data-value' + (velocity > 0.01 ? ' positive' : velocity < -0.01 ? ' negative' : '');
+
+    const accEl = document.getElementById('accVal');
+    accEl.textContent = (acceleration > 0 ? '+' : '') + acceleration.toFixed(2) + ' m/s²';
+    accEl.className = 'data-value' + (acceleration > 0.005 ? ' positive' : acceleration < -0.005 ? ' negative' : '');
+
+    const ke = 0.5 * mass * velocity * velocity;
+    const pe = mass * G * position * Math.sin(angle * Math.PI / 180);
+    document.getElementById('keVal').textContent = ke.toFixed(2) + ' J';
+    document.getElementById('peVal').textContent = pe.toFixed(2) + ' J';
+  }
+
+  // --- Main Loop ---
+  let lastTime = null;
+
+  function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    let rawDt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    // Clamp delta time
+    if (rawDt > 0.1) rawDt = 0.1;
+    if (rawDt <= 0) rawDt = 1 / 60;
+
+    if (running && !paused) {
+      // Substep physics for stability
+      const substeps = Math.min(Math.ceil(rawDt / (1 / 240)), MAX_SUBSTEPS);
+      const dt = rawDt / substeps;
+      for (let i = 0; i < substeps; i++) {
+        physicsStep(dt);
+      }
+    }
+
+    // Decay bounce flash
+    if (bounceFlash > 0) {
+      bounceFlash -= rawDt * 4;
+      if (bounceFlash < 0) bounceFlash = 0;
+      if (bounceFlash > 0.05) {
+        setStatus('bouncing', '碰撞反弹！');
+      }
+    }
+
+    render();
+    updateDataDisplay();
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  render();
+  updateDataDisplay();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
