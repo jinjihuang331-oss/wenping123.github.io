@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYB3RN3XUS // The Digital Underground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --neon-green:#00ff41;
+  --neon-cyan:#00e5ff;
+  --neon-purple:#b537f2;
+  --neon-pink:#ff2d7b;
+  --dark:#0a0a0f;
+  --dark-card:rgba(10,10,20,0.85);
+  --dark-card-hover:rgba(15,15,30,0.95);
+  --text:#c8d6e5;
+  --text-bright:#e8f0fe;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --glitch-green:#00ff41;
+  --glitch-cyan:#00e5ff;
+}
+
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  background:var(--dark);
+  color:var(--text);
+  font-family:var(--mono);
+  overflow-x:hidden;
+  cursor:default;
+}
+a{color:var(--neon-cyan);text-decoration:none;transition:all .2s}
+a:hover{color:var(--neon-green);text-shadow:0 0 8px var(--neon-green)}
+::selection{background:var(--neon-green);color:var(--dark)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--dark)}
+::-webkit-scrollbar-thumb{background:var(--neon-green);border-radius:3px}
+
+/* Matrix Canvas */
+#matrix-canvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:0;opacity:.15;pointer-events:none;
+}
+
+/* Scanline overlay */
+.scanlines{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+}
+
+/* Navigation */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:1rem 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(10,10,15,0.8);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(0,255,65,0.1);
+  transition:all .3s;
+}
+.nav.scrolled{
+  padding:.6rem 2rem;
+  border-bottom-color:rgba(0,255,65,0.3);
+  box-shadow:0 4px 30px rgba(0,255,65,0.05);
+}
+.nav-logo{
+  font-family:var(--display);
+  font-size:1.2rem;font-weight:900;
+  color:var(--neon-green);
+  text-shadow:0 0 20px rgba(0,255,65,0.5);
+  letter-spacing:2px;
+}
+.nav-logo span{color:var(--neon-cyan)}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{
+  color:var(--text);font-size:.85rem;
+  letter-spacing:1px;text-transform:uppercase;
+  position:relative;padding:.5rem 0;
+}
+.nav-links a::after{
+  content:'';position:absolute;bottom:0;left:0;
+  width:0;height:1px;background:var(--neon-green);
+  box-shadow:0 0 6px var(--neon-green);
+  transition:width .3s;
+}
+.nav-links a:hover::after{width:100%}
+.nav-links a:hover{color:var(--neon-green);text-shadow:0 0 8px rgba(0,255,65,0.3)}
+.nav-cta{
+  padding:.6rem 1.5rem;border:1px solid var(--neon-green);
+  color:var(--neon-green)!important;font-size:.8rem;
+  font-family:var(--mono);letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;
+  background:transparent;
+  transition:all .3s;position:relative;overflow:hidden;
+}
+.nav-cta::before{
+  content:'';position:absolute;top:0;left:-100%;
+  width:100%;height:100%;background:var(--neon-green);
+  transition:left .3s;z-index:-1;
+}
+.nav-cta:hover::before{left:0}
+.nav-cta:hover{color:var(--dark)!important;text-shadow:none}
+.hamburger{
+  display:none;flex-direction:column;gap:5px;
+  cursor:pointer;background:none;border:none;padding:5px;
+}
+.hamburger span{
+  width:25px;height:2px;background:var(--neon-green);
+  transition:all .3s;
+}
+.hamburger.active span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+.hamburger.active span:nth-child(2){opacity:0}
+.hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
+
+/* Content wrapper */
+.content{position:relative;z-index:2}
+
+/* Hero Section */
+.hero{
+  min-height:100vh;display:flex;align-items:center;
+  justify-content:center;padding:6rem 2rem 4rem;
+  position:relative;
+}
+.hero-inner{
+  text-align:center;max-width:900px;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.4rem 1rem;border:1px solid rgba(0,255,65,0.3);
+  border-radius:2px;font-size:.75rem;color:var(--neon-green);
+  margin-bottom:2rem;background:rgba(0,255,65,0.05);
+  letter-spacing:1px;text-transform:uppercase;
+}
+.hero-badge .dot{
+  width:6px;height:6px;background:var(--neon-green);
+  border-radius:50%;animation:pulse-dot 2s infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:1;box-shadow:0 0 4px var(--neon-green)}50%{opacity:.4;box-shadow:none}}
+
+.hero-title{
+  font-family:var(--display);font-size:clamp(2.5rem,7vw,5rem);
+  font-weight:900;line-height:1.1;margin-bottom:1.5rem;
+  color:var(--text-bright);
+}
+.hero-title .green{color:var(--neon-green);text-shadow:0 0 40px rgba(0,255,65,0.4),0 0 80px rgba(0,255,65,0.2)}
+.hero-title .cyan{color:var(--neon-cyan);text-shadow:0 0 40px rgba(0,229,255,0.4)}
+
+/* Glitch effect */
+.glitch{
+  position:relative;display:inline-block;
+}
+.glitch::before,.glitch::after{
+  content:attr(data-text);position:absolute;top:0;left:0;
+  width:100%;height:100%;
+}
+.glitch::before{
+  color:var(--glitch-cyan);z-index:-1;
+  animation:glitch-1 3s infinite linear alternate-reverse;
+}
+.glitch::after{
+  color:var(--glitch-green);z-index:-2;
+  animation:glitch-2 2.5s infinite linear alternate-reverse;
+}
+@keyframes glitch-1{
+  0%,95%,100%{clip-path:inset(0 0 0 0);transform:translate(0)}
+  96%{clip-path:inset(20% 0 60% 0);transform:translate(-4px,2px)}
+  97%{clip-path:inset(50% 0 20% 0);transform:translate(3px,-1px)}
+  98%{clip-path:inset(70% 0 10% 0);transform:translate(-2px,3px)}
+}
+@keyframes glitch-2{
+  0%,93%,100%{clip-path:inset(0 0 0 0);transform:translate(0)}
+  94%{clip-path:inset(40% 0 30% 0);transform:translate(4px,-2px)}
+  95%{clip-path:inset(10% 0 70% 0);transform:translate(-3px,1px)}
+  96%{clip-path:inset(80% 0 5% 0);transform:translate(2px,-3px)}
+}
+
+.hero-sub{
+  font-size:clamp(.9rem,2vw,1.15rem);color:var(--text);
+  max-width:650px;margin:0 auto 2.5rem;line-height:1.7;
+  font-weight:300;
+}
+.hero-sub .leet{
+  color:var(--neon-cyan);
+  border-bottom:1px dashed rgba(0,229,255,0.3);
+  cursor:help;
+}
+
+.hero-buttons{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:3rem}
+.btn-primary{
+  padding:.9rem 2.2rem;background:var(--neon-green);
+  color:var(--dark);font-family:var(--mono);font-weight:700;
+  font-size:.9rem;letter-spacing:1px;text-transform:uppercase;
+  border:none;cursor:pointer;position:relative;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+  transition:all .3s;
+}
+.btn-primary:hover{
+  box-shadow:0 0 30px rgba(0,255,65,0.4);
+  transform:translateY(-2px);
+}
+.btn-secondary{
+  padding:.9rem 2.2rem;background:transparent;
+  color:var(--neon-cyan);font-family:var(--mono);
+  font-size:.9rem;letter-spacing:1px;text-transform:uppercase;
+  border:1px solid var(--neon-cyan);cursor:pointer;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+  transition:all .3s;position:relative;overflow:hidden;
+}
+.btn-secondary::before{
+  content:'';position:absolute;top:0;left:-100%;
+  width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(0,229,255,0.1),transparent);
+  transition:left .5s;
+}
+.btn-secondary:hover::before{left:100%}
+.btn-secondary:hover{
+  box-shadow:0 0 20px rgba(0,229,255,0.2);
+  transform:translateY(-2px);
+}
+
+/* Terminal window in hero */
+.terminal{
+  background:#0c0c14;border:1px solid rgba(0,255,65,0.15);
+  border-radius:8px;overflow:hidden;max-width:600px;margin:0 auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 40px rgba(0,255,65,0.03);
+}
+.terminal-header{
+  display:flex;align-items:center;gap:6px;
+  padding:.7rem 1rem;background:rgba(255,255,255,0.03);
+  border-bottom:1px solid rgba(0,255,65,0.1);
+}
+.terminal-dot{width:10px;height:10px;border-radius:50%}
+.terminal-dot:nth-child(1){background:#ff5f57}
+.terminal-dot:nth-child(2){background:#febc2e}
+.terminal-dot:nth-child(3){background:#28c840}
+.terminal-title{
+  flex:1;text-align:center;font-size:.75rem;
+  color:rgba(255,255,255,0.3);letter-spacing:1px;
+}
+.terminal-body{padding:1.2rem 1.5rem;min-height:180px;position:relative}
+.terminal-line{
+  font-size:.82rem;line-height:1.8;opacity:0;
+  animation:fade-line .5s forwards;
+}
+.terminal-line .prompt{color:var(--neon-green)}
+.terminal-line .cmd{color:var(--neon-cyan)}
+.terminal-line .output{color:rgba(200,214,229,0.7)}
+.terminal-line .accent{color:var(--neon-purple)}
+.terminal-line .pink{color:var(--neon-pink)}
+.cursor-blink{
+  display:inline-block;width:8px;height:15px;
+  background:var(--neon-green);vertical-align:text-bottom;
+  animation:blink 1s step-end infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes fade-line{to{opacity:1}}
+
+/* Section styles */
+.section{padding:6rem 2rem}
+.section-header{text-align:center;margin-bottom:4rem}
+.section-tag{
+  font-size:.75rem;color:var(--neon-cyan);
+  text-transform:uppercase;letter-spacing:3px;
+  margin-bottom:1rem;display:block;
+}
+.section-title{
+  font-family:var(--display);font-size:clamp(1.6rem,4vw,2.5rem);
+  font-weight:700;color:var(--text-bright);margin-bottom:1rem;
+}
+.section-desc{
+  max-width:550px;margin:0 auto;color:var(--text);
+  font-size:.9rem;line-height:1.7;font-weight:300;
+}
+
+/* Feature cards */
+.features-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:1.5rem;max-width:1100px;margin:0 auto;
+}
+.feature-card{
+  background:var(--dark-card);
+  border:1px solid rgba(0,255,65,0.08);
+  border-radius:8px;padding:2rem;
+  transition:all .4s;position:relative;overflow:hidden;
+}
+.feature-card::before{
+  content:'';position:absolute;top:0;left:0;
+  width:100%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--neon-green),transparent);
+  opacity:0;transition:opacity .4s;
+}
+.feature-card:hover{
+  background:var(--dark-card-hover);
+  border-color:rgba(0,255,65,0.2);
+  transform:translateY(-4px);
+  box-shadow:0 12px 40px rgba(0,0,0,0.3),0 0 30px rgba(0,255,65,0.03);
+}
+.feature-card:hover::before{opacity:1}
+.feature-icon{
+  width:48px;height:48px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;margin-bottom:1.2rem;
+  background:rgba(0,255,65,0.05);
+  border:1px solid rgba(0,255,65,0.15);
+  border-radius:6px;
+}
+.feature-title{
+  font-family:var(--display);font-size:1rem;
+  font-weight:700;color:var(--text-bright);
+  margin-bottom:.8rem;letter-spacing:1px;
+}
+.feature-desc{
+  font-size:.85rem;color:var(--text);
+  line-height:1.7;font-weight:300;
+}
+.feature-tag{
+  display:inline-block;margin-top:1rem;padding:.2rem .6rem;
+  font-size:.65rem;color:var(--neon-green);
+  border:1px solid rgba(0,255,65,0.2);
+  border-radius:2px;text-transform:uppercase;
+  letter-spacing:1px;
+}
+
+/* Stats section */
+.stats{
+  border-top:1px solid rgba(0,255,65,0.08);
+  border-bottom:1px solid rgba(0,255,65,0.08);
+  background:rgba(0,255,65,0.01);
+}
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:2rem;max-width:900px;margin:0 auto;
+  text-align:center;
+}
+.stat-item{padding:1rem}
+.stat-number{
+  font-family:var(--display);font-size:clamp(2rem,5vw,3rem);
+  font-weight:900;color:var(--neon-green);
+  text-shadow:0 0 30px rgba(0,255,65,0.3);
+  margin-bottom:.5rem;
+}
+.stat-label{font-size:.8rem;color:var(--text);letter-spacing:2px;text-transform:uppercase}
+
+/* How it works */
+.steps{max-width:800px;margin:0 auto}
+.step{
+  display:flex;gap:2rem;padding:2rem 0;
+  border-bottom:1px solid rgba(0,255,65,0.06);
+  align-items:flex-start;
+}
+.step:last-child{border-bottom:none}
+.step-number{
+  font-family:var(--display);font-size:2rem;font-weight:900;
+  color:var(--neon-cyan);min-width:50px;
+  text-shadow:0 0 20px rgba(0,229,255,0.3);
+  opacity:.7;
+}
+.step-content h3{
+  font-family:var(--display);font-size:1.1rem;
+  color:var(--text-bright);margin-bottom:.5rem;
+  letter-spacing:1px;
+}
+.step-content p{font-size:.85rem;line-height:1.7;font-weight:300}
+.step-content .cmd{
+  display:inline-block;margin-top:.8rem;padding:.3rem .8rem;
+  background:rgba(0,255,65,0.05);border:1px solid rgba(0,255,65,0.15);
+  border-radius:4px;font-size:.8rem;color:var(--neon-green);
+}
+
+/* Testimonials (styled as IRC/log messages) */
+.testimonials{background:rgba(0,0,0,0.3)}
+.testimonial-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:1.5rem;max-width:1100px;margin:0 auto;
+}
+.testimonial-card{
+  background:var(--dark-card);border:1px solid rgba(0,229,255,0.08);
+  border-radius:8px;padding:1.8rem;
+  font-size:.85rem;line-height:1.7;
+  position:relative;
+}
+.testimonial-card .nick{
+  color:var(--neon-cyan);font-weight:700;margin-right:.5rem;
+}
+.testimonial-card .msg{color:var(--text)}
+.testimonial-card .meta{
+  margin-top:1rem;padding-top:1rem;
+  border-top:1px solid rgba(255,255,255,0.05);
+  font-size:.7rem;color:rgba(255,255,255,0.25);
+  display:flex;align-items:center;gap:.5rem;
+}
+.testimonial-card .meta .trust{
+  color:var(--neon-green);font-weight:700;
+}
+
+/* CTA Section */
+.cta{
+  text-align:center;padding:8rem 2rem;
+  position:relative;
+}
+.cta::before{
+  content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:500px;height:500px;
+  background:radial-gradient(circle,rgba(0,255,65,0.06),transparent 70%);
+  pointer-events:none;
+}
+.cta-title{
+  font-family:var(--display);font-size:clamp(1.8rem,5vw,3rem);
+  font-weight:900;color:var(--text-bright);
+  margin-bottom:1rem;
+}
+.cta-title .green{color:var(--neon-green);text-shadow:0 0 40px rgba(0,255,65,0.3)}
+.cta-desc{
+  max-width:500px;margin:0 auto 2.5rem;
+  font-size:.95rem;line-height:1.7;font-weight:300;
+}
+.cta-input-group{
+  display:flex;gap:0;max-width:500px;margin:0 auto;
+  border:1px solid rgba(0,255,65,0.3);
+  border-radius:4px;overflow:hidden;
+}
+.cta-input{
+  flex:1;padding:1rem 1.2rem;background:rgba(10,10,20,0.9);
+  border:none;color:var(--text);font-family:var(--mono);
+  font-size:.9rem;outline:none;
+}
+.cta-input::placeholder{color:rgba(255,255,255,0.2)}
+.cta-input:focus{background:rgba(15,15,30,0.95)}
+.cta-submit{
+  padding:1rem 1.8rem;background:var(--neon-green);
+  color:var(--dark);font-family:var(--mono);font-weight:700;
+  font-size:.85rem;text-transform:uppercase;letter-spacing:1px;
+  border:none;cursor:pointer;transition:all .3s;
+}
+.cta-submit:hover{box-shadow:0 0 20px rgba(0,255,65,0.4);background:#33ff66}
+
+/* Footer */
+.footer{
+  padding:3rem 2rem;border-top:1px solid rgba(0,255,65,0.06);
+  background:rgba(5,5,10,0.9);
+}
+.footer-inner{
+  max-width:1100px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:1.5rem;
+}
+.footer-left{font-size:.75rem;color:rgba(255,255,255,0.2)}
+.footer-left .brand{color:var(--neon-green);font-weight:700;font-family:var(--display)}
+.footer-links{display:flex;gap:1.5rem;list-style:none}
+.footer-links a{font-size:.8rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px}
+.footer-links a:hover{color:var(--neon-green)}
+
+/* Leet translator tooltip */
+.tooltip{
+  position:fixed;z-index:200;padding:.5rem .8rem;
+  background:#1a1a2e;border:1px solid var(--neon-cyan);
+  border-radius:4px;font-size:.75rem;color:var(--neon-cyan);
+  pointer-events:none;opacity:0;transition:opacity .2s;
+  white-space:nowrap;
+}
+.tooltip.visible{opacity:1}
+
+/* Scroll reveal */
+.reveal{opacity:0;transform:translateY(30px);transition:all .8s cubic-bezier(0.16,1,0.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* Responsive */
+@media(max-width:768px){
+  .nav-links{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(10,10,15,0.98);flex-direction:column;
+    align-items:center;justify-content:center;gap:2rem;
+    z-index:99;
+  }
+  .nav-links.open{display:flex}
+  .nav-links a{font-size:1.1rem}
+  .hamburger{display:flex;z-index:100}
+  .section{padding:4rem 1.5rem}
+  .hero{padding:7rem 1.5rem 3rem}
+  .cta-input-group{flex-direction:column}
+  .cta-submit{padding:1rem}
+  .step{flex-direction:column;gap:.8rem}
+  .footer-inner{text-align:center;justify-content:center}
+  .cta{padding:5rem 1.5rem}
+}
+</style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<div class="scanlines"></div>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-logo">CYB3R<span>N3XUS</span></div>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#stats">Network</a></li>
+    <li><a href="#how"> Getting Started</a></li>
+    <li><a href="#testimonials">Community</a></li>
+    <li><a href="#join" class="nav-cta">J01N NOW</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Content -->
+<main class="content">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        <span>SYSTEM STATUS: ONLINE &mdash; v4.2.0</span>
+      </div>
+
+      <h1 class="hero-title">
+        <span class="glitch green" data-text="ENTER THE">ENTER THE</span><br>
+        <span class="glitch cyan" data-text="N3XWORK">N3XWORK</span>
+      </h1>
+
+      <p class="hero-sub">
+        The underground hub for <span class="leet" data-leet="elite hackers">3l1t3 h4x0rz</span>,
+        security researchers, and digital explorers.
+        <span class="leet" data-leet="Access knowledge">4cc3ss kn0wl3dg3</span> others can't reach.
+        Decode. Build. <span class="leet" data-leet="Transcend">7r4nsc3nd</span>.
+      </p>
+
+      <div class="hero-buttons">
+        <button class="btn-primary" onclick="document.getElementById('join').scrollIntoView({behavior:'smooth'})">
+          &gt; G4IN_ACC3SS
+        </button>
+        <button class="btn-secondary" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">
+          $ HOW_IT_WORKS
+        </button>
+      </div>
+
+      <div class="terminal" id="terminal">
+        <div class="terminal-header">
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-title">cybernexus@n3xwork:~</span>
+        </div>
+        <div class="terminal-body" id="terminalBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" id="features">
+    <div class="section-header reveal">
+      <span class="section-tag">// SYSTEM_MODULES</span>
+      <h2 class="section-title">BUILT FOR THE <span style="color:var(--neon-green)">DIGITAL UNDERGROUND</span></h2>
+      <p class="section-desc">Every tool you need to navigate, understand, and master the modern cyber landscape. Open-source, encrypted, community-driven.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#x1F50D;</div>
+        <h3 class="feature-title">0SINT DASHBOARD</h3>
+        <p class="feature-desc">Unified intelligence gathering with real-time data aggregation across the clearnet, darknet, and social graphs. Automated correlation engine included.</p>
+        <span class="feature-tag">new in v4.2</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#x1F512;</div>
+        <h3 class="feature-title">3NCRYPT3D_COMMS</h3>
+        <p class="feature-desc">End-to-end encrypted messaging with disappearing channels, zero-knowledge proofs, and quantum-resistant key exchange. Your secrets stay yours.</p>
+        <span class="feature-tag">e2e encrypted</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#x26A1;</div>
+        <h3 class="feature-title">N3TW0RK_MAP</h3>
+        <p class="feature-desc">Live network topology visualization with AI-powered anomaly detection. See the invisible. Map the unmappable. Real-time threat feeds from 200+ sensors.</p>
+        <span class="feature-tag">ai-powered</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#x1F4BB;</div>
+        <h3 class="feature-title">EXPLOIT_SANDBOX</h3>
+        <p class="feature-desc">Isolated environments for vulnerability research and exploit development. Full root access, snapshot support, and collaborative debugging sessions.</p>
+        <span class="feature-tag">isolated env</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#x1F9E0;</div>
+        <h3 class="feature-title">M3MORY_F0RGE</h3>
+        <p class="feature-desc">Crowdsourced vulnerability database with AI-assisted triage, proof-of-concept verification, and reputation-weighted community scoring.</p>
+        <span class="feature-tag">community db</span>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#x1F310;</div>
+        <h3 class="feature-title">D4RK_F0RUM</h3>
+        <p class="feature-desc">Anonymous discussion boards with zero-trust architecture. Decentralized moderation, pluggable reputation systems, and IPFS-backed permanence.</p>
+        <span class="feature-tag">decentralized</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="section stats" id="stats">
+    <div class="stats-grid">
+      <div class="stat-item reveal">
+        <div class="stat-number" data-target="142857">0</div>
+        <div class="stat-label">Active Nod3s</div>
+      </div>
+      <div class="stat-item reveal">
+        <div class="stat-number" data-target="47">0</div>
+        <div class="stat-label">Countries</div>
+      </div>
+      <div class="stat-item reveal">
+        <div class="stat-number" data-target="2847391">0</div>
+        <div class="stat-label">Data P4ck3ts / Day</div>
+      </div>
+      <div class="stat-item reveal">
+        <div class="stat-number" data-target="99">0</div>
+        <div class="stat-label">Uptime %</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section" id="how">
+    <div class="section-header reveal">
+      <span class="section-tag">// 1N1T_S3QU3NC3</span>
+      <h2 class="section-title">3NT3R IN <span style="color:var(--neon-cyan)">THR33</span> ST3PS</h2>
+      <p class="section-desc">Getting started is simpler than cracking a WEP key. Here's the initialization sequence.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-number">01</div>
+        <div class="step-content">
+          <h3>G3N3RAT3_YOUR_ID3NTITY</h3>
+          <p>Create your pseudonymous identity with a cryptographic key pair. No emails, no phone numbers, no real names. Your handle is your passport to the N3XWORK.</p>
+          <span class="cmd">$ curl -X POST nexus.init <span style="color:rgba(255,255,255,0.3)">--identity gen</span></span>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-number">02</div>
+        <div class="step-content">
+          <h3>D3PL0Y_YOUR_N0D3</h3>
+          <p>Spin up your personal node on the decentralized network. Choose your clearance level, configure your modules, and establish your secure tunnel into the grid.</p>
+          <span class="cmd">$ nexus deploy <span style="color:rgba(255,255,255,0.3)">--tunnel encrypted --modules all</span></span>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-number">03</div>
+        <div class="step-content">
+          <h3>H4CK_TH3_PLAN3T</h3>
+          <p>Access the full suite of tools, connect with fellow operators, and start your mission. The network adapts to your needs. Level up your clearance. Unlock the deep modules.</p>
+          <span class="cmd">$ nexus run <span style="color:rgba(255,255,255,0.3)">--mode autonomous</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="section testimonials" id="testimonials">
+    <div class="section-header reveal">
+      <span class="section-tag">// CH4NN3L_L0G</span>
+      <h2 class="section-title">WHAT TH3 <span style="color:var(--neon-purple)">OP3R4T0RS</span> SAY</h2>
+      <p class="section-desc">Intercepted transmissions from active N3XWORK operators. Real people. Real missions.</p>
+    </div>
+    <div class="testimonial-grid">
+      <div class="testimonial-card reveal">
+        <p><span class="nick">&lt;z3r0day&gt;</span> <span class="msg">Been on the platform for 2 years. The OSINT module alone saved our team 400+ man-hours last quarter. Nothing else comes close.</span></p>
+        <div class="meta"><span class="trust">&#9733;&#9733;&#9733;&#9733;&#9733;</span> trusted operator &middot; clearance L4</div>
+      </div>
+      <div class="testimonial-card reveal">
+        <p><span class="nick">&lt;ph4nt0m&gt;</span> <span class="msg">The encrypted comms are next level. Switched from Signal and never looked back. Quantum-resistant key exchange is chef's kiss.</span></p>
+        <div class="meta"><span class="trust">&#9733;&#9733;&#9733;&#9733;&#9730;</span> verified &middot; clearance L3</div>
+      </div>
+      <div class="testimonial-card reveal">
+        <p><span class="nick">&lt;n1ghtshade&gt;</span> <span class="msg">I found 3 zero-days in Fortune 500 targets using the exploit sandbox last month. The environment isolation is flawless. No footprint, no traces.</span></p>
+        <div class="meta"><span class="trust">&#9733;&#9733;&#9733;&#9733;&#9733;</span> elite contributor &middot; clearance L5</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta" id="join">
+    <div class="reveal">
+      <h2 class="cta-title">R3ADY TO <span class="green">J01N</span>?</h2>
+      <p class="cta-desc">Drop your handle. We'll send you a one-time invite to the network. No spam, no tracking, no nonsense. If you don't receive it within 24 hours, check your spam or try another handle.</p>
+      <div class="cta-input-group">
+        <input type="text" class="cta-input" placeholder="your_handle@n3xwork" autocomplete="off" spellcheck="false">
+        <button class="cta-submit">J01N</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      &copy; 2026 <span class="brand">CYB3RN3XUS</span> &mdash; The network remembers everything.
+    </div>
+    <ul class="footer-links">
+      <li><a href="#">D0cs</a></li>
+      <li><a href="#">Blog</a></li>
+      <li><a href="#">GitHub</a></li>
+      <li><a href="#">M4trix</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+// ========== MATRIX RAIN ==========
+(function(){
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, columns, drops;
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF<>/{}[];=+-*&^%$#@!ﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ';
+  const fontSize = 14;
+
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    columns = Math.floor(w / fontSize);
+    drops = new Array(columns).fill(1).map(() => Math.random() * -100);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let mouseX = -1000, mouseY = -1000;
+  document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
+  function draw(){
+    ctx.fillStyle = 'rgba(10,10,15,0.06)';
+    ctx.fillRect(0, 0, w, h);
+
+    for(let i = 0; i < columns; i++){
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const x = i * fontSize;
+      const y = drops[i] * fontSize;
+      const dist = Math.sqrt((x - mouseX)**2 + (y - mouseY)**2);
+      const brightness = dist < 150 ? 1 : 0.25 + Math.random() * 0.15;
+
+      if(brightness > 0.5){
+        ctx.fillStyle = `rgba(0,255,65,${brightness * 0.7})`;
+        ctx.shadowColor = 'rgba(0,255,65,0.3)';
+        ctx.shadowBlur = 8;
+      } else {
+        ctx.fillStyle = `rgba(0,255,65,${brightness * 0.25})`;
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.font = `${fontSize}px JetBrains Mono, monospace`;
+      ctx.fillText(char, x, y);
+      ctx.shadowBlur = 0;
+
+      if(y > h && Math.random() > 0.975) drops[i] = 0;
+      drops[i] += 0.5 + Math.random() * 0.5;
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ========== TERMINAL ANIMATION ==========
+(function(){
+  const body = document.getElementById('terminalBody');
+  const lines = [
+    { delay: 500, text: '<span class="prompt">visitor@n3xwork:~$</span> <span class="cmd">nexus --status</span>' },
+    { delay: 1200, text: '<span class="output">[&#10003;] Quantum tunnel established</span>' },
+    { delay: 1800, text: '<span class="output">[&#10003;] Node synchronization: <span class="accent">142,857</span> active</span>' },
+    { delay: 2400, text: '<span class="output">[&#10003;] Encrypted channels: <span class="pink">ONLINE</span></span>' },
+    { delay: 3000, text: '<span class="output">[&#10003;] Threat level: <span class="accent">NOMINAL</span></span>' },
+    { delay: 3600, text: '<span class="output">[&#10003;] Welcome to CYB3RN3XUS.</span>' },
+    { delay: 4200, text: '<span class="prompt">visitor@n3xwork:~$</span> <span class="cursor-blink"></span>' },
+  ];
+
+  lines.forEach(line => {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'terminal-line';
+      el.innerHTML = line.text;
+      body.appendChild(el);
+      body.scrollTop = body.scrollHeight;
+    }, line.delay);
+  });
+})();
+
+// ========== NAVIGATION ==========
+const nav = document.getElementById('nav');
+const hamburger = document.getElementById('hamburger');
+const navLinks = document.getElementById('navLinks');
+
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 50);
+});
+
+hamburger.addEventListener('click', () => {
+  hamburger.classList.toggle('active');
+  navLinks.classList.toggle('open');
+});
+
+navLinks.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => {
+    hamburger.classList.remove('active');
+    navLinks.classList.remove('open');
+  });
+});
+
+// ========== SCROLL REVEAL ==========
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ========== COUNTER ANIMATION ==========
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      const nums = entry.target.querySelectorAll('.stat-number[data-target]');
+      nums.forEach(num => {
+        const target = parseInt(num.dataset.target);
+        const duration = 2000;
+        const start = performance.now();
+
+        function update(now){
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.floor(eased * target);
+          num.textContent = current.toLocaleString();
+          if(progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+      });
+      statsObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.stats-grid').forEach(el => statsObserver.observe(el));
+
+// ========== LEETSPEAK TOOLTIP ==========
+const tooltip = document.getElementById('tooltip');
+document.querySelectorAll('.leet').forEach(el => {
+  el.addEventListener('mouseenter', e => {
+    tooltip.textContent = el.dataset.leet;
+    tooltip.classList.add('visible');
+  });
+  el.addEventListener('mousemove', e => {
+    tooltip.style.left = e.pageX + 10 + 'px';
+    tooltip.style.top = e.pageY - 30 + 'px';
+  });
+  el.addEventListener('mouseleave', () => {
+    tooltip.classList.remove('visible');
+  });
+});
+
+// ========== SMOOTH SCROLL ==========
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if(target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>
