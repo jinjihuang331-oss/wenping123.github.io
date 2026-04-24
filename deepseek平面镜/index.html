@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平面镜成像实验模拟器</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #e8e2d9;
+    --text: #1e293b;
+    --primary: #2563eb;
+    --accent: #ea580c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e8ecf1 0%, #dce3ea 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+  }
+
+  .container {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+    padding: 24px 28px 20px;
+    max-width: 1060px;
+    width: 100%;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: 0.02em;
+  }
+
+  .header .subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-top: 2px;
+  }
+
+  .canvas-wrap {
+    position: relative;
+    background: #fdfdfc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .info-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .info-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 18px;
+    min-width: 130px;
+    text-align: center;
+  }
+
+  .info-card .label {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 2px;
+  }
+
+  .info-card .value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .info-card.obj .value { color: #2563eb; }
+  .info-card.img .value { color: #7c3aed; }
+
+  .info-card.conclusion {
+    border-color: #dbeafe;
+    background: #eff6ff;
+    flex: 0 0 auto;
+  }
+
+  .info-card.conclusion .value {
+    font-size: 0.95rem;
+    color: #2563eb;
+    font-weight: 600;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 0.875rem;
+    padding: 7px 20px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  button:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+  }
+
+  button.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+  }
+
+  button.primary:hover {
+    background: #1d4ed8;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-top: 8px;
+  }
+
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend .dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .legend .dot.real { background: #f59e0b; }
+  .legend .dot.virtual { background: #7c3aed; opacity: 0.5; border: 1px dashed #7c3aed; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>平面镜成像实验模拟器</h1>
+    <p class="subtitle">拖动蜡烛改变物距，观察虚像实时变化</p>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="c"></canvas>
+  </div>
+
+  <div class="info-row">
+    <div class="info-card obj">
+      <div class="label">物距 u</div>
+      <div class="value" id="objVal">25.0 cm</div>
+    </div>
+    <div class="info-card img">
+      <div class="label">像距 v</div>
+      <div class="value" id="imgVal">25.0 cm</div>
+    </div>
+    <div class="info-card conclusion">
+      <div class="value">像与物等大 · 像距 = 物距</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="primary" id="resetBtn">重置位置</button>
+    <button id="snapBtn">标记当前位置</button>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot real"></span> 实物（蜡烛）</span>
+    <span><span class="dot virtual"></span> 虚像</span>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ──────────── DOM ────────────
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const objValEl = document.getElementById('objVal');
+  const imgValEl = document.getElementById('imgVal');
+
+  // ──────────── Constants ────────────
+  const W = 1000;
+  const H = 520;
+  const PX_PER_CM = 10;
+
+  const MIRROR_X = 500;          // reflective surface x
+  const MIRROR_THICK = 8;        // glass thickness (visual only)
+  const MIRROR_TOP = 125;
+  const MIRROR_BOT = 430;
+
+  const TABLE_Y = 430;           // table surface y
+
+  const CANDLE_W_BASE = 28;
+  const CANDLE_W_TOP = 22;
+  const CANDLE_H = 90;
+  const FLAME_H = 28;
+  const FLAME_W = 10;
+  const WICK_H = 5;
+
+  const MIN_CANDLE_X = 90;       // keep virtual image on canvas
+  const MAX_CANDLE_X = 475;      // gap from mirror surface
+
+  // ──────────── State ────────────
+  let candleX = 250;
+  const candleY = TABLE_Y;       // base of candle sits on table
+  let dragging = false;
+  let hovered = false;
+  let dragStartX = 0;
+  let dragOrigCandleX = 0;
+  const snaps = [];              // saved snap positions
+  let time = 0;
+
+  // ──────────── Derived ────────────
+  function imageX() { return 2 * MIRROR_X - candleX; }
+  function objDistCm() { return ((MIRROR_X - candleX) / PX_PER_CM); }
+  function imgDistCm() { return ((imageX() - MIRROR_X) / PX_PER_CM); }
+
+  // ──────────── Resize ────────────
+  function resize() {
+    canvas.width = W;
+    canvas.height = H;
+    canvas.style.width = Math.min(1000, canvas.parentElement.clientWidth - 2) + 'px';
+    canvas.style.height = 'auto';
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ──────────── Drawing helpers ────────────
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
+  function drawArrowLine(x1, y, x2, dashed) {
+    const len = x2 - x1;
+    if (Math.abs(len) < 4) return;
+    const dir = Math.sign(len);
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y);
+    ctx.lineTo(x2, y);
+    ctx.stroke();
+
+    // arrowheads
+    const tip = 7;
+    for (const ex of [x1, x2]) {
+      const d = ex === x1 ? dir : -dir;
+      ctx.beginPath();
+      ctx.moveTo(ex, y);
+      ctx.lineTo(ex + d * tip, y - tip * 0.55);
+      ctx.lineTo(ex + d * tip, y + tip * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // ──────────── Background ────────────
+  function drawBackground() {
+    // sky / wall
+    const grad = ctx.createLinearGradient(0, 0, 0, TABLE_Y);
+    grad.addColorStop(0, '#f1f5f9');
+    grad.addColorStop(0.5, '#f8fafc');
+    grad.addColorStop(1, '#e8ecf0');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, TABLE_Y);
+
+    // subtle grid
+    ctx.strokeStyle = 'rgba(148,163,184,0.10)';
+    ctx.lineWidth = 1;
+    for (let gx = 0; gx < W; gx += 40) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, TABLE_Y);
+      ctx.stroke();
+    }
+    for (let gy = 0; gy < TABLE_Y; gy += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(W, gy);
+      ctx.stroke();
+    }
+  }
+
+  // ──────────── Table ────────────
+  function drawTable() {
+    // table body
+    const tGrad = ctx.createLinearGradient(0, TABLE_Y, 0, H);
+    tGrad.addColorStop(0, '#c4b5a5');
+    tGrad.addColorStop(0.03, '#d9cdbe');
+    tGrad.addColorStop(0.15, '#c4b5a5');
+    tGrad.addColorStop(1, '#a89888');
+    ctx.fillStyle = tGrad;
+    ctx.fillRect(0, TABLE_Y, W, H - TABLE_Y);
+
+    // table surface line
+    ctx.strokeStyle = '#b0a090';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, TABLE_Y);
+    ctx.lineTo(W, TABLE_Y);
+    ctx.stroke();
+
+    // highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, TABLE_Y + 1);
+    ctx.lineTo(W, TABLE_Y + 1);
+    ctx.stroke();
+  }
+
+  // ──────────── Ruler marks on table ────────────
+  function drawRuler() {
+    for (let tick = 0; tick <= 900; tick += 50) {
+      const x = tick;
+      const isMajor = tick % 100 === 0;
+      const markH = isMajor ? 10 : 5;
+      const y0 = TABLE_Y - markH;
+
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = isMajor ? 1.5 : 0.8;
+      ctx.beginPath();
+      ctx.moveTo(x, y0);
+      ctx.lineTo(x, TABLE_Y);
+      ctx.stroke();
+
+      if (isMajor && x !== MIRROR_X) {
+        const cm = Math.round((x - MIRROR_X) / PX_PER_CM);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px -apple-system, "PingFang SC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText((cm > 0 ? '+' : '') + cm, x, y0 - 5);
+      }
+    }
+
+    // zero mark at mirror
+    ctx.fillStyle = '#334155';
+    ctx.font = 'bold 11px -apple-system, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('0', MIRROR_X, TABLE_Y - 15);
+  }
+
+  // ──────────── Mirror ────────────
+  function drawMirror() {
+    const x = MIRROR_X;
+    const top = MIRROR_TOP;
+    const bot = MIRROR_BOT;
+    const h = bot - top;
+    const thick = MIRROR_THICK;
+
+    // mirror frame (left side)
+    ctx.fillStyle = '#64748b';
+    roundRect(x - 4, top - 4, thick + 8, h + 8, 4);
+    ctx.fill();
+
+    // glass surface (reflective)
+    const glassGrad = ctx.createLinearGradient(x, 0, x + thick, 0);
+    glassGrad.addColorStop(0, '#e0e7ef');
+    glassGrad.addColorStop(0.3, '#f1f5f9');
+    glassGrad.addColorStop(0.5, '#e8eef4');
+    glassGrad.addColorStop(1, '#94a3b8');
+    ctx.fillStyle = glassGrad;
+    roundRect(x, top, thick, h, 2);
+    ctx.fill();
+
+    // reflective surface highlight
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 1, top + 4);
+    ctx.lineTo(x + 1, bot - 4);
+    ctx.stroke();
+
+    // silvered back hatching
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x + thick, top, 16, h);
+    ctx.clip();
+    ctx.strokeStyle = '#8899aa';
+    ctx.lineWidth = 0.8;
+    for (let hy = top - h; hy < bot + h; hy += 7) {
+      ctx.beginPath();
+      ctx.moveTo(x + thick + 2, hy);
+      ctx.lineTo(x + thick + 12, hy - 10);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // label
+    ctx.fillStyle = '#475569';
+    ctx.font = 'bold 13px -apple-system, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('平 面 镜', x + thick / 2, top - 16);
+
+    // region labels
+    ctx.fillStyle = '#3b82f6';
+    ctx.font = '12px -apple-system, "PingFang SC", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('镜前（实物）', x - 18, top - 4);
+
+    ctx.fillStyle = '#7c3aed';
+    ctx.textAlign = 'left';
+    ctx.fillText('镜后（虚像）', x + thick + 14, top - 4);
+  }
+
+  // ──────────── Candle drawing ────────────
+  function drawCandle(cx, baseY, isVirtual, t) {
+    ctx.save();
+
+    if (isVirtual) {
+      ctx.globalAlpha = 0.45;
+      ctx.setLineDash([5, 4]);
+    } else {
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+    }
+
+    const bodyTop = baseY - CANDLE_H;
+    const halfBW = CANDLE_W_BASE / 2;
+    const halfTW = CANDLE_W_TOP / 2;
+
+    // ── Candle body ──
+    const bodyGrad = ctx.createLinearGradient(cx - halfBW, 0, cx + halfBW, 0);
+    bodyGrad.addColorStop(0, '#e8dcc8');
+    bodyGrad.addColorStop(0.3, '#fdf6e8');
+    bodyGrad.addColorStop(0.5, '#fff9ef');
+    bodyGrad.addColorStop(0.7, '#fdf6e8');
+    bodyGrad.addColorStop(1, '#d8c8a8');
+    ctx.fillStyle = isVirtual ? 'rgba(253,246,232,0.5)' : bodyGrad;
+
+    ctx.beginPath();
+    ctx.moveTo(cx - halfBW, baseY);
+    ctx.lineTo(cx - halfTW, bodyTop + 4);
+    ctx.quadraticCurveTo(cx - halfTW, bodyTop - 2, cx, bodyTop - 2);
+    ctx.quadraticCurveTo(cx + halfTW, bodyTop - 2, cx + halfTW, bodyTop + 4);
+    ctx.lineTo(cx + halfBW, baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // outline
+    ctx.strokeStyle = isVirtual ? 'rgba(180,160,130,0.5)' : '#b8a080';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // ── Top wax pool ──
+    ctx.fillStyle = isVirtual ? 'rgba(240,225,195,0.45)' : '#efe0c8';
+    ctx.beginPath();
+    ctx.ellipse(cx, bodyTop, halfTW, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = isVirtual ? 'rgba(170,150,120,0.45)' : '#c8b898';
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+
+    // ── Wax drips ──
+    ctx.fillStyle = isVirtual ? 'rgba(245,235,215,0.45)' : '#f5ebd7';
+    ctx.beginPath();
+    // left drip
+    ctx.moveTo(cx - halfTW + 2, bodyTop + 3);
+    ctx.quadraticCurveTo(cx - halfTW - 3, bodyTop + 16, cx - halfTW + 3, bodyTop + 10);
+    ctx.fill();
+    // right drip
+    ctx.beginPath();
+    ctx.moveTo(cx + halfTW - 2, bodyTop + 3);
+    ctx.quadraticCurveTo(cx + halfTW + 3, bodyTop + 20, cx + halfTW - 1, bodyTop + 12);
+    ctx.fill();
+
+    // ── Wick ──
+    ctx.strokeStyle = isVirtual ? 'rgba(50,40,30,0.45)' : '#3a3028';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(cx, bodyTop - 2);
+    ctx.lineTo(cx, bodyTop - WICK_H - 2);
+    ctx.stroke();
+
+    // ── Flame ──
+      const flicker = Math.sin(t * 0.004) * 0.5 + Math.sin(t * 0.009) * 0.35 + Math.sin(t * 0.015) * 0.25;
+      const flameH = FLAME_H + flicker * 4;
+      const flameW = FLAME_W + flicker * 2;
+      const sway = Math.sin(t * 0.0055) * 2;
+      const flameBaseY = bodyTop - WICK_H - 1;
+      const flameTopY = flameBaseY - flameH;
+
+      ctx.setLineDash([]);
+
+      if (!isVirtual) {
+        // outer glow
+        const glowGrad = ctx.createRadialGradient(cx + sway, flameBaseY - flameH * 0.5, 2, cx, flameBaseY - flameH * 0.4, flameH * 0.7);
+        glowGrad.addColorStop(0, 'rgba(255,180,40,0.30)');
+        glowGrad.addColorStop(0.5, 'rgba(255,140,20,0.12)');
+        glowGrad.addColorStop(1, 'rgba(255,100,0,0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(cx + sway, flameBaseY - flameH * 0.45, flameH * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+
+        // flame body
+        const fGrad = ctx.createLinearGradient(cx, flameTopY, cx, flameBaseY);
+        fGrad.addColorStop(0, '#ff6b20');
+        fGrad.addColorStop(0.25, '#ff9510');
+        fGrad.addColorStop(0.55, '#ffc030');
+        fGrad.addColorStop(0.8, '#ffe880');
+        fGrad.addColorStop(1, '#c8d8ff');
+        ctx.fillStyle = fGrad;
+      } else {
+        ctx.fillStyle = 'rgba(200,160,100,0.4)';
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(cx + sway, flameTopY);
+      ctx.quadraticCurveTo(cx + sway + flameW * 0.7, flameTopY + flameH * 0.4, cx + sway + flameW * 0.5, flameBaseY - 3);
+      ctx.quadraticCurveTo(cx + sway + flameW * 0.2, flameBaseY + 2, cx + sway, flameBaseY);
+      ctx.quadraticCurveTo(cx + sway - flameW * 0.2, flameBaseY + 2, cx + sway - flameW * 0.5, flameBaseY - 3);
+      ctx.quadraticCurveTo(cx + sway - flameW * 0.7, flameTopY + flameH * 0.4, cx + sway, flameTopY);
+      ctx.fill();
+
+      // inner bright core
+      if (!isVirtual) {
+        const iGrad = ctx.createLinearGradient(cx, flameTopY + flameH * 0.25, cx, flameBaseY);
+        iGrad.addColorStop(0, '#ffe880');
+        iGrad.addColorStop(0.5, '#fff8c0');
+        iGrad.addColorStop(1, '#d0e0ff');
+        ctx.fillStyle = iGrad;
+
+        ctx.beginPath();
+        ctx.moveTo(cx + sway, flameTopY + flameH * 0.2);
+        ctx.quadraticCurveTo(cx + sway + flameW * 0.22, flameTopY + flameH * 0.55, cx + sway + flameW * 0.15, flameBaseY - 8);
+        ctx.quadraticCurveTo(cx + sway, flameBaseY - 2, cx + sway - flameW * 0.15, flameBaseY - 8);
+        ctx.quadraticCurveTo(cx + sway - flameW * 0.22, flameTopY + flameH * 0.55, cx + sway, flameTopY + flameH * 0.2);
+        ctx.fill();
+      }
+
+      // blue base
+      ctx.fillStyle = isVirtual ? 'rgba(140,160,200,0.4)' : '#a0c0f0';
+      ctx.beginPath();
+      ctx.ellipse(cx + sway, flameBaseY - 1, flameW * 0.35, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+    ctx.restore();
+  }
+
+  // ──────────── Measurement lines ────────────
+  function drawMeasurements() {
+    const imgX = imageX();
+    const objD = MIRROR_X - candleX;
+    const imgD = imgX - MIRROR_X;
+
+    // Object distance line (solid) ─ at y=95
+    const oy = 95;
+    ctx.strokeStyle = '#2563eb';
+    ctx.fillStyle = '#2563eb';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([]);
+    drawArrowLine(candleX, oy, MIRROR_X, false);
+
+    // Image distance line (dashed) ─ at y=113
+    const iy = 113;
+    ctx.strokeStyle = '#7c3aed';
+    ctx.fillStyle = '#7c3aed';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([6, 3]);
+    drawArrowLine(MIRROR_X, iy, imgX, true);
+    ctx.setLineDash([]);
+
+    // Labels
+    ctx.font = 'bold 12px -apple-system, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+
+    // Object distance label
+    const objMid = (candleX + MIRROR_X) / 2;
+    ctx.fillStyle = '#ffffff';
+    const objText = '物距 u = ' + objDistCm().toFixed(1) + ' cm';
+    const objTM = ctx.measureText(objText);
+    roundRect(objMid - objTM.width / 2 - 8, oy - 19, objTM.width + 16, 18, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#bfdbfe';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#1d4ed8';
+    ctx.fillText(objText, objMid, oy - 6);
+
+    // Image distance label
+    const imgMid = (MIRROR_X + imgX) / 2;
+    ctx.fillStyle = '#ffffff';
+    const imgText = '像距 v = ' + imgDistCm().toFixed(1) + ' cm';
+    const imgTM = ctx.measureText(imgText);
+    roundRect(imgMid - imgTM.width / 2 - 8, iy - 19, imgTM.width + 16, 18, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#e9d5ff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#6d28d9';
+    ctx.fillText(imgText, imgMid, iy - 6);
+
+    // Vertical connector lines (candle top → measurement line)
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 0.8;
+
+    // From real candle to object distance line
+    const candleTop = TABLE_Y - CANDLE_H - FLAME_H;
+    ctx.beginPath();
+    ctx.moveTo(candleX, candleTop);
+    ctx.lineTo(candleX, oy);
+    ctx.stroke();
+
+    // From virtual image to image distance line
+    ctx.beginPath();
+    ctx.moveTo(imgX, candleTop);
+    ctx.lineTo(imgX, iy);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+    // Small dots at measurement points
+    for (const [px, py] of [[candleX, oy], [MIRROR_X, oy], [MIRROR_X, iy], [imgX, iy]]) {
+      ctx.fillStyle = px === MIRROR_X ? '#475569' : (px === candleX ? '#2563eb' : '#7c3aed');
+      ctx.beginPath();
+      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Vertical dashed lines from candle/image down to table
+    ctx.setLineDash([2, 4]);
+    ctx.strokeStyle = 'rgba(100,116,139,0.4)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(candleX, oy + 10);
+    ctx.lineTo(candleX, TABLE_Y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(imgX, iy + 10);
+    ctx.lineTo(imgX, TABLE_Y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ──────────── "Same size" indicator ────────────
+  function drawSizeIndicator() {
+    const imgX = imageX();
+    const bodyTop = TABLE_Y - CANDLE_H;
+
+    // Small double-headed vertical arrows showing equal height
+    const drawHeightBracket = (x, label, color) => {
+      const yt = bodyTop - 6;
+      const yb = TABLE_Y + 6;
+      const bx = x + CANDLE_W_BASE / 2 + 14;
+
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([]);
+
+      // vertical line
+      ctx.beginPath();
+      ctx.moveTo(bx, yt);
+      ctx.lineTo(bx, yb);
+      ctx.stroke();
+
+      // arrow tips
+      for (const [ay, dir] of [[yt, -1], [yb, 1]]) {
+        ctx.beginPath();
+        ctx.moveTo(bx, ay);
+        ctx.lineTo(bx - 5, ay + dir * 6);
+        ctx.lineTo(bx + 5, ay + dir * 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.font = '10px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, bx + 8, (yt + yb) / 2 + 4);
+    };
+
+    drawHeightBracket(candleX, 'h', '#2563eb');
+    drawHeightBracket(imgX, 'h\'=h', '#7c3aed');
+  }
+
+  // ──────────── Snaps ────────────
+  function drawSnaps() {
+    for (const sx of snaps) {
+      const iX = 2 * MIRROR_X - sx;
+      ctx.fillStyle = 'rgba(37,99,235,0.08)';
+      ctx.beginPath();
+      ctx.arc(sx, TABLE_Y - CANDLE_H / 2, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(124,58,237,0.08)';
+      ctx.beginPath();
+      ctx.arc(iX, TABLE_Y - CANDLE_H / 2, 18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ──────────── Main render ────────────
+  function render(ts) {
+    time = ts;
+    ctx.clearRect(0, 0, W, H);
+
+    drawBackground();
+    drawSnaps();
+    drawTable();
+    drawRuler();
+
+    // Virtual image (drawn before mirror so it's "behind")
+    drawCandle(imageX(), candleY, true, time);
+    drawSizeIndicator();
+
+    drawMirror();
+
+    // Real candle (drawn after mirror so it's "in front")
+    drawCandle(candleX, candleY, false, time);
+
+    drawMeasurements();
+
+    // Hover highlight
+    if (hovered && !dragging) {
+      ctx.strokeStyle = 'rgba(37,99,235,0.4)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      const bx = candleX - CANDLE_W_BASE / 2 - 6;
+      const by = TABLE_Y - CANDLE_H - FLAME_H - 8;
+      const bw = CANDLE_W_BASE + 12;
+      const bh = CANDLE_H + FLAME_H + 16;
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.setLineDash([]);
+    }
+
+    // Update DOM info
+    objValEl.textContent = objDistCm().toFixed(1) + ' cm';
+    imgValEl.textContent = imgDistCm().toFixed(1) + ' cm';
+
+    requestAnimationFrame(render);
+  }
+
+  // ──────────── Hit test ────────────
+  function hitTest(mx, my) {
+    const top = TABLE_Y - CANDLE_H - FLAME_H - 8;
+    const bottom = TABLE_Y + 4;
+    const left = candleX - CANDLE_W_BASE / 2 - 8;
+    const right = candleX + CANDLE_W_BASE / 2 + 8;
+    return mx >= left && mx <= right && my >= top && my <= bottom;
+  }
+
+  // ──────────── Mouse events ────────────
+  function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    const pos = getCanvasPos(e);
+    if (hitTest(pos.x, pos.y)) {
+      dragging = true;
+      dragStartX = pos.x;
+      dragOrigCandleX = candleX;
+      canvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    const pos = getCanvasPos(e);
+    if (dragging) {
+      const dx = pos.x - dragStartX;
+      let newX = dragOrigCandleX + dx;
+      newX = Math.max(MIN_CANDLE_X, Math.min(MAX_CANDLE_X, newX));
+      candleX = newX;
+    } else {
+      const wasHovered = hovered;
+      hovered = hitTest(pos.x, pos.y);
+      if (wasHovered !== hovered) {
+        canvas.style.cursor = hovered ? 'grab' : 'default';
+      }
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      canvas.style.cursor = hovered ? 'grab' : 'default';
+    }
+  });
+
+  // ──────────── Touch events ────────────
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      const pos = getCanvasPos(e.touches[0]);
+      if (hitTest(pos.x, pos.y)) {
+        dragging = true;
+        dragStartX = pos.x;
+        dragOrigCandleX = candleX;
+        e.preventDefault();
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (dragging && e.touches.length === 1) {
+      const pos = getCanvasPos(e.touches[0]);
+      const dx = pos.x - dragStartX;
+      let newX = dragOrigCandleX + dx;
+      newX = Math.max(MIN_CANDLE_X, Math.min(MAX_CANDLE_X, newX));
+      candleX = newX;
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => {
+    dragging = false;
+  });
+
+  // ──────────── Buttons ────────────
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    candleX = 250;
+    snaps.length = 0;
+  });
+
+  document.getElementById('snapBtn').addEventListener('click', () => {
+    snaps.push(candleX);
+    if (snaps.length > 8) snaps.shift();
+  });
+
+  // ──────────── Start ────────────
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
