@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 产品展示 AR</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    overflow: hidden;
+    background: #0a0a0f;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: #e0e0e0;
+  }
+  canvas { display: block; }
+
+  /* 顶部标题栏 */
+  .header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10;
+    background: linear-gradient(to bottom, rgba(10,10,15,0.85), transparent);
+    pointer-events: none;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header .badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(96,165,250,0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96,165,250,0.3);
+  }
+
+  /* 底部操作提示 */
+  .hint {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 24px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  /* 右下角产品信息面板 */
+  .info-panel {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 220px;
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .info-panel h3 {
+    font-size: 15px;
+    margin-bottom: 10px;
+    color: #fff;
+  }
+  .info-panel .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 4px 0;
+    color: rgba(255,255,255,0.5);
+  }
+  .info-panel .row span:last-child {
+    color: rgba(255,255,255,0.8);
+  }
+
+  /* 加载提示 */
+  .loader {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a0f;
+    z-index: 100;
+    transition: opacity 0.6s;
+  }
+  .loader.hidden { opacity: 0; pointer-events: none; }
+  .loader .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(96,165,250,0.2);
+    border-top-color: #60a5fa;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loader p { margin-top: 16px; font-size: 14px; color: rgba(255,255,255,0.5); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* AR 按钮样式补丁 */
+  #ARButton {
+    position: fixed !important;
+    bottom: 80px !important;
+    left: 20px !important;
+    z-index: 10 !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- 加载画面 -->
+<div class="loader" id="loader">
+  <div class="spinner"></div>
+  <p>正在加载 3D 场景...</p>
+</div>
+
+<!-- 顶部标题栏 -->
+<div class="header">
+  <h1>3D 产品展示 AR</h1>
+  <span class="badge">WebXR</span>
+</div>
+
+<!-- 底部操作提示 -->
+<div class="hint" id="hint">点击杯子查看倒水动画</div>
+
+<!-- 右下角产品信息面板 -->
+<div class="info-panel">
+  <h3>水晶玻璃杯</h3>
+  <div class="row"><span>材质</span><span>高硼硅玻璃</span></div>
+  <div class="row"><span>容量</span><span>350ml</span></div>
+  <div class="row"><span>高度</span><span>12cm</span></div>
+  <div class="row"><span>口径</span><span>8cm</span></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ARButton } from 'three/addons/webxr/ARButton.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// ========== 全局变量 ==========
+let scene, camera, renderer, controls;
+let cupGroup;              // 杯子整体 Group
+let waterMesh;             // 水体网格
+let waterOriginalScale;    // 水体初始缩放
+let raycaster, pointer;
+let isPouring = false;     // 是否正在倒水
+let clock = new THREE.Clock();
+let autoRotateTimer = 0;   // 自动旋转计时
+
+// 倒水动画状态
+const pour = {
+  phase: 'idle',   // idle | tilting | pouring | resetting
+  time: 0,
+  duration: 0.6,   // 倾斜时长
+  holdTime: 1.2,   // 倒水持续时长
+  resetTime: 0.6,  // 复位时长
+  tiltAngle: 0,
+  waterParticles: null,
+  splashParticles: null,
+};
+
+// ========== 初始化场景 ==========
+function init() {
+  // 场景
+  scene = new THREE.Scene();
+
+  // 相机
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(3, 2.5, 4);
+
+  // 渲染器
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
+
+  // 环境贴图 — 为玻璃材质提供反射
+  const pmremGenerator = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmremGenerator.fromScene(new RoomEnvironment()).texture;
+
+  // 灯光
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  dirLight.position.set(3, 5, 4);
+  scene.add(dirLight);
+
+  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+  fillLight.position.set(-3, 2, -2);
+  scene.add(fillLight);
+
+  // 底部圆形阴影/反射面
+  const groundGeo = new THREE.CircleGeometry(2, 64);
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x111118,
+    roughness: 0.4,
+    metalness: 0.6,
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -1.52;
+  scene.add(ground);
+
+  // 构建水杯
+  buildCup();
+
+  // 轨道控制器
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 2.5;
+  controls.maxDistance = 8;
+  controls.target.set(0, 0, 0);
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 1.5;
+  controls.update();
+
+  // Raycaster
+  raycaster = new THREE.Raycaster();
+  pointer = new THREE.Vector2();
+
+  // 事件监听
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('resize', onResize);
+
+  // AR 按钮
+  try {
+    const arButton = ARButton.createButton(renderer, {
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: document.body },
+    });
+    document.body.appendChild(arButton);
+  } catch (e) {
+    // 设备不支持 AR 时静默处理
+  }
+
+  // 隐藏加载画面
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('hidden');
+  }, 800);
+
+  // 启动渲染循环
+  renderer.setAnimationLoop(animate);
+}
+
+// ========== 构建水杯模型 ==========
+function buildCup() {
+  cupGroup = new THREE.Group();
+
+  // --- 杯体外轮廓 ---
+  // 使用 LatheGeometry 生成旋转体
+  const cupProfile = [];
+  const steps = 30;
+  const cupHeight = 3;
+  const bottomRadius = 0.7;
+  const topRadius = 1.2;
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // 杯子截面曲线：底部稍收，中间略鼓，口部外扩
+    let r = bottomRadius + (topRadius - bottomRadius) * t;
+    // 轻微弧度 — 中间微鼓
+    const bulge = Math.sin(t * Math.PI) * 0.08;
+    r += bulge;
+    cupProfile.push(new THREE.Vector2(r, t * cupHeight - cupHeight / 2));
+  }
+
+  const cupGeo = new THREE.LatheGeometry(cupProfile, 64);
+  const cupMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    metalness: 0.0,
+    roughness: 0.05,
+    transmission: 0.95,
+    thickness: 0.3,
+    ior: 1.5,
+    envMapIntensity: 1.5,
+    clearcoat: 1,
+    clearcoatRoughness: 0.05,
+    side: THREE.DoubleSide,
+  });
+  const cupMesh = new THREE.Mesh(cupGeo, cupMat);
+  cupMesh.name = 'cupBody';
+  cupGroup.add(cupMesh);
+
+  // --- 杯内水体 ---
+  const waterHeight = cupHeight * 0.65;
+  const waterProfile = [];
+  const waterSteps = 20;
+  for (let i = 0; i <= waterSteps; i++) {
+    const t = i / waterSteps;
+    let r = bottomRadius - 0.02 + (topRadius - bottomRadius) * t * (waterHeight / cupHeight);
+    const bulge = Math.sin(t * Math.PI * (waterHeight / cupHeight)) * 0.06;
+    r += bulge - 0.04; // 略小于杯体
+    waterProfile.push(new THREE.Vector2(Math.max(0.01, r), t * waterHeight - cupHeight / 2 + 0.02));
+  }
+
+  const waterGeo = new THREE.LatheGeometry(waterProfile, 64);
+  const waterMat = new THREE.MeshPhysicalMaterial({
+    color: 0x4488ff,
+    metalness: 0.0,
+    roughness: 0.15,
+    transmission: 0.6,
+    thickness: 1.0,
+    ior: 1.33,
+    envMapIntensity: 0.5,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.7,
+  });
+  waterMesh = new THREE.Mesh(waterGeo, waterMat);
+  waterMesh.name = 'waterBody';
+  waterOriginalScale = waterMesh.scale.clone();
+  cupGroup.add(waterMesh);
+
+  // --- 杯底加厚环 ---
+  const bottomRingGeo = new THREE.TorusGeometry(bottomRadius - 0.02, 0.04, 16, 64);
+  const bottomRingMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    metalness: 0.0,
+    roughness: 0.05,
+    transmission: 0.9,
+    thickness: 0.5,
+    ior: 1.5,
+  });
+  const bottomRing = new THREE.Mesh(bottomRingGeo, bottomRingMat);
+  bottomRing.rotation.x = Math.PI / 2;
+  bottomRing.position.y = -cupHeight / 2 + 0.01;
+  cupGroup.add(bottomRing);
+
+  // --- 杯口加厚环 ---
+  const topRingGeo = new THREE.TorusGeometry(topRadius - 0.02, 0.03, 16, 64);
+  const topRing = new THREE.Mesh(topRingGeo, bottomRingMat.clone());
+  topRing.rotation.x = Math.PI / 2;
+  topRing.position.y = cupHeight / 2 - 0.01;
+  cupGroup.add(topRing);
+
+  scene.add(cupGroup);
+}
+
+// ========== 点击检测 ==========
+function onPointerDown(event) {
+  if (isPouring) return;
+
+  // 检查是否是 OrbitControls 拖拽（避免误触）
+  const startX = event.clientX;
+  const startY = event.clientY;
+
+  const onPointerUp = (upEvent) => {
+    renderer.domElement.removeEventListener('pointerup', onPointerUp);
+    const dx = upEvent.clientX - startX;
+    const dy = upEvent.clientY - startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // 只有小幅移动（点击而非拖拽）才触发
+    if (dist > 5) return;
+
+    pointer.x = (upEvent.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(upEvent.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+
+    const intersects = raycaster.intersectObjects(cupGroup.children, true);
+    if (intersects.length > 0) {
+      startPouring();
+    }
+  };
+  renderer.domElement.addEventListener('pointerup', onPointerUp);
+}
+
+// ========== 倒水动画 ==========
+function startPouring() {
+  isPouring = true;
+  pour.phase = 'tilting';
+  pour.time = 0;
+  pour.tiltAngle = 0;
+
+  // 暂停自动旋转
+  controls.autoRotate = false;
+
+  // 更新提示
+  document.getElementById('hint').textContent = '倒水中...';
+
+  // 创建水流粒子
+  createWaterStream();
+  createSplash();
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// --- 水流粒子系统 ---
+function createWaterStream() {
+  const count = 200;
+  const positions = new Float32Array(count * 3);
+  const velocities = new Float32Array(count * 3);
+  const lifetimes = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = 0;
+    positions[i * 3 + 1] = -10; // 隐藏在视野外
+    positions[i * 3 + 2] = 0;
+    lifetimes[i] = -1; // 未激活
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.userData = { velocities, lifetimes, index: 0 };
+
+  const mat = new THREE.PointsMaterial({
+    color: 0x5599ff,
+    size: 0.06,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+
+  pour.waterParticles = new THREE.Points(geo, mat);
+  scene.add(pour.waterParticles);
+}
+
+function updateWaterStream(delta) {
+  if (!pour.waterParticles) return;
+  const geo = pour.waterParticles.geometry;
+  const pos = geo.attributes.position.array;
+  const { velocities, lifetimes } = geo.userData;
+  const count = pos.length / 3;
+  const gravity = 9.8;
+
+  // 杯口位置（相对于倾斜后的杯子）
+  const pourPoint = new THREE.Vector3(0, 1.0, 0);
+  pourPoint.applyAxisAngle(new THREE.Vector3(1, 0, 0), pour.tiltAngle);
+
+  // 发射新粒子
+  if (pour.phase === 'pouring') {
+    for (let n = 0; n < 5; n++) {
+      const i = geo.userData.index;
+      pos[i * 3]     = pourPoint.x + (Math.random() - 0.5) * 0.15;
+      pos[i * 3 + 1] = pourPoint.y + Math.random() * 0.1;
+      pos[i * 3 + 2] = pourPoint.z + (Math.random() - 0.5) * 0.15;
+
+      velocities[i * 3]     = (Math.random() - 0.5) * 0.5;
+      velocities[i * 3 + 1] = -1.0 - Math.random() * 0.5;
+      velocities[i * 3 + 2] = 0.5 + Math.random() * 0.5;
+
+      lifetimes[i] = 1.0;
+      geo.userData.index = (i + 1) % count;
+    }
+  }
+
+  // 更新所有粒子
+  for (let i = 0; i < count; i++) {
+    if (lifetimes[i] <= 0) continue;
+    lifetimes[i] -= delta * 1.2;
+    pos[i * 3]     += velocities[i * 3] * delta;
+    pos[i * 3 + 1] += velocities[i * 3 + 1] * delta;
+    pos[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+    velocities[i * 3 + 1] -= gravity * delta;
+    if (lifetimes[i] <= 0) {
+      pos[i * 3 + 1] = -10;
+    }
+  }
+
+  geo.attributes.position.needsUpdate = true;
+}
+
+// --- 水花溅射粒子 ---
+function createSplash() {
+  const count = 80;
+  const positions = new Float32Array(count * 3);
+  const velocities = new Float32Array(count * 3);
+  const lifetimes = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    positions[i * 3 + 1] = -10;
+    lifetimes[i] = -1;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.userData = { velocities, lifetimes, index: 0 };
+
+  const mat = new THREE.PointsMaterial({
+    color: 0x88bbff,
+    size: 0.04,
+    transparent: true,
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+
+  pour.splashParticles = new THREE.Points(geo, mat);
+  scene.add(pour.splashParticles);
+}
+
+function updateSplash(delta) {
+  if (!pour.splashParticles) return;
+  const geo = pour.splashParticles.geometry;
+  const pos = geo.attributes.position.array;
+  const { velocities, lifetimes } = geo.userData;
+  const count = pos.length / 3;
+  const groundY = -1.5;
+
+  // 生成溅射
+  if (pour.phase === 'pouring' && Math.random() > 0.7) {
+    const i = geo.userData.index;
+    const sx = (Math.random() - 0.5) * 0.4;
+    const sz = 0.5 + Math.random() * 0.8;
+    pos[i * 3]     = sx;
+    pos[i * 3 + 1] = groundY;
+    pos[i * 3 + 2] = sz;
+
+    velocities[i * 3]     = (Math.random() - 0.5) * 2.0;
+    velocities[i * 3 + 1] = 1.5 + Math.random() * 2.0;
+    velocities[i * 3 + 2] = (Math.random() - 0.5) * 1.0;
+
+    lifetimes[i] = 0.6 + Math.random() * 0.4;
+    geo.userData.index = (i + 1) % count;
+  }
+
+  for (let i = 0; i < count; i++) {
+    if (lifetimes[i] <= 0) continue;
+    lifetimes[i] -= delta;
+    pos[i * 3]     += velocities[i * 3] * delta;
+    pos[i * 3 + 1] += velocities[i * 3 + 1] * delta;
+    pos[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+    velocities[i * 3 + 1] -= 9.8 * delta;
+    if (lifetimes[i] <= 0) {
+      pos[i * 3 + 1] = -10;
+    }
+  }
+
+  geo.attributes.position.needsUpdate = true;
+}
+
+// ========== 清理粒子 ==========
+function cleanupPourParticles() {
+  if (pour.waterParticles) {
+    scene.remove(pour.waterParticles);
+    pour.waterParticles.geometry.dispose();
+    pour.waterParticles.material.dispose();
+    pour.waterParticles = null;
+  }
+  if (pour.splashParticles) {
+    scene.remove(pour.splashParticles);
+    pour.splashParticles.geometry.dispose();
+    pour.splashParticles.material.dispose();
+    pour.splashParticles = null;
+  }
+}
+
+// ========== 动画主循环 ==========
+function animate() {
+  const delta = Math.min(clock.getDelta(), 0.05);
+
+  controls.update();
+
+  // --- 倒水动画状态机 ---
+  if (isPouring) {
+    pour.time += delta;
+
+    switch (pour.phase) {
+      case 'tilting': {
+        const t = Math.min(pour.time / pour.duration, 1);
+        const ease = easeInOutCubic(t);
+        // 倾斜到 ~120 度 = 2π/3 弧度
+        pour.tiltAngle = ease * (Math.PI * 2 / 3);
+        cupGroup.rotation.x = -pour.tiltAngle;
+        // 水位同步下降
+        const waterScale = 1 - ease * 0.7;
+        waterMesh.scale.set(waterOriginalScale.x, waterScale, waterOriginalScale.z);
+        if (t >= 1) {
+          pour.phase = 'pouring';
+          pour.time = 0;
+        }
+        break;
+      }
+      case 'pouring': {
+        // 继续缓慢下降水位
+        const waterScale = Math.max(0.1, 0.3 - (pour.time / pour.holdTime) * 0.2);
+        waterMesh.scale.set(waterOriginalScale.x, waterScale, waterOriginalScale.z);
+        updateWaterStream(delta);
+        updateSplash(delta);
+        if (pour.time >= pour.holdTime) {
+          pour.phase = 'resetting';
+          pour.time = 0;
+        }
+        break;
+      }
+      case 'resetting': {
+        const t = Math.min(pour.time / pour.resetTime, 1);
+        const ease = easeInOutCubic(t);
+        cupGroup.rotation.x = -pour.tiltAngle * (1 - ease);
+        // 水位恢复
+        const waterScale = 0.1 + ease * 0.9;
+        waterMesh.scale.set(waterOriginalScale.x, waterScale, waterOriginalScale.z);
+        // 粒子继续更新
+        updateWaterStream(delta);
+        updateSplash(delta);
+        if (t >= 1) {
+          // 复位完成
+          isPouring = false;
+          pour.phase = 'idle';
+          cupGroup.rotation.x = 0;
+          waterMesh.scale.copy(waterOriginalScale);
+          cleanupPourParticles();
+          controls.autoRotate = true;
+          document.getElementById('hint').textContent = '点击杯子查看倒水动画';
+        }
+        break;
+      }
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ========== 窗口尺寸适配 ==========
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ========== 启动 ==========
+init();
+</script>
+</body>
+</html>
