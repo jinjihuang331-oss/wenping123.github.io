@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交互式通知系统</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f14;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .demo-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 40px;
+    background: #1a1a24;
+    border-radius: 16px;
+    border: 1px solid #2a2a3a;
+  }
+
+  .demo-panel h2 {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 1.4rem;
+    color: #fff;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  button:hover { transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+
+  .btn-success { background: #22c55e; color: #000; }
+  .btn-success:hover { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4); }
+
+  .btn-error { background: #ef4444; color: #fff; }
+  .btn-error:hover { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); }
+
+  .btn-info { background: #3b82f6; color: #fff; }
+  .btn-info:hover { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4); }
+
+  .btn-warning { background: #f59e0b; color: #000; }
+  .btn-warning:hover { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4); }
+
+  /* ===== 通知容器 ===== */
+  .notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 99999;
+    pointer-events: none;
+  }
+
+  /* ===== 单条通知 ===== */
+  .notification {
+    position: relative;
+    min-width: 300px;
+    max-width: 420px;
+    padding: 16px 44px 16px 20px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #fff;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+                opacity 0.3s ease;
+  }
+
+  .notification--visible {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  .notification--hiding {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+
+  /* 类型样式 */
+  .notification--success { background: linear-gradient(135deg, #166534, #22c55e); border: 1px solid rgba(34, 197, 94, 0.5); }
+  .notification--error   { background: linear-gradient(135deg, #7f1d1d, #ef4444); border: 1px solid rgba(239, 68, 68, 0.5); }
+  .notification--info    { background: linear-gradient(135deg, #1e3a5f, #3b82f6); border: 1px solid rgba(59, 130, 246, 0.5); }
+  .notification--warning { background: linear-gradient(135deg, #78350f, #f59e0b); border: 1px solid rgba(245, 158, 11, 0.5); }
+
+  /* 图标区域 */
+  .notification__icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  /* 带图标的通知左侧加 padding */
+  .notification--success,
+  .notification--error,
+  .notification--info,
+  .notification--warning {
+    padding-left: 48px;
+  }
+
+  /* 关闭按钮 */
+  .notification__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.85rem;
+    transition: background 0.15s;
+    padding: 0;
+  }
+
+  .notification__close:hover {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: none;
+  }
+
+  /* 进度条 */
+  .notification__progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 0 0 10px 10px;
+    transition: width 0.1s linear;
+  }
+
+  .notification--success .notification__progress { background: #4ade80; }
+  .notification--error   .notification__progress { background: #f87171; }
+  .notification--info    .notification__progress { background: #60a5fa; }
+  .notification--warning .notification__progress { background: #fbbf24; }
+
+  /* 优先级标签 */
+  .notification__badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+
+  .notification__badge--high   { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+  .notification__badge--medium { background: rgba(245, 158, 11, 0.25); color: #fcd34d; }
+  .notification__badge--low    { background: rgba(59, 130, 246, 0.25); color: #93c5fd; }
+</style>
+</head>
+<body>
+
+<div class="demo-panel">
+  <h2>通知系统演示</h2>
+
+  <div class="btn-group">
+    <button class="btn-success" onclick="notifySuccess('操作成功！数据已保存。')">成功通知</button>
+    <button class="btn-error"   onclick="notifyError('删除失败，请重试。')">错误通知</button>
+    <button class="btn-info"    onclick="notifyInfo('系统将于今晚 02:00 维护。')">信息通知</button>
+    <button class="btn-warning" onclick="notifyWarning('存储空间不足，请清理。')">警告通知</button>
+  </div>
+
+  <div class="btn-group" style="margin-top: 4px;">
+    <button class="btn-error" onclick="notifyCritical('严重错误：支付网关无响应！')">高优先级错误</button>
+    <button class="btn-info"  onclick="notifyLowPriority('提示：新版本 v3.2.1 可用。')">低优先级信息</button>
+    <button class="btn-success" onclick="spamNotifications()">连续弹出 5 条</button>
+  </div>
+</div>
+
+<script>
+/**
+ * 交互式通知系统
+ *
+ * 功能：
+ * - 从右侧滑入/滑出动画
+ * - 多通知自动堆叠
+ * - 类型颜色区分 (success/error/info/warning)
+ * - 点击手动关闭
+ * - 优先级系统控制显示时长
+ * - 倒计时进度条
+ */
+
+const NotificationSystem = (() => {
+  // 优先级对应的显示时长 (ms)
+  const DURATION = {
+    high:   8000,  // 严重错误等
+    medium: 4500,  // 默认
+    low:    2500,  // 简单提示
+  };
+
+  const ICONS = {
+    success: '&#10003;',
+    error:   '&#10007;',
+    info:    '&#8505;',
+    warning: '&#9888;',
+  };
+
+  const LABELS = {
+    high:   '严重',
+    medium: '提醒',
+    low:    '提示',
+  };
+
+  let container = null;
+  let idCounter = 0;
+
+  function getContainer() {
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'notification-container';
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  /**
+   * 核心：添加通知
+   * @param {string} message  - 通知文本
+   * @param {string} type     - success | error | info | warning
+   * @param {string} priority - high | medium | low
+   */
+  function add(message, type = 'info', priority = 'medium') {
+    const el = document.createElement('div');
+    el.className = `notification notification--${type}`;
+    el.id = `notif-${++idCounter}`;
+
+    const duration = DURATION[priority] || DURATION.medium;
+
+    el.innerHTML = `
+      <span class="notification__icon">${ICONS[type] || ICONS.info}</span>
+      <span class="notification__badge notification__badge--${priority}">${LABELS[priority]}</span>
+      <div style="margin-top:2px;">${escapeHTML(message)}</div>
+      <button class="notification__close" aria-label="关闭">&times;</button>
+      <div class="notification__progress" style="width:100%;"></div>
+    `;
+
+    const containerEl = getContainer();
+    // 插在顶部 —— 最新的在最下方，视觉上从右侧滑入时自然堆叠
+    containerEl.prepend(el);
+
+    // 触发 slide-in（延迟一帧让 prepend 生效后再加 class）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.classList.add('notification--visible');
+      });
+    });
+
+    // ---- 进度条倒计时 ----
+    const progressBar = el.querySelector('.notification__progress');
+    const startTime = Date.now();
+    let timerId = null;
+    let dismissed = false;
+
+    function tick() {
+      if (dismissed) return;
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+      progressBar.style.width = remaining + '%';
+
+      if (remaining <= 0) {
+        dismiss();
+      } else {
+        timerId = requestAnimationFrame(tick);
+      }
+    }
+
+    timerId = requestAnimationFrame(tick);
+
+    // ---- 关闭逻辑 ----
+    function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      cancelAnimationFrame(timerId);
+
+      el.classList.add('notification--hiding');
+      el.addEventListener('transitionend', () => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+    }
+
+    // 点击通知本身关闭
+    el.addEventListener('click', (e) => {
+      // 不拦截关闭按钮的点击（它也会冒泡上来）
+      dismiss();
+    });
+
+    // 关闭按钮
+    el.querySelector('.notification__close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      dismiss();
+    });
+
+    return el;
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---- 公开 API ----
+  return {
+    success: (msg, priority) => add(msg, 'success', priority),
+    error:   (msg, priority) => add(msg, 'error', priority),
+    info:    (msg, priority) => add(msg, 'info', priority),
+    warning: (msg, priority) => add(msg, 'warning', priority),
+    add,
+  };
+})();
+
+// ---- 绑定到全局方便演示 ----
+function notifySuccess(msg)  { NotificationSystem.success(msg, 'medium'); }
+function notifyError(msg)    { NotificationSystem.error(msg, 'medium'); }
+function notifyInfo(msg)     { NotificationSystem.info(msg, 'medium'); }
+function notifyWarning(msg)  { NotificationSystem.warning(msg, 'medium'); }
+function notifyCritical(msg) { NotificationSystem.error(msg, 'high'); }
+function notifyLowPriority(msg) { NotificationSystem.info(msg, 'low'); }
+
+function spamNotifications() {
+  const messages = [
+    { msg: '文件上传完成',   type: 'success', priority: 'medium' },
+    { msg: '网络连接超时',   type: 'error',   priority: 'high' },
+    { msg: '新评论已发布',   type: 'info',    priority: 'low' },
+    { msg: 'CPU 使用率超过 90%', type: 'warning', priority: 'high' },
+    { msg: '设置已自动保存', type: 'success', priority: 'low' },
+  ];
+
+  messages.forEach((m, i) => {
+    setTimeout(() => {
+      NotificationSystem.add(m.msg, m.type, m.priority);
+    }, i * 180);
+  });
+}
+</script>
+</body>
+</html>
