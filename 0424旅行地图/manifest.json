@@ -1,0 +1,20 @@
+{
+  "name": "旅行地图",
+  "short_name": "旅行地图",
+  "description": "交互式旅行地图 - 添加景点、规划路线、离线可用",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "categories": ["travel", "maps", "navigation"],
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='42' r='18' fill='%232563eb'/><path d='M50 60 L38 90 Q50 80 62 90Z' fill='%232563eb'/><text x='50' y='48' text-anchor='middle' fill='white' font-size='16' font-weight='bold'> Map</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
