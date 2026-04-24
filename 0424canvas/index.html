@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Canvas 图片编辑器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 顶部工具栏 -->
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <label class="toolbar-btn upload-btn" for="fileInput">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>上传</span>
+      </label>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="cropBtn" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/><path d="M9 3h6M9 21h6M3 9v6M21 9v6"/></svg>
+        <span>裁剪</span>
+      </button>
+      <button class="toolbar-btn" id="rotateBtn" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        <span>旋转</span>
+      </button>
+      <button class="toolbar-btn" id="watermarkBtn" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+        <span>水印</span>
+      </button>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-group">
+      <button class="toolbar-btn export-btn" id="exportBtn" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>导出</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 拖拽上传区域 -->
+  <div class="canvas-wrapper" id="canvasWrapper">
+    <div class="drop-hint" id="dropHint">
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#999" stroke-width="2"><rect x="8" y="12" width="48" height="40" rx="4"/><circle cx="24" cy="28" r="6"/><path d="M8 44l14-12 10 8 8-10 16 14"/></svg>
+      <p>拖拽图片到此处，或点击上方按钮上传</p>
+    </div>
+    <canvas id="mainCanvas"></canvas>
+  </div>
+
+  <!-- 底部属性面板 -->
+  <div class="panel" id="panel">
+    <!-- 裁剪面板 -->
+    <div class="panel-content crop-panel" id="cropPanel" style="display:none;">
+      <p class="panel-title">裁剪模式</p>
+      <p class="panel-hint">在画布上拖拽选择裁剪区域，拖拽手柄调整大小</p>
+      <div class="panel-actions">
+        <button class="panel-btn confirm-btn" id="cropConfirm">确认裁剪</button>
+        <button class="panel-btn cancel-btn" id="cropCancel">取消</button>
+      </div>
+    </div>
+
+    <!-- 旋转面板 -->
+    <div class="panel-content rotate-panel" id="rotatePanel" style="display:none;">
+      <p class="panel-title">旋转</p>
+      <div class="rotate-controls">
+        <div class="rotate-quick">
+          <button class="panel-btn" id="rotateCCW90" title="逆时针90°">↺ 90°</button>
+          <button class="panel-btn" id="rotateCW90" title="顺时针90°">↻ 90°</button>
+        </div>
+        <div class="slider-group">
+          <label for="rotateSlider">自定义角度: <span id="rotateValue">0</span>°</label>
+          <input type="range" id="rotateSlider" min="0" max="360" value="0">
+          <button class="panel-btn confirm-btn" id="rotateApply">应用旋转</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 水印面板 -->
+    <div class="panel-content watermark-panel" id="watermarkPanel" style="display:none;">
+      <p class="panel-title">文字水印</p>
+      <div class="watermark-controls">
+        <div class="input-group">
+          <label for="wmText">水印文字</label>
+          <input type="text" id="wmText" placeholder="输入水印内容" value="水印文字">
+        </div>
+        <div class="input-row">
+          <div class="input-group">
+            <label for="wmSize">字体大小: <span id="wmSizeValue">32</span>px</label>
+            <input type="range" id="wmSize" min="12" max="120" value="32">
+          </div>
+          <div class="input-group">
+            <label for="wmColor">颜色</label>
+            <input type="color" id="wmColor" value="#ff0000">
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="input-group">
+            <label for="wmOpacity">透明度: <span id="wmOpacityValue">50</span>%</label>
+            <input type="range" id="wmOpacity" min="5" max="100" value="50">
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="panel-btn confirm-btn" id="wmConfirm">确认水印</button>
+          <button class="panel-btn cancel-btn" id="wmCancel">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 默认提示 -->
+    <div class="panel-content" id="defaultPanel">
+      <p class="panel-hint">请先上传一张图片开始编辑</p>
+    </div>
+  </div>
+
+  <script src="editor.js"></script>
+</body>
+</html>
