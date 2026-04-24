@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多步骤引导表单</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#4f46e5;--primary-light:#818cf8;--primary-dark:#3730a3;
+  --success:#10b981;--danger:#ef4444;--warning:#f59e0b;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+  --gray-300:#d1d5db;--gray-400:#9ca3af;--gray-500:#6b7280;
+  --gray-600:#4b5563;--gray-700:#374151;--gray-800:#1f2937;
+  --gray-900:#111827;--white:#ffffff;
+  --radius:12px;--shadow:0 4px 24px rgba(0,0,0,.08);
+  --transition:300ms ease;
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;color:var(--gray-800);line-height:1.6;
+}
+
+/* Main Container */
+.form-container{
+  background:var(--white);border-radius:var(--radius);
+  box-shadow:0 20px 60px rgba(0,0,0,.15);width:100%;max-width:680px;
+  overflow:hidden;position:relative;
+}
+
+/* Progress Bar */
+.progress-bar{
+  display:flex;align-items:center;justify-content:center;
+  padding:28px 20px 20px;background:var(--white);
+  position:relative;z-index:2;
+}
+.progress-bar::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;
+  height:1px;background:var(--gray-200);
+}
+.step-indicator{display:flex;align-items:center;width:100%;max-width:500px;position:relative}
+.step-item{display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;flex:1}
+.step-circle{
+  width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:15px;border:2px solid var(--gray-300);
+  background:var(--white);color:var(--gray-400);
+  transition:all var(--transition);position:relative;
+}
+.step-label{
+  margin-top:8px;font-size:12px;color:var(--gray-400);
+  font-weight:500;transition:color var(--transition);white-space:nowrap;
+}
+.step-connector{
+  flex:1;height:3px;background:var(--gray-200);
+  position:relative;top:-12px;margin:0 -4px;border-radius:2px;overflow:hidden;
+}
+.step-connector .fill{
+  height:100%;width:0;background:var(--primary);
+  border-radius:2px;transition:width 500ms ease;
+}
+
+/* Step States */
+.step-item.active .step-circle{
+  border-color:var(--primary);background:var(--primary);color:var(--white);
+  box-shadow:0 0 0 4px rgba(79,70,229,.2);
+  animation:pulse 2s infinite;
+}
+.step-item.completed .step-circle{
+  border-color:var(--success);background:var(--success);color:var(--white);
+}
+.step-item.active .step-label,.step-item.completed .step-label{color:var(--gray-700);font-weight:600}
+
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 4px rgba(79,70,229,.2)}
+  50%{box-shadow:0 0 0 8px rgba(79,70,229,.1)}
+}
+
+/* Form Body */
+.form-body{
+  position:relative;overflow:hidden;min-height:360px;
+}
+.step-panel{
+  position:absolute;top:0;left:0;width:100%;padding:32px 28px;
+  transform:translateX(100%);opacity:0;
+  transition:transform 400ms ease,opacity 400ms ease;
+}
+.step-panel.active{transform:translateX(0);opacity:1}
+.step-panel.exit-left{transform:translateX(-100%);opacity:0}
+
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.step-panel.active .field-group{
+  animation:fadeInUp .4s ease both;
+}
+.step-panel.active .field-group:nth-child(1){animation-delay:.05s}
+.step-panel.active .field-group:nth-child(2){animation-delay:.1s}
+.step-panel.active .field-group:nth-child(3){animation-delay:.15s}
+.step-panel.active .field-group:nth-child(4){animation-delay:.2s}
+.step-panel.active .field-group:nth-child(5){animation-delay:.25s}
+.step-panel.active .field-group:nth-child(6){animation-delay:.3s}
+
+/* Form Fields */
+.field-group{margin-bottom:20px}
+.field-group label{
+  display:block;font-size:14px;font-weight:600;
+  color:var(--gray-700);margin-bottom:6px;
+}
+.field-group label .required{color:var(--danger);margin-left:2px}
+.field-group input,.field-group select{
+  width:100%;padding:12px 14px;border:2px solid var(--gray-200);
+  border-radius:8px;font-size:15px;color:var(--gray-800);
+  background:var(--white);transition:border-color var(--transition),box-shadow var(--transition);
+  outline:none;font-family:inherit;
+  -webkit-appearance:none;appearance:none;
+}
+.field-group select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;
+}
+.field-group input:focus,.field-group select:focus{
+  border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.1);
+}
+.field-group input.error,.field-group select.error{
+  border-color:var(--danger);box-shadow:0 0 0 3px rgba(239,68,68,.1);
+}
+.error-message{
+  font-size:12px;color:var(--danger);margin-top:4px;
+  display:flex;align-items:center;gap:4px;
+  max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .3s ease,opacity .3s ease,margin .3s ease;
+}
+.error-message.show{max-height:40px;opacity:1;margin-top:6px}
+.error-message::before{content:'⚠';font-size:13px}
+
+/* Conditional field */
+.conditional-field{
+  max-height:0;opacity:0;overflow:hidden;
+  transition:max-height .4s ease,opacity .4s ease,margin .4s ease;
+  margin-bottom:0;
+}
+.conditional-field.show{max-height:100px;opacity:1;margin-bottom:20px}
+
+/* File Upload */
+.upload-area{
+  border:2px dashed var(--gray-300);border-radius:12px;
+  padding:40px 20px;text-align:center;cursor:pointer;
+  transition:border-color var(--transition),background var(--transition);
+  position:relative;
+}
+.upload-area:hover,.upload-area.drag-over{
+  border-color:var(--primary);background:rgba(79,70,229,.04);
+}
+.upload-area.drag-over{
+  transform:scale(1.01);border-style:solid;
+  background:rgba(79,70,229,.08);
+}
+.upload-area input[type="file"]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;
+}
+.upload-icon{font-size:48px;margin-bottom:12px;display:block}
+.upload-text{font-size:15px;color:var(--gray-600);font-weight:500}
+.upload-hint{font-size:12px;color:var(--gray-400);margin-top:6px}
+
+.image-preview{
+  display:none;margin-top:20px;text-align:center;
+}
+.image-preview.show{display:block;animation:fadeInUp .4s ease both}
+.image-preview img{
+  max-width:180px;max-height:180px;border-radius:12px;
+  border:3px solid var(--gray-200);object-fit:cover;
+}
+.image-preview .remove-image{
+  display:inline-block;margin-top:10px;padding:6px 16px;
+  background:var(--danger);color:var(--white);border:none;
+  border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;
+  transition:background var(--transition);
+}
+.image-preview .remove-image:hover{background:#dc2626}
+
+/* Step Title */
+.step-title{
+  font-size:20px;font-weight:700;color:var(--gray-900);margin-bottom:4px;
+}
+.step-desc{font-size:14px;color:var(--gray-500);margin-bottom:24px}
+
+/* Navigation Buttons */
+.form-nav{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:20px 28px 28px;gap:12px;
+}
+.btn{
+  padding:12px 28px;border-radius:8px;font-size:15px;font-weight:600;
+  border:none;cursor:pointer;transition:all var(--transition);
+  display:inline-flex;align-items:center;gap:6px;font-family:inherit;
+  min-height:46px;
+}
+.btn:active{transform:scale(.97)}
+.btn-back{
+  background:var(--gray-100);color:var(--gray-600);
+}
+.btn-back:hover{background:var(--gray-200)}
+.btn-next,.btn-submit{
+  background:var(--primary);color:var(--white);
+  box-shadow:0 4px 12px rgba(79,70,229,.3);
+}
+.btn-next:hover,.btn-submit:hover{
+  background:var(--primary-dark);
+  box-shadow:0 6px 16px rgba(79,70,229,.4);
+  transform:translateY(-1px);
+}
+.btn-submit{background:var(--success);box-shadow:0 4px 12px rgba(16,185,129,.3)}
+.btn-submit:hover{background:#059669;box-shadow:0 6px 16px rgba(16,185,129,.4)}
+
+/* Review Section */
+.review-card{
+  background:var(--gray-50);border-radius:10px;padding:18px 20px;margin-bottom:14px;
+}
+.review-card h4{
+  font-size:13px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--gray-400);margin-bottom:10px;font-weight:600;
+}
+.review-row{
+  display:flex;justify-content:space-between;padding:6px 0;
+  border-bottom:1px solid var(--gray-100);font-size:14px;
+}
+.review-row:last-child{border-bottom:none}
+.review-row .label{color:var(--gray-500);font-weight:500}
+.review-row .value{color:var(--gray-800);font-weight:600;text-align:right;max-width:60%;word-break:break-all}
+.review-row .value img{
+  width:40px;height:40px;border-radius:6px;object-fit:cover;vertical-align:middle;
+}
+.review-edit{
+  font-size:12px;color:var(--primary);cursor:pointer;font-weight:600;
+  background:none;border:none;margin-top:6px;padding:0;
+  transition:color var(--transition);
+}
+.review-edit:hover{color:var(--primary-dark)}
+
+/* Success Screen */
+.success-screen{
+  display:none;text-align:center;padding:48px 28px;
+}
+.success-screen.show{display:block;animation:fadeInUp .5s ease both}
+.success-icon{font-size:64px;margin-bottom:16px;display:block}
+.success-screen h2{font-size:24px;color:var(--gray-900);margin-bottom:8px}
+.success-screen p{color:var(--gray-500);font-size:15px;margin-bottom:24px}
+.btn-reset{
+  background:var(--primary);color:var(--white);padding:12px 32px;
+  border-radius:8px;font-size:15px;font-weight:600;border:none;
+  cursor:pointer;transition:all var(--transition);font-family:inherit;
+}
+.btn-reset:hover{background:var(--primary-dark)}
+
+/* Toast */
+.toast{
+  position:fixed;top:20px;right:20px;padding:14px 20px;
+  border-radius:10px;color:var(--white);font-size:14px;font-weight:500;
+  box-shadow:0 8px 24px rgba(0,0,0,.15);
+  transform:translateX(120%);transition:transform .4s ease;z-index:1000;
+}
+.toast.show{transform:translateX(0)}
+.toast.success{background:var(--success)}
+.toast.error{background:var(--danger)}
+
+/* Responsive */
+@media(max-width:480px){
+  body{padding:12px}
+  .step-panel{padding:24px 18px}
+  .form-nav{padding:16px 18px 24px;flex-wrap:wrap}
+  .btn{width:100%;justify-content:center;padding:14px 20px}
+  .btn-back{order:1}
+  .btn-next,.btn-submit{order:2}
+  .step-circle{width:34px;height:34px;font-size:13px}
+  .step-label{font-size:10px}
+  .progress-bar{padding:20px 12px 16px}
+  .upload-icon{font-size:36px}
+  .upload-area{padding:28px 12px}
+}
+@media(min-width:481px) and (max-width:768px){
+  .form-container{max-width:580px}
+}
+</style>
+</head>
+<body>
+
+<div class="form-container" id="formContainer">
+  <!-- Progress Bar -->
+  <div class="progress-bar">
+    <div class="step-indicator">
+      <div class="step-item active" data-step="1">
+        <div class="step-circle">1</div>
+        <span class="step-label">个人信息</span>
+      </div>
+      <div class="step-connector"><div class="fill"></div></div>
+      <div class="step-item" data-step="2">
+        <div class="step-circle">2</div>
+        <span class="step-label">职业信息</span>
+      </div>
+      <div class="step-connector"><div class="fill"></div></div>
+      <div class="step-item" data-step="3">
+        <div class="step-circle">3</div>
+        <span class="step-label">上传头像</span>
+      </div>
+      <div class="step-connector"><div class="fill"></div></div>
+      <div class="step-item" data-step="4">
+        <div class="step-circle">4</div>
+        <span class="step-label">确认提交</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Steps -->
+  <div class="form-body" id="formBody">
+    <!-- Step 1: Personal Info -->
+    <div class="step-panel active" id="step-1">
+      <h2 class="step-title">个人信息</h2>
+      <p class="step-desc">请填写您的基本联系信息</p>
+      <div class="field-group">
+        <label>姓名 <span class="required">*</span></label>
+        <input type="text" id="fullName" placeholder="请输入您的姓名" autocomplete="name">
+        <div class="error-message" id="fullName-error"></div>
+      </div>
+      <div class="field-group">
+        <label>电子邮箱 <span class="required">*</span></label>
+        <input type="email" id="email" placeholder="example@email.com" autocomplete="email">
+        <div class="error-message" id="email-error"></div>
+      </div>
+      <div class="field-group">
+        <label>手机号码 <span class="required">*</span></label>
+        <input type="tel" id="phone" placeholder="请输入手机号码" autocomplete="tel">
+        <div class="error-message" id="phone-error"></div>
+      </div>
+    </div>
+
+    <!-- Step 2: Professional Details -->
+    <div class="step-panel" id="step-2">
+      <h2 class="step-title">职业信息</h2>
+      <p class="step-desc">请填写您的职业相关信息</p>
+      <div class="field-group">
+        <label>职业 <span class="required">*</span></label>
+        <select id="occupation">
+          <option value="">请选择职业</option>
+          <option value="软件工程师">软件工程师</option>
+          <option value="产品经理">产品经理</option>
+          <option value="UI/UX设计师">UI/UX设计师</option>
+          <option value="数据分析师">数据分析师</option>
+          <option value="市场营销">市场营销</option>
+          <option value="教师">教师</option>
+          <option value="医生">医生</option>
+          <option value="自由职业">自由职业</option>
+          <option value="学生">学生</option>
+          <option value="other">其他 (Other)</option>
+        </select>
+        <div class="error-message" id="occupation-error"></div>
+      </div>
+      <div class="conditional-field" id="otherOccupationGroup">
+        <label>请具体说明 <span class="required">*</span></label>
+        <input type="text" id="otherOccupation" placeholder="请输入您的职业">
+        <div class="error-message" id="otherOccupation-error"></div>
+      </div>
+      <div class="field-group">
+        <label>公司名称</label>
+        <input type="text" id="company" placeholder="请输入公司名称（选填）">
+      </div>
+      <div class="field-group">
+        <label>工作经验 <span class="required">*</span></label>
+        <select id="experience">
+          <option value="">请选择工作年限</option>
+          <option value="不满1年">不满1年</option>
+          <option value="1-3年">1-3年</option>
+          <option value="3-5年">3-5年</option>
+          <option value="5-10年">5-10年</option>
+          <option value="10年以上">10年以上</option>
+        </select>
+        <div class="error-message" id="experience-error"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: File Upload -->
+    <div class="step-panel" id="step-3">
+      <h2 class="step-title">上传头像</h2>
+      <p class="step-desc">上传一张您的头像照片（选填）</p>
+      <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="upload-icon">📷</span>
+        <div class="upload-text">点击或拖拽图片到此处上传</div>
+        <div class="upload-hint">支持 JPG, PNG, GIF, WebP 格式，最大 5MB</div>
+      </div>
+      <div class="error-message" id="file-error"></div>
+      <div class="image-preview" id="imagePreview">
+        <img id="previewImg" src="" alt="预览">
+        <br>
+        <button class="remove-image" id="removeImage" type="button">移除图片</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Review -->
+    <div class="step-panel" id="step-4">
+      <h2 class="step-title">确认信息</h2>
+      <p class="step-desc">请确认以下信息无误后提交</p>
+
+      <div class="review-card">
+        <h4>个人信息</h4>
+        <div class="review-row"><span class="label">姓名</span><span class="value" id="review-name">-</span></div>
+        <div class="review-row"><span class="label">邮箱</span><span class="value" id="review-email">-</span></div>
+        <div class="review-row"><span class="label">手机</span><span class="value" id="review-phone">-</span></div>
+        <button class="review-edit" data-goto="1">修改</button>
+      </div>
+
+      <div class="review-card">
+        <h4>职业信息</h4>
+        <div class="review-row"><span class="label">职业</span><span class="value" id="review-occupation">-</span></div>
+        <div class="review-row"><span class="label">公司</span><span class="value" id="review-company">-</span></div>
+        <div class="review-row"><span class="label">工作经验</span><span class="value" id="review-experience">-</span></div>
+        <button class="review-edit" data-goto="2">修改</button>
+      </div>
+
+      <div class="review-card">
+        <h4>头像</h4>
+        <div class="review-row"><span class="label">照片</span><span class="value" id="review-photo">-</span></div>
+        <button class="review-edit" data-goto="3">修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="form-nav" id="formNav">
+    <button class="btn btn-back" id="btnBack" style="visibility:hidden">← 上一步</button>
+    <button class="btn btn-next" id="btnNext">下一步 →</button>
+  </div>
+
+  <!-- Success -->
+  <div class="success-screen" id="successScreen">
+    <span class="success-icon">✅</span>
+    <h2>提交成功！</h2>
+    <p>感谢您的填写，信息已成功保存。</p>
+    <button class="btn-reset" id="btnReset">重新填写</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // --- State ---
+  const TOTAL_STEPS = 4;
+  let currentStep = 1;
+  let uploadedFile = null; // { name, dataUrl }
+
+  // --- DOM refs ---
+  const $ = id => document.getElementById(id);
+  const formBody = $('formBody');
+  const btnBack = $('btnBack');
+  const btnNext = $('btnNext');
+  const formNav = $('formNav');
+  const successScreen = $('successScreen');
+  const toast = $('toast');
+  const stepItems = document.querySelectorAll('.step-item');
+  const fills = document.querySelectorAll('.step-connector .fill');
+  const panels = document.querySelectorAll('.step-panel');
+  const uploadArea = $('uploadArea');
+  const fileInput = $('fileInput');
+  const imagePreview = $('imagePreview');
+  const previewImg = $('previewImg');
+  const removeImage = $('removeImage');
+  const occupation = $('occupation');
+  const otherGroup = $('otherOccupationGroup');
+
+  // --- Analytics ---
+  function logEvent(event, data = {}) {
+    const entry = { event, timestamp: new Date().toISOString(), ...data };
+    console.log('%c[Analytics]', 'color:#4f46e5;font-weight:bold', JSON.stringify(entry));
+    const logs = JSON.parse(localStorage.getItem('formAnalytics') || '[]');
+    logs.push(entry);
+    localStorage.setItem('formAnalytics', JSON.stringify(logs));
+  }
+
+  // Abandonment tracking
+  window.addEventListener('beforeunload', () => {
+    logEvent('form_abandon', { step: currentStep });
+  });
+
+  // --- Persistence ---
+  function saveState() {
+    const state = {
+      step: currentStep,
+      fullName: $('fullName').value,
+      email: $('email').value,
+      phone: $('phone').value,
+      occupation: occupation.value,
+      otherOccupation: $('otherOccupation').value,
+      company: $('company').value,
+      experience: $('experience').value,
+      uploadedFile
+    };
+    localStorage.setItem('formDraft', JSON.stringify(state));
+  }
+
+  function restoreState() {
+    const raw = localStorage.getItem('formDraft');
+    if (!raw) return false;
+    try {
+      const s = JSON.parse(raw);
+      $('fullName').value = s.fullName || '';
+      $('email').value = s.email || '';
+      $('phone').value = s.phone || '';
+      occupation.value = s.occupation || '';
+      $('otherOccupation').value = s.otherOccupation || '';
+      $('company').value = s.company || '';
+      $('experience').value = s.experience || '';
+      if (s.occupation === 'other') otherGroup.classList.add('show');
+      if (s.uploadedFile && s.uploadedFile.dataUrl) {
+        uploadedFile = s.uploadedFile;
+        previewImg.src = uploadedFile.dataUrl;
+        imagePreview.classList.add('show');
+        uploadArea.style.display = 'none';
+      }
+      currentStep = Math.min(Math.max(s.step || 1, 1), TOTAL_STEPS);
+      return true;
+    } catch { return false; }
+  }
+
+  function clearDraft() {
+    localStorage.removeItem('formDraft');
+  }
+
+  // --- Progress Bar ---
+  function updateProgress() {
+    stepItems.forEach((item, i) => {
+      const step = i + 1;
+      item.classList.remove('active', 'completed');
+      if (step < currentStep) {
+        item.classList.add('completed');
+        item.querySelector('.step-circle').innerHTML = '✓';
+      } else if (step === currentStep) {
+        item.classList.add('active');
+        item.querySelector('.step-circle').textContent = step;
+      } else {
+        item.querySelector('.step-circle').textContent = step;
+      }
+    });
+    fills.forEach((fill, i) => {
+      fill.style.width = i < currentStep - 1 ? '100%' : '0%';
+    });
+  }
+
+  // --- Step Navigation ---
+  function goToStep(step, direction = 'forward') {
+    if (step < 1 || step > TOTAL_STEPS) return;
+
+    const oldPanel = $('step-' + currentStep);
+    const newPanel = $('step-' + step);
+
+    // Exit animation
+    oldPanel.classList.remove('active');
+    oldPanel.classList.add(direction === 'forward' ? 'exit-left' : '');
+    if (direction === 'backward') {
+      oldPanel.style.transform = 'translateX(100%)';
+      oldPanel.style.opacity = '0';
+    }
+
+    // Prepare incoming
+    newPanel.classList.remove('exit-left');
+    if (direction === 'forward') {
+      newPanel.style.transform = 'translateX(100%)';
+    } else {
+      newPanel.style.transform = 'translateX(-100%)';
+    }
+    newPanel.style.opacity = '0';
+
+    // Force reflow then animate in
+    void newPanel.offsetWidth;
+    newPanel.style.transform = '';
+    newPanel.style.opacity = '';
+    newPanel.classList.add('active');
+
+    currentStep = step;
+    updateProgress();
+    updateNavButtons();
+    updateHash();
+    saveState();
+
+    logEvent(step === TOTAL_STEPS ? 'step_start' : `step_start`, { step });
+
+    // If review step, populate
+    if (currentStep === TOTAL_STEPS) populateReview();
+
+    setTimeout(() => {
+      oldPanel.classList.remove('exit-left');
+      oldPanel.style.transform = '';
+      oldPanel.style.opacity = '';
+    }, 450);
+  }
+
+  function updateNavButtons() {
+    btnBack.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+    if (currentStep === TOTAL_STEPS) {
+      btnNext.textContent = '✓ 提交';
+      btnNext.classList.remove('btn-next');
+      btnNext.classList.add('btn-submit');
+    } else {
+      btnNext.textContent = '下一步 →';
+      btnNext.classList.remove('btn-submit');
+      btnNext.classList.add('btn-next');
+    }
+  }
+
+  function updateHash() {
+    history.pushState({ step: currentStep }, '', '#step-' + currentStep);
+  }
+
+  // --- Validation ---
+  const validators = {
+    'step-1': validateStep1,
+    'step-2': validateStep2,
+  };
+
+  function showError(fieldId, msg) {
+    const field = $(fieldId);
+    const errEl = $(fieldId + '-error');
+    if (field) field.classList.add('error');
+    if (errEl) { errEl.textContent = msg; errEl.classList.add('show'); }
+  }
+
+  function clearError(fieldId) {
+    const field = $(fieldId);
+    const errEl = $(fieldId + '-error');
+    if (field) field.classList.remove('error');
+    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+  }
+
+  function validateStep1() {
+    let valid = true;
+    const name = $('fullName').value.trim();
+    const email = $('email').value.trim();
+    const phone = $('phone').value.trim();
+
+    clearError('fullName');
+    clearError('email');
+    clearError('phone');
+
+    if (!name) { showError('fullName', '请输入姓名'); valid = false; }
+    if (!email) {
+      showError('email', '请输入邮箱');
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('email', '邮箱格式不正确');
+      valid = false;
+    }
+    if (!phone) {
+      showError('phone', '请输入手机号码');
+      valid = false;
+    } else if (!/^1[3-9]\d{9}$/.test(phone)) {
+      showError('phone', '请输入有效的11位手机号码');
+      valid = false;
+    }
+    return valid;
+  }
+
+  function validateStep2() {
+    let valid = true;
+    const occ = occupation.value;
+    const exp = $('experience').value;
+
+    clearError('occupation');
+    clearError('otherOccupation');
+    clearError('experience');
+
+    if (!occ) { showError('occupation', '请选择职业'); valid = false; }
+    if (occ === 'other' && !$('otherOccupation').value.trim()) {
+      showError('otherOccupation', '请输入您的职业');
+      valid = false;
+    }
+    if (!exp) { showError('experience', '请选择工作年限'); valid = false; }
+    return valid;
+  }
+
+  function validateCurrentStep() {
+    const fn = validators['step-' + currentStep];
+    if (fn) return fn();
+    return true;
+  }
+
+  // --- Review ---
+  function populateReview() {
+    $('review-name').textContent = $('fullName').value.trim();
+    $('review-email').textContent = $('email').value.trim();
+    $('review-phone').textContent = $('phone').value.trim();
+
+    let occText = occupation.value;
+    if (occText === 'other') occText = $('otherOccupation').value.trim() || '其他';
+    $('review-occupation').textContent = occText;
+    $('review-company').textContent = $('company').value.trim() || '未填写';
+    $('review-experience').textContent = $('experience').value;
+
+    if (uploadedFile && uploadedFile.dataUrl) {
+      $('review-photo').innerHTML = '<img src="' + uploadedFile.dataUrl + '" alt="头像"> ' + uploadedFile.name;
+    } else {
+      $('review-photo').textContent = '未上传';
+    }
+  }
+
+  // --- Submit ---
+  function submitForm() {
+    const submission = {
+      fullName: $('fullName').value.trim(),
+      email: $('email').value.trim(),
+      phone: $('phone').value.trim(),
+      occupation: occupation.value === 'other' ? $('otherOccupation').value.trim() : occupation.value,
+      company: $('company').value.trim(),
+      experience: $('experience').value,
+      photoName: uploadedFile ? uploadedFile.name : null,
+      photoDataUrl: uploadedFile ? uploadedFile.dataUrl : null,
+      submittedAt: new Date().toISOString()
+    };
+
+    const submissions = JSON.parse(localStorage.getItem('formSubmissions') || '[]');
+    submissions.push(submission);
+    localStorage.setItem('formSubmissions', JSON.stringify(submissions));
+
+    logEvent('form_submit', submission);
+
+    clearDraft();
+
+    // Show success
+    formBody.style.display = 'none';
+    $('formNav').querySelector('.progress-bar')?.remove();
+    formNav.style.display = 'none';
+    $('progress-bar')?.remove();
+    document.querySelector('.progress-bar').style.display = 'none';
+    successScreen.classList.add('show');
+
+    showToast('提交成功！', 'success');
+  }
+
+  // --- File Upload ---
+  function handleFile(file) {
+    clearError('file');
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showError('file', '请上传图片文件');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError('file', '文件大小不能超过 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      uploadedFile = { name: file.name, dataUrl: e.target.result };
+      previewImg.src = uploadedFile.dataUrl;
+      imagePreview.classList.add('show');
+      uploadArea.style.display = 'none';
+      saveState();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  uploadArea.addEventListener('dragover', e => {
+    e.preventDefault();
+    uploadArea.classList.add('drag-over');
+  });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  removeImage.addEventListener('click', () => {
+    uploadedFile = null;
+    previewImg.src = '';
+    imagePreview.classList.remove('show');
+    uploadArea.style.display = '';
+    fileInput.value = '';
+    saveState();
+  });
+
+  // --- Conditional field ---
+  occupation.addEventListener('change', () => {
+    if (occupation.value === 'other') {
+      otherGroup.classList.add('show');
+    } else {
+      otherGroup.classList.remove('show');
+      clearError('otherOccupation');
+    }
+    saveState();
+  });
+
+  // --- Real-time validation on blur ---
+  const blurValidators = {
+    fullName: () => {
+      clearError('fullName');
+      if (!$('fullName').value.trim()) showError('fullName', '请输入姓名');
+    },
+    email: () => {
+      clearError('email');
+      const v = $('email').value.trim();
+      if (!v) showError('email', '请输入邮箱');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) showError('email', '邮箱格式不正确');
+    },
+    phone: () => {
+      clearError('phone');
+      const v = $('phone').value.trim();
+      if (!v) showError('phone', '请输入手机号码');
+      else if (!/^1[3-9]\d{9}$/.test(v)) showError('phone', '请输入有效的11位手机号码');
+    },
+    otherOccupation: () => {
+      clearError('otherOccupation');
+      if (occupation.value === 'other' && !$('otherOccupation').value.trim()) {
+        showError('otherOccupation', '请输入您的职业');
+      }
+    }
+  };
+
+  Object.keys(blurValidators).forEach(id => {
+    $(id).addEventListener('blur', blurValidators[id]);
+    $(id).addEventListener('input', () => clearError(id));
+  });
+
+  // Auto-save on input
+  ['fullName', 'email', 'phone', 'otherOccupation', 'company'].forEach(id => {
+    $(id).addEventListener('input', saveState);
+  });
+  occupation.addEventListener('change', saveState);
+  $('experience').addEventListener('change', saveState);
+
+  // --- Navigation ---
+  btnNext.addEventListener('click', () => {
+    if (currentStep === TOTAL_STEPS) {
+      submitForm();
+      return;
+    }
+    if (!validateCurrentStep()) return;
+    logEvent('step_complete', { step: currentStep });
+    goToStep(currentStep + 1, 'forward');
+  });
+
+  btnBack.addEventListener('click', () => {
+    if (currentStep > 1) goToStep(currentStep - 1, 'backward');
+  });
+
+  // Review edit buttons
+  document.querySelectorAll('.review-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const step = parseInt(btn.dataset.goto);
+      goToStep(step, 'backward');
+    });
+  });
+
+  // Browser back/forward
+  window.addEventListener('popstate', e => {
+    const step = e.state?.step || parseInt(location.hash.replace('#step-', '')) || 1;
+    if (step >= 1 && step <= TOTAL_STEPS && step !== currentStep) {
+      const dir = step > currentStep ? 'forward' : 'backward';
+      const oldPanel = $('step-' + currentStep);
+      const newPanel = $('step-' + step);
+
+      oldPanel.classList.remove('active');
+      newPanel.style.transform = dir === 'forward' ? 'translateX(100%)' : 'translateX(-100%)';
+      newPanel.style.opacity = '0';
+      void newPanel.offsetWidth;
+      newPanel.style.transform = '';
+      newPanel.style.opacity = '';
+      newPanel.classList.add('active');
+
+      currentStep = step;
+      updateProgress();
+      updateNavButtons();
+
+      if (currentStep === TOTAL_STEPS) populateReview();
+
+      setTimeout(() => {
+        oldPanel.classList.remove('exit-left');
+        oldPanel.style.transform = '';
+        oldPanel.style.opacity = '';
+      }, 450);
+
+      saveState();
+    }
+  });
+
+  // Enter key to proceed
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+      if (currentStep < TOTAL_STEPS) btnNext.click();
+    }
+  });
+
+  // --- Toast ---
+  function showToast(msg, type = 'success') {
+    toast.textContent = msg;
+    toast.className = 'toast ' + type + ' show';
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  // --- Reset ---
+  $('btnReset').addEventListener('click', () => {
+    location.hash = '';
+    location.reload();
+  });
+
+  // --- Init ---
+  const restored = restoreState();
+  updateProgress();
+  updateNavButtons();
+
+  // Set initial hash without pushing extra state
+  if (!location.hash || !location.hash.startsWith('#step-')) {
+    history.replaceState({ step: currentStep }, '', '#step-' + currentStep);
+  } else {
+    history.replaceState({ step: currentStep }, '', '#step-' + currentStep);
+  }
+
+  // Make sure all panels except current are positioned off-screen
+  panels.forEach((panel, i) => {
+    const step = i + 1;
+    if (step !== currentStep) {
+      panel.style.transform = 'translateX(100%)';
+      panel.style.opacity = '0';
+      panel.classList.remove('active');
+    }
+  });
+
+  // Log initial step
+  logEvent('page_load', { restoredFromDraft: restored, step: currentStep });
+
+})();
+</script>
+</body>
+</html>
